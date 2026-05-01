@@ -61,14 +61,24 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
-      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=24`;
+      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=40`;
       if (language) {
         url += `&langRestrict=${language.slice(0, 2)}`;
       }
       
       const res = await fetch(url);
       const data = await res.json();
-      setOnlineBooks(data.items || []);
+      
+      let items = data.items || [];
+      
+      // Google Books API langRestrict is notoriously unreliable and often returns English books.
+      // We strictly filter the results here to guarantee the user only sees the language they requested.
+      if (language) {
+        const langCode = language.slice(0, 2);
+        items = items.filter((book: any) => book.volumeInfo?.language === langCode);
+      }
+      
+      setOnlineBooks(items);
     } catch (error) {
       console.error('Error fetching from Google Books:', error);
     } finally {

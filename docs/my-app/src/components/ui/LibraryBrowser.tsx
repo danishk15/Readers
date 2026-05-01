@@ -25,6 +25,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [language, setLanguage] = useState('');
   const [onlineBooks, setOnlineBooks] = useState<any[]>([]);
   const [isLoadingOnline, setIsLoadingOnline] = useState(false);
+  const [readingMinutes, setReadingMinutes] = useState(25); // Simulated minutes for MVP
+  
   
   // For local device reading
   const [localDeviceBookUrl, setLocalDeviceBookUrl] = useState<string | null>(null);
@@ -50,24 +52,24 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const searchOpenLibrary = async () => {
     setIsLoadingOnline(true);
     try {
-      let url = 'https://openlibrary.org/search.json?';
+      // Using Gutendex (Project Gutenberg API) so users can actually read the free EPUBs directly
+      let url = 'https://gutendex.com/books/?';
       const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
-      if (category) params.append('subject', category.toLowerCase());
-      if (language) params.append('language', language);
+      if (searchQuery) params.append('search', searchQuery);
+      if (category) params.append('topic', category.toLowerCase());
       
       // Default query if nothing is provided
       if (!searchQuery && !category) {
-        params.append('q', 'bestseller');
+        params.append('search', 'fiction');
       }
 
       url += params.toString();
       
       const res = await fetch(url);
       const data = await res.json();
-      setOnlineBooks(data.docs?.slice(0, 20) || []);
+      setOnlineBooks(data.results?.slice(0, 20) || []);
     } catch (error) {
-      console.error('Error fetching from Open Library:', error);
+      console.error('Error fetching from Gutenberg:', error);
     } finally {
       setIsLoadingOnline(false);
     }
@@ -110,6 +112,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           <p className="text-muted text-sm mt-1">Discover new books to read and unlock.</p>
         </div>
         
+        {/* Weekly Perks Progress */}
+        <div className="flex-1 max-w-md mx-4 bg-surface p-3 rounded-lg border border-gray-800 hidden md:block">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="font-semibold text-primary">Weekly Perks</span>
+            <span className="text-muted">{readingMinutes} / 100 mins</span>
+          </div>
+          <div className="w-full bg-gray-800 rounded-full h-2 mb-1">
+            <div className="bg-gradient-to-r from-primary to-cyan-400 h-2 rounded-full" style={{ width: `${Math.min(readingMinutes, 100)}%` }}></div>
+          </div>
+          <p className="text-[10px] text-muted text-center">Read 100 mins to unlock a free offline download!</p>
+        </div>
+        
         <div className="flex bg-surface p-1 rounded-lg border border-gray-800">
           <button 
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'local' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
@@ -150,14 +164,25 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               <option value="">Any Category</option>
               {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
-            <select 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
-            >
-              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.label}</option>)}
-            </select>
             <Button onClick={searchOpenLibrary}>Search</Button>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-800">
+            <h3 className="text-sm font-semibold text-warning mb-3">Premium Store Deals</h3>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {initialBooks.filter(b => b.is_premium).map(book => (
+                <a key={book.id} href={`/reader/${book.id}`} className="flex-shrink-0 w-32 group">
+                  <div className="aspect-[2/3] w-full bg-gray-800 relative rounded overflow-hidden">
+                    {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <div className="text-xs p-2 text-center text-muted">No Cover</div>}
+                    <div className="absolute top-1 right-1 bg-warning text-black text-[9px] font-bold px-1.5 rounded">PREMIUM</div>
+                  </div>
+                  <p className="text-xs font-semibold mt-1 truncate text-foreground group-hover:text-warning transition-colors">{book.title}</p>
+                </a>
+              ))}
+              {initialBooks.filter(b => b.is_premium).length === 0 && (
+                <p className="text-xs text-muted">No premium deals available right now.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -200,23 +225,45 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : onlineBooks.length > 0 ? (
-            onlineBooks.map((book) => (
-              <Card key={book.key} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                <a href={`https://openlibrary.org${book.key}`} target="_blank" rel="noreferrer">
+            onlineBooks.map((book) => {
+              const epubUrl = book.formats['application/epub+zip'];
+              return (
+                <Card 
+                  key={book.id} 
+                  className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
+                  onClick={() => {
+                    if (epubUrl) {
+                      setLocalDeviceBookUrl(epubUrl);
+                    } else {
+                      window.open(`https://gutenberg.org/ebooks/${book.id}`, '_blank');
+                    }
+                  }}
+                >
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
-                    {book.cover_i ? (
-                      <img src={`https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {book.formats['image/jpeg'] ? (
+                      <img src={book.formats['image/jpeg']} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
                       <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center">{book.title}</div>
+                    )}
+                    {epubUrl && (
+                      <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        READ NOW
+                      </div>
                     )}
                   </div>
                   <CardContent className="p-4">
                     <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{book.title}</h3>
-                    <p className="text-xs text-muted truncate mt-1">{book.author_name?.[0] || 'Unknown Author'}</p>
+                    <p className="text-xs text-muted truncate mt-1">{book.authors?.[0]?.name || 'Unknown Author'}</p>
+                    
+                    {readingMinutes >= 100 && epubUrl && (
+                      <Button size="sm" variant="secondary" className="w-full mt-3 text-[10px] py-1 h-auto" onClick={(e) => { e.stopPropagation(); window.open(epubUrl); }}>
+                        Download Offline
+                      </Button>
+                    )}
                   </CardContent>
-                </a>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           ) : (
             <div className="col-span-full py-12 text-center text-muted border border-dashed border-gray-800 rounded-xl">
               <p>No results found.</p>

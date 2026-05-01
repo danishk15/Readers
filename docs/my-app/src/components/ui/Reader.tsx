@@ -5,7 +5,7 @@ import ePub, { Book, Rendition } from 'epubjs';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
 
-export default function Reader({ bookUrl, bookId, userId }: { bookUrl: string, bookId: string, userId: string }) {
+export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: string, bookId: string, userId: string, title?: string }) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,8 +76,11 @@ export default function Reader({ bookUrl, bookId, userId }: { bookUrl: string, b
 
   return (
     <div className="flex flex-col h-full bg-background border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative">
-      <div className="h-12 bg-surface border-b border-gray-800 flex items-center justify-between px-4 z-10">
-        <div className="text-sm font-medium text-muted">Time read: {Math.floor(timeSpent / 60)}m</div>
+      <div className="h-14 bg-surface/80 backdrop-blur-md border-b border-gray-800 flex items-center justify-between px-6 z-10">
+        <div className="flex items-center gap-4">
+          <div className="text-primary font-bold text-lg">{title || 'ReadSphere Book'}</div>
+          <div className="text-sm font-medium text-muted hidden sm:block px-3 py-1 bg-gray-800 rounded-md">Time read: {Math.floor(timeSpent / 60)}m</div>
+        </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={prevPage}>Prev</Button>
           <Button variant="secondary" size="sm" onClick={nextPage}>Next</Button>

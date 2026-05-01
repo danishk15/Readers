@@ -10,7 +10,7 @@ export default function DashboardLayout({
       {/* Flashy Background for Dashboard */}
       <div 
         className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-cover bg-center bg-no-repeat opacity-20 mix-blend-screen"
-        style={{ backgroundImage: 'url(/hero-bg.png)' }}
+        style={{ backgroundImage: 'url(/dashboard-bg.png)' }}
       ></div>
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
         <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px]"></div>

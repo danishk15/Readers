@@ -42,7 +42,7 @@ export default async function ReaderPage({ params }: { params: { id: string } })
   return (
     <div className="flex flex-col gap-8 w-full pb-12">
       <div className="h-[calc(100vh-6rem)] w-full relative">
-        <Reader bookUrl={book.file_url} bookId={book.id} userId={user.id} />
+        <Reader bookUrl={book.file_url} bookId={book.id} userId={user.id} title={book.title} />
       </div>
       <div className="max-w-4xl mx-auto w-full">
         <BookComments bookId={book.id} />

@@ -28,8 +28,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [readingMinutes, setReadingMinutes] = useState(25); // Simulated minutes for MVP
   
   
-  // For local device reading
-  const [localDeviceBookUrl, setLocalDeviceBookUrl] = useState<string | null>(null);
+  // For local device reading or direct reading
+  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string} | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
   const languages = [
@@ -86,20 +86,27 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      setLocalDeviceBookUrl(url);
+      setActiveReadingBook({ url, title: file.name });
     }
   };
 
-  if (localDeviceBookUrl) {
+  if (activeReadingBook) {
     return (
-      <div className="h-[calc(100vh-6rem)] w-full flex flex-col gap-4">
-        <div>
-          <Button onClick={() => setLocalDeviceBookUrl(null)} variant="secondary">
-            Close Reader
+      <div className="h-[calc(100vh-6rem)] w-full flex flex-col gap-4 relative">
+        <div className="flex justify-between items-center bg-surface p-3 rounded-lg border border-gray-800">
+          <h2 className="font-bold text-foreground truncate max-w-sm">Reading: {activeReadingBook.title}</h2>
+          <Button onClick={() => setActiveReadingBook(null)} variant="secondary" size="sm">
+            Close Book
           </Button>
         </div>
-        <div className="flex-1">
-          <Reader bookUrl={localDeviceBookUrl} bookId="device-local" userId={userId} />
+        <div className="flex-1 relative bg-white/5 rounded-xl">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+              <p className="text-muted text-sm animate-pulse">Loading big book files... Please wait!</p>
+            </div>
+          </div>
+          <Reader bookUrl={activeReadingBook.url} bookId="inline-book" userId={userId} title={activeReadingBook.title} />
         </div>
       </div>
     );
@@ -191,7 +198,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                     : true
                 )
                 .map(book => (
-                <a key={book.id} href={`/reader/${book.id}`} className="flex-shrink-0 w-32 group">
+                <a key={book.id} href={`/reader/${book.id}`} target="_blank" className="flex-shrink-0 w-32 group">
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded overflow-hidden">
                     {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <div className="text-xs p-2 text-center text-muted">No Cover</div>}
                     <div className="absolute top-1 right-1 bg-warning text-black text-[9px] font-bold px-1.5 rounded">PREMIUM</div>
@@ -212,7 +219,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           initialBooks.length > 0 ? (
             initialBooks.map((book) => (
               <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                <a href={`/reader/${book.id}`}>
+                <a href={`/reader/${book.id}`} target="_blank">
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
                     {book.cover_url ? (
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -243,7 +250,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.images', is_premium: true }
               ].map(book => (
                 <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                  <a href={`/reader/${book.id}`} onClick={(e) => { e.preventDefault(); setLocalDeviceBookUrl(book.file_url); }}>
+                  <a href={`/reader/${book.id}`} target="_blank" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url, title: book.title }); }}>
                     <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       {book.is_premium && (
@@ -283,7 +290,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
                     if (epubUrl) {
-                      setLocalDeviceBookUrl(epubUrl);
+                      setActiveReadingBook({ url: epubUrl, title: book.title });
                     } else {
                       window.open(`https://gutenberg.org/ebooks/${book.id}`, '_blank');
                     }

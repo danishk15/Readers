@@ -170,7 +170,15 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           <div className="mt-4 pt-4 border-t border-gray-800">
             <h3 className="text-sm font-semibold text-warning mb-3">Premium Store Deals</h3>
             <div className="flex gap-4 overflow-x-auto pb-2">
-              {initialBooks.filter(b => b.is_premium).map(book => (
+              {initialBooks
+                .filter(b => b.is_premium)
+                .filter(b => 
+                  searchQuery 
+                    ? b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      b.author.toLowerCase().includes(searchQuery.toLowerCase())
+                    : true
+                )
+                .map(book => (
                 <a key={book.id} href={`/reader/${book.id}`} className="flex-shrink-0 w-32 group">
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded overflow-hidden">
                     {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <div className="text-xs p-2 text-center text-muted">No Cover</div>}
@@ -265,8 +273,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               );
             })
           ) : (
-            <div className="col-span-full py-12 text-center text-muted border border-dashed border-gray-800 rounded-xl">
-              <p>No results found.</p>
+            <div className="col-span-full py-12 text-center border border-dashed border-gray-800 rounded-xl bg-surface/30">
+              <p className="text-muted text-lg font-medium mb-2">No free books found.</p>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                The public domain library (Gutenberg) might not have books matching this exact category or language. Check out the <strong>Premium Store Deals</strong> above for our exclusive collection!
+              </p>
             </div>
           )
         )}

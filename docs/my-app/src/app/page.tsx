@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { BookOpen, Users, Sparkles, TrendingUp, BookMarked, ArrowRight } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="flex flex-col min-h-screen bg-[#0b0c10] text-slate-50 overflow-hidden selection:bg-indigo-500/30 font-sans relative">
       
@@ -19,23 +23,35 @@ export default function Home() {
           <a href="#premium" className="hover:text-white transition-colors">Premium</a>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium hover:text-white transition-colors hidden sm:block">
-            Sign In
-          </Link>
-          <Link href="/signup" className="text-sm font-medium bg-white text-slate-950 px-5 py-2.5 rounded-full hover:bg-slate-200 transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            Join Now
-          </Link>
+          {user ? (
+            <Link href="/dashboard" className="text-sm font-medium bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(91,108,255,0.4)]">
+              Go to Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-medium hover:text-white transition-colors hidden sm:block">
+                Sign In
+              </Link>
+              <Link href="/signup" className="text-sm font-medium bg-white text-slate-950 px-5 py-2.5 rounded-full hover:bg-slate-200 transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                Join Now
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
       <main className="flex-1 relative">
-        {/* Catchy Multi-Color Background Elements */}
+        {/* Catchy Multi-Color Background Elements with Generated Image */}
+        <div 
+          className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-cover bg-center bg-no-repeat opacity-40 mix-blend-screen"
+          style={{ backgroundImage: 'url(/hero-bg.png)' }}
+        ></div>
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse"></div>
-          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute bottom-[-10%] left-[10%] w-[55vw] h-[55vw] bg-emerald-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '3s' }}></div>
-          <div className="absolute bottom-[20%] right-[20%] w-[40vw] h-[40vw] bg-cyan-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] bg-rose-600/40 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '4s' }}></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-600/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-[-10%] left-[10%] w-[55vw] h-[55vw] bg-emerald-600/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute bottom-[20%] right-[20%] w-[40vw] h-[40vw] bg-cyan-600/30 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] bg-rose-600/30 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 
         {/* Hero Section */}
@@ -57,13 +73,23 @@ export default function Home() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <Link 
-              href="/signup" 
-              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 group"
-            >
-              Start Reading Free
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            {user ? (
+              <Link 
+                href="/dashboard" 
+                className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 group"
+              >
+                Go to your Dashboard
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            ) : (
+              <Link 
+                href="/signup" 
+                className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(79,70,229,0.3)] flex items-center justify-center gap-2 group"
+              >
+                Start Reading Free
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            )}
             <Link 
               href="/dashboard" 
               className="w-full sm:w-auto px-8 py-4 bg-slate-800/50 hover:bg-slate-800 text-white rounded-full font-medium transition-all backdrop-blur-sm border border-slate-700/50 hover:border-slate-600 flex items-center justify-center"

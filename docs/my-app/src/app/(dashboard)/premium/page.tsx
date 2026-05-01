@@ -10,7 +10,7 @@ export default function PremiumPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (amount: number, planName: string) => {
     setLoading(true);
     setMessage('');
 
@@ -19,7 +19,7 @@ export default function PremiumPage() {
       const res = await fetch('/api/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 999, currency: 'INR' }) // ₹999 Premium Tier
+        body: JSON.stringify({ amount, currency: 'INR' })
       });
       const order = await res.json();
 
@@ -33,7 +33,7 @@ export default function PremiumPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'dummy_key_id',
         amount: order.amount,
         currency: order.currency,
-        name: 'ReadSphere Premium',
+        name: `ReadSphere Premium - ${planName}`,
         description: 'Unlock exclusive books and offline downloads.',
         order_id: order.id,
         handler: async function (response: any) {
@@ -86,49 +86,108 @@ export default function PremiumPage() {
           <p className="text-xl text-muted">Unlock the full power of ReadSphere and read without limits.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-          {/* Free Tier */}
-          <Card className="opacity-80">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {/* Weekly Tier */}
+          <Card className="border-gray-700 shadow-lg relative overflow-hidden group">
             <CardHeader className="text-center pb-2">
-              <h2 className="text-2xl font-bold">Reader</h2>
-              <p className="text-muted mt-1">Free</p>
+              <h2 className="text-xl font-bold">Weekly</h2>
+              <p className="text-muted mt-1">₹49 / week</p>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <ul className="space-y-4 text-sm text-foreground">
-                <li className="flex items-center gap-2">✓ Access to public domain books</li>
-                <li className="flex items-center gap-2">✓ Join community servers</li>
-                <li className="flex items-center gap-2">✓ Track reading milestones</li>
-                <li className="flex items-center gap-2 text-muted">✗ No offline downloads</li>
-                <li className="flex items-center gap-2 text-muted">✗ No premium exclusives</li>
+            <CardContent className="p-6 space-y-4">
+              <ul className="space-y-3 text-sm text-foreground">
+                <li className="flex items-center gap-2">✓ All Free features</li>
+                <li className="flex items-center gap-2 text-primary">✓ 7 Days Offline DRM</li>
+                <li className="flex items-center gap-2 text-primary">✓ Read exclusive books</li>
               </ul>
-              <Button variant="secondary" className="w-full" disabled>Current Plan</Button>
+              <Button 
+                variant="secondary"
+                className="w-full mt-4" 
+                onClick={() => handleUpgrade(49, 'Weekly')}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Get Weekly'}
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Premium Tier */}
-          <Card className="border-warning shadow-lg relative overflow-hidden group hover:shadow-warning/20 transition-all">
-            <div className="absolute top-0 right-0 bg-warning text-black text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
+          {/* Monthly Tier */}
+          <Card className="border-gray-700 shadow-lg relative overflow-hidden group">
             <CardHeader className="text-center pb-2">
-              <h2 className="text-2xl font-bold text-warning">Premium</h2>
-              <p className="text-muted mt-1">₹999 / year</p>
+              <h2 className="text-xl font-bold">Monthly</h2>
+              <p className="text-muted mt-1">₹149 / month</p>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <ul className="space-y-4 text-sm text-foreground">
+            <CardContent className="p-6 space-y-4">
+              <ul className="space-y-3 text-sm text-foreground">
                 <li className="flex items-center gap-2">✓ All Free features</li>
-                <li className="flex items-center gap-2 font-medium text-warning">✓ Offline DRM downloads</li>
-                <li className="flex items-center gap-2 font-medium text-warning">✓ Access exclusive books</li>
-                <li className="flex items-center gap-2 font-medium text-warning">✓ Premium Profile Badge</li>
-                <li className="flex items-center gap-2">✓ Support the creators</li>
+                <li className="flex items-center gap-2 text-primary">✓ 30 Days Offline DRM</li>
+                <li className="flex items-center gap-2 text-primary">✓ Read exclusive books</li>
               </ul>
               <Button 
-                className="w-full bg-warning text-black hover:bg-warning/80 font-bold" 
-                onClick={handleUpgrade}
+                variant="secondary"
+                className="w-full mt-4" 
+                onClick={() => handleUpgrade(149, 'Monthly')}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Get Monthly'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Quarterly Tier */}
+          <Card className="border-gray-700 shadow-lg relative overflow-hidden group">
+            <CardHeader className="text-center pb-2">
+              <h2 className="text-xl font-bold">Quarterly</h2>
+              <p className="text-muted mt-1">₹399 / quarter</p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <ul className="space-y-3 text-sm text-foreground">
+                <li className="flex items-center gap-2">✓ All Free features</li>
+                <li className="flex items-center gap-2 text-primary">✓ 90 Days Offline DRM</li>
+                <li className="flex items-center gap-2 text-primary">✓ Read exclusive books</li>
+              </ul>
+              <Button 
+                variant="secondary"
+                className="w-full mt-4" 
+                onClick={() => handleUpgrade(399, 'Quarterly')}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Get Quarterly'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Premium Yearly Tier */}
+          <Card className="border-warning shadow-lg relative overflow-hidden group hover:shadow-warning/20 transition-all transform scale-105 z-10">
+            <div className="absolute top-0 right-0 bg-warning text-black text-xs font-bold px-3 py-1 rounded-bl-lg">BEST VALUE</div>
+            <CardHeader className="text-center pb-2">
+              <h2 className="text-2xl font-bold text-warning">Yearly Premium</h2>
+              <p className="text-muted mt-1">₹999 / year</p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <ul className="space-y-3 text-sm text-foreground">
+                <li className="flex items-center gap-2">✓ All Free features</li>
+                <li className="flex items-center gap-2 font-medium text-warning">✓ Full Offline DRM</li>
+                <li className="flex items-center gap-2 font-medium text-warning">✓ All exclusive books</li>
+                <li className="flex items-center gap-2 font-medium text-warning">✓ Premium Badge</li>
+                <li className="flex items-center gap-2">✓ Support creators</li>
+              </ul>
+              <Button 
+                className="w-full bg-warning text-black hover:bg-warning/80 font-bold mt-4" 
+                onClick={() => handleUpgrade(999, 'Yearly')}
                 disabled={loading}
               >
                 {loading ? 'Processing...' : 'Upgrade Now'}
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="max-w-4xl mx-auto mt-16 p-8 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 flex flex-col items-center text-center">
+          <h2 className="text-2xl font-bold mb-3 text-foreground">Earn Weekly Premium for Free!</h2>
+          <p className="text-muted mb-6 max-w-2xl">
+            Don't want to pay? No problem. Be an active reader in our community to earn your premium perks! Complete tasks like reading maximum books, engaging in comments, and interacting with the community. Hit the milestones and automatically unlock 1 week of Premium for free!
+          </p>
+          <Button variant="secondary" onClick={() => window.location.href = '/dashboard'}>Start Reading Now</Button>
         </div>
         
         {message && (

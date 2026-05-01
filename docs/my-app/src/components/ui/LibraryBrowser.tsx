@@ -33,9 +33,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const languages = [
     { code: '', label: 'Any Language' },
     { code: 'eng', label: 'English' },
+    { code: 'hin', label: 'Hindi' },
+    { code: 'urd', label: 'Urdu' },
     { code: 'spa', label: 'Spanish' },
     { code: 'fre', label: 'French' },
-    { code: 'ger', label: 'German' }
+    { code: 'ger', label: 'German' },
+    { code: 'ara', label: 'Arabic' },
+    { code: 'chi', label: 'Chinese' },
+    { code: 'jpn', label: 'Japanese' },
+    { code: 'kor', label: 'Korean' },
+    { code: 'rus', label: 'Russian' },
+    { code: 'por', label: 'Portuguese' },
+    { code: 'ita', label: 'Italian' }
   ];
 
   const searchOpenLibrary = async () => {

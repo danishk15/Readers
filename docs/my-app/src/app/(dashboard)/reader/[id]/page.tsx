@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import Reader from '@/components/ui/Reader';
+import BookComments from '@/components/ui/BookComments';
 import { redirect } from 'next/navigation';
 
 export default async function ReaderPage({ params }: { params: { id: string } }) {
@@ -39,8 +40,13 @@ export default async function ReaderPage({ params }: { params: { id: string } })
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)] w-full">
-      <Reader bookUrl={book.file_url} bookId={book.id} userId={user.id} />
+    <div className="flex flex-col gap-8 w-full pb-12">
+      <div className="h-[calc(100vh-6rem)] w-full relative">
+        <Reader bookUrl={book.file_url} bookId={book.id} userId={user.id} />
+      </div>
+      <div className="max-w-4xl mx-auto w-full">
+        <BookComments bookId={book.id} />
+      </div>
     </div>
   );
 }

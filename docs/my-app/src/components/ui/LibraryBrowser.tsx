@@ -29,7 +29,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   
   
   // For local device reading or direct reading
-  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string} | null>(null);
+  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean} | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
   const languages = [
@@ -49,28 +49,23 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     { code: 'ita', label: 'Italian' }
   ];
 
-  const searchOpenLibrary = async () => {
+  const searchOnlineLibrary = async () => {
     setIsLoadingOnline(true);
     try {
-      // Using Gutendex (Project Gutenberg API) so users can actually read the free EPUBs directly
-      let url = 'https://gutendex.com/books/?';
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
-      if (category) params.append('topic', category.toLowerCase());
-      if (language) params.append('languages', language); // 'en', 'fr', etc.
+      // Using Google Books API for a massive global library, super fast queries, and reliable embeddable readers!
+      let q = searchQuery || 'subject:fiction';
+      if (category) q += `+subject:${category.toLowerCase()}`;
       
-      // Default query if nothing is provided
-      if (!searchQuery && !category && !language) {
-        params.append('search', 'fiction');
+      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=24`;
+      if (language) {
+        url += `&langRestrict=${language.slice(0, 2)}`;
       }
-
-      url += params.toString();
       
       const res = await fetch(url);
       const data = await res.json();
-      setOnlineBooks(data.results?.slice(0, 20) || []);
+      setOnlineBooks(data.items || []);
     } catch (error) {
-      console.error('Error fetching from Gutenberg:', error);
+      console.error('Error fetching from Google Books:', error);
     } finally {
       setIsLoadingOnline(false);
     }
@@ -78,7 +73,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
   useEffect(() => {
     if (activeTab === 'online') {
-      searchOpenLibrary();
+      searchOnlineLibrary();
     }
   }, [activeTab]);
 
@@ -99,14 +94,20 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             Close Book
           </Button>
         </div>
-        <div className="flex-1 relative bg-white/5 rounded-xl">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
-              <p className="text-muted text-sm animate-pulse">Loading big book files... Please wait!</p>
-            </div>
-          </div>
-          <Reader bookUrl={activeReadingBook.url} bookId="inline-book" userId={userId} title={activeReadingBook.title} />
+        <div className="flex-1 relative bg-white/5 rounded-xl overflow-hidden">
+          {activeReadingBook.isGoogleBook ? (
+            <iframe src={activeReadingBook.url} className="w-full h-full border-0 bg-white" allowFullScreen title={activeReadingBook.title}></iframe>
+          ) : (
+            <>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                  <p className="text-muted text-sm animate-pulse">Loading big book files... Please wait!</p>
+                </div>
+              </div>
+              <Reader bookUrl={activeReadingBook.url} bookId="inline-book" userId={userId} title={activeReadingBook.title} />
+            </>
+          )}
         </div>
       </div>
     );
@@ -143,7 +144,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'online' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
             onClick={() => setActiveTab('online')}
           >
-            Open Library
+            Global Library
           </button>
           <button 
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'device' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
@@ -183,7 +184,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 <option key={lang.code} value={lang.code.slice(0, 2)}>{lang.label}</option>
               ))}
             </select>
-            <Button onClick={searchOpenLibrary}>Search</Button>
+            <Button onClick={searchOnlineLibrary}>Search</Button>
           </div>
           
           <div className="mt-4 pt-4 border-t border-gray-800">
@@ -283,38 +284,35 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </div>
           ) : onlineBooks.length > 0 ? (
             onlineBooks.map((book) => {
-              const epubUrl = book.formats['application/epub+zip'];
+              const info = book.volumeInfo;
+              const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
+              const embedUrl = `https://books.google.com/books?id=${book.id}&lpg=PP1&pg=PP1&output=embed`;
+
               return (
                 <Card 
                   key={book.id} 
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
-                    if (epubUrl) {
-                      setActiveReadingBook({ url: epubUrl, title: book.title });
-                    } else {
-                      window.open(`https://gutenberg.org/ebooks/${book.id}`, '_blank');
-                    }
+                    setActiveReadingBook({ url: embedUrl, title: info.title, isGoogleBook: true });
                   }}
                 >
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
-                    {book.formats['image/jpeg'] ? (
-                      <img src={book.formats['image/jpeg']} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {thumbnail ? (
+                      <img src={thumbnail} alt={info.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center">{book.title}</div>
+                      <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center">{info.title}</div>
                     )}
-                    {epubUrl && (
-                      <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                        READ NOW
-                      </div>
-                    )}
+                    <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                      READ PREVIEW
+                    </div>
                   </div>
                   <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{book.title}</h3>
-                    <p className="text-xs text-muted truncate mt-1">{book.authors?.[0]?.name || 'Unknown Author'}</p>
+                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{info.title}</h3>
+                    <p className="text-xs text-muted truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
                     
-                    {readingMinutes >= 100 && epubUrl && (
-                      <Button size="sm" variant="secondary" className="w-full mt-3 text-[10px] py-1 h-auto" onClick={(e) => { e.stopPropagation(); window.open(epubUrl); }}>
-                        Download Offline
+                    {readingMinutes >= 100 && (
+                      <Button size="sm" variant="secondary" className="w-full mt-3 text-[10px] py-1 h-auto" onClick={(e) => { e.stopPropagation(); window.open(info.infoLink || info.previewLink, '_blank'); }}>
+                        Google Books Page
                       </Button>
                     )}
                   </CardContent>

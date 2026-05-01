@@ -86,8 +86,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         const olRes = await fetch(olUrl);
         if (olRes.ok) {
           const olData = await olRes.json();
-          const olItems = (olData.docs || []).map((b: any) => ({
-            id: b.key ? b.key.replace('/works/', '') : Math.random().toString(),
+          const olItems = (olData.docs || []).map((b: any, i: number) => ({
+            id: b.key ? b.key.replace('/works/', '') : `ol-${i}`,
             isOpenLibrary: true,
             volumeInfo: {
               title: b.title || 'Unknown Title',
@@ -122,19 +122,19 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           if (gRes.ok) {
             const gData = await gRes.json();
             const gItems = (gData.results || []).map((b: any) => ({
-              id: b.id.toString(),
+              id: `gutendex-${b.id}`,
               volumeInfo: {
-                title: b.title,
-                authors: b.authors.map((a: any) => a.name),
+                title: b.title || 'Unknown Title',
+                authors: Array.isArray(b.authors) ? b.authors.map((a: any) => a.name) : ['Unknown Author'],
                 imageLinks: {
-                  thumbnail: b.formats['image/jpeg']
+                  thumbnail: b.formats?.['image/jpeg'] || null
                 },
                 infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
                 previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
                 language: b.languages?.[0] || 'en'
               },
               accessInfo: {
-                epub: { downloadLink: b.formats['application/epub+zip'] }
+                epub: { downloadLink: b.formats?.['application/epub+zip'] || null }
               }
             }));
             items = gItems;
@@ -212,12 +212,12 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         <div className="flex-1 max-w-md mx-4 bg-surface p-3 rounded-lg border border-gray-800 hidden md:block">
           <div className="flex justify-between text-xs mb-1">
             <span className="font-semibold text-primary">Weekly Perks</span>
-            <span className="text-muted">{readingMinutes} / 100 mins</span>
+            <span className="text-muted">{readingMinutes} / 500 mins</span>
           </div>
           <div className="w-full bg-gray-800 rounded-full h-2 mb-1">
-            <div className="bg-gradient-to-r from-primary to-cyan-400 h-2 rounded-full" style={{ width: `${Math.min(readingMinutes, 100)}%` }}></div>
+            <div className="bg-gradient-to-r from-primary to-cyan-400 h-2 rounded-full" style={{ width: `${(Math.min(readingMinutes, 500) / 500) * 100}%` }}></div>
           </div>
-          <p className="text-[10px] text-muted text-center">Read 100 mins to unlock a free offline download!</p>
+          <p className="text-[10px] text-muted text-center">Read 500 mins to unlock a free offline download!</p>
         </div>
         
         <div className="flex bg-surface p-1 rounded-lg border border-gray-800">
@@ -369,14 +369,14 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : onlineBooks.length > 0 ? (
-            onlineBooks.map((book) => {
-              const info = book.volumeInfo;
+            onlineBooks.map((book, index) => {
+              const info = book.volumeInfo || {};
               const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
               const embedUrl = book.isOpenLibrary ? null : `https://books.google.com/books?id=${book.id}&lpg=PP1&pg=PP1&output=embed`;
 
               return (
                 <Card 
-                  key={book.id + Math.random()} 
+                  key={`${book.id}-${index}`} 
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
                     if (book.isOpenLibrary) {
@@ -406,7 +406,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                     <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{info.title}</h3>
                     <p className="text-xs text-muted truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
                     
-                    {readingMinutes >= 100 && (
+                    {readingMinutes >= 500 && (
                       <Button size="sm" variant="secondary" className="w-full mt-3 text-[10px] py-1 h-auto" onClick={(e) => { e.stopPropagation(); window.open(info.infoLink || info.previewLink, '_blank'); }}>
                         Google Books Page
                       </Button>

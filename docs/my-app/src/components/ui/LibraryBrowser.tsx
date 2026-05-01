@@ -69,18 +69,51 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const res = await fetch(url);
       const data = await res.json();
       
-      let items = data.items || [];
+      let items = [];
+
+      // If Google Books hits a rate limit or error, fallback to Gutendex
+      if (data.error || !data.items) {
+        console.warn('Google Books API error or limit reached, falling back to Gutendex...', data.error);
+        
+        let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(searchQuery || category || 'fiction')}`;
+        if (language) {
+          gutendexUrl += `&languages=${language.slice(0, 2)}`;
+        }
+        
+        const fallbackRes = await fetch(gutendexUrl);
+        const fallbackData = await fallbackRes.json();
+        
+        items = (fallbackData.results || []).map((b: any) => ({
+          id: b.id.toString(),
+          volumeInfo: {
+            title: b.title,
+            authors: b.authors.map((a: any) => a.name),
+            imageLinks: {
+              thumbnail: b.formats['image/jpeg']
+            },
+            infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+            previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+            language: b.languages?.[0] || 'en'
+          },
+          // For gutendex, we can link directly to the epub
+          accessInfo: {
+            epub: { downloadLink: b.formats['application/epub+zip'] }
+          }
+        }));
+      } else {
+        items = data.items || [];
+      }
       
       // Google Books API langRestrict is notoriously unreliable and often returns English books.
       // We strictly filter the results here to guarantee the user only sees the language they requested.
-      if (language) {
+      if (language && !data.error) {
         const langCode = language.slice(0, 2);
         items = items.filter((book: any) => book.volumeInfo?.language === langCode);
       }
       
       setOnlineBooks(items);
     } catch (error) {
-      console.error('Error fetching from Google Books:', error);
+      console.error('Error fetching books:', error);
     } finally {
       setIsLoadingOnline(false);
     }
@@ -308,7 +341,12 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   key={book.id} 
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
-                    setActiveReadingBook({ url: embedUrl, title: info.title, isGoogleBook: true });
+                    // If it's from Gutendex, try to read the epub, otherwise Google Books embed
+                    if (book.accessInfo?.epub?.downloadLink) {
+                      setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
+                    } else {
+                      setActiveReadingBook({ url: embedUrl, title: info.title, isGoogleBook: true });
+                    }
                   }}
                 >
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">

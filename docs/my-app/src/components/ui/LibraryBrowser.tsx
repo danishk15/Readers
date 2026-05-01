@@ -52,7 +52,6 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const searchOnlineLibrary = async () => {
     setIsLoadingOnline(true);
     try {
-      // Using Google Books API for a massive global library, super fast queries, and reliable embeddable readers!
       let q = searchQuery || '';
       if (category) {
         q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
@@ -61,54 +60,62 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
-      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=40`;
+      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=20`;
       if (language) {
         url += `&langRestrict=${language.slice(0, 2)}`;
       }
       
-      const res = await fetch(url);
-      const data = await res.json();
+      let items: any[] = [];
       
-      let items = [];
+      // 1. Try Google Books API
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.error && data.items) {
+          items = data.items;
+        }
+      } catch (e) {
+        console.error('Google Books error:', e);
+      }
 
-      // If Google Books hits a rate limit or error, fallback to Gutendex
-      if (data.error || !data.items) {
-        console.warn('Google Books API error or limit reached, falling back to Gutendex...', data.error);
-        
-        let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(searchQuery || category || 'fiction')}`;
+      // 2. Always fetch from Open Library to guarantee finding ANY book
+      try {
+        let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(searchQuery || category || 'fiction')}&limit=30`;
         if (language) {
-          gutendexUrl += `&languages=${language.slice(0, 2)}`;
+          // Open library uses full language names or 3-letter codes, but we'll stick to basic search for reliability
+          olUrl += `&language=${language.slice(0, 3)}`;
         }
         
-        const fallbackRes = await fetch(gutendexUrl);
-        const fallbackData = await fallbackRes.json();
+        const olRes = await fetch(olUrl);
+        const olData = await olRes.json();
         
-        items = (fallbackData.results || []).map((b: any) => ({
-          id: b.id.toString(),
+        const olItems = (olData.docs || []).map((b: any) => ({
+          id: b.key.replace('/works/', ''),
+          isOpenLibrary: true,
           volumeInfo: {
             title: b.title,
-            authors: b.authors.map((a: any) => a.name),
+            authors: b.author_name || ['Unknown Author'],
             imageLinks: {
-              thumbnail: b.formats['image/jpeg']
+              thumbnail: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null
             },
-            infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
-            previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
-            language: b.languages?.[0] || 'en'
+            infoLink: `https://openlibrary.org${b.key}`,
+            previewLink: `https://openlibrary.org${b.key}`,
+            language: b.language?.[0] || 'eng'
           },
-          // For gutendex, we can link directly to the epub
           accessInfo: {
-            epub: { downloadLink: b.formats['application/epub+zip'] }
+            ia: b.ia?.[0]
           }
         }));
-      } else {
-        items = data.items || [];
+        
+        items = [...items, ...olItems];
+      } catch (e) {
+        console.error('Open Library error:', e);
       }
       
-      // Google Books API langRestrict is notoriously unreliable and often returns English books.
-      // We strictly filter the results here to guarantee the user only sees the language they requested.
-      if (language && !data.error) {
+      // Filter by language strictly if requested
+      if (language) {
         const langCode = language.slice(0, 2);
-        items = items.filter((book: any) => book.volumeInfo?.language === langCode);
+        items = items.filter((book: any) => book.volumeInfo?.language?.startsWith(langCode));
       }
       
       setOnlineBooks(items);
@@ -334,17 +341,22 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             onlineBooks.map((book) => {
               const info = book.volumeInfo;
               const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
-              const embedUrl = `https://books.google.com/books?id=${book.id}&lpg=PP1&pg=PP1&output=embed`;
+              const embedUrl = book.isOpenLibrary ? null : `https://books.google.com/books?id=${book.id}&lpg=PP1&pg=PP1&output=embed`;
 
               return (
                 <Card 
-                  key={book.id} 
+                  key={book.id + Math.random()} 
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
-                    // If it's from Gutendex, try to read the epub, otherwise Google Books embed
-                    if (book.accessInfo?.epub?.downloadLink) {
+                    if (book.isOpenLibrary) {
+                      if (book.accessInfo?.ia) {
+                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isGoogleBook: true });
+                      } else {
+                        window.open(info.infoLink, '_blank');
+                      }
+                    } else if (book.accessInfo?.epub?.downloadLink) {
                       setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
-                    } else {
+                    } else if (embedUrl) {
                       setActiveReadingBook({ url: embedUrl, title: info.title, isGoogleBook: true });
                     }
                   }}

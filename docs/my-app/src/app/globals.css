@@ -3,14 +3,14 @@
 @theme {
   --color-primary: #5B6CFF;
   --color-secondary: #8B5CF6;
-  --color-background: #0F172A;
-  --color-surface: #111827;
-  --color-card: #1F2937;
-  --color-foreground: #F9FAFB;
-  --color-muted: #9CA3AF;
+  --color-background: #0b0c10; /* Dark granite base */
+  --color-surface: #1f2833;    /* Lighter granite surface */
+  --color-card: #161b22;       /* Intermediary card background */
+  --color-foreground: #c5c6c7;
+  --color-muted: #8b929a;
 
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
+  --color-success: #45a29e;    /* Chemical cyan hint */
+  --color-warning: #f59e0b;
   --color-error: #EF4444;
 
   --font-sans: var(--font-inter);
@@ -20,5 +20,14 @@
   :root {
     --background: var(--color-background);
     --foreground: var(--color-foreground);
+  }
+  
+  body {
+    background: radial-gradient(circle at top left, rgba(69, 162, 158, 0.15), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(91, 108, 255, 0.15), transparent 40%),
+                linear-gradient(135deg, #0b0c10 0%, #161b22 100%);
+    background-attachment: fixed;
+    color: var(--color-foreground);
+    min-height: 100vh;
   }
 }

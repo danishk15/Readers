@@ -3,7 +3,7 @@ import { BookOpen, Users, Sparkles, TrendingUp, BookMarked, ArrowRight } from "l
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50 overflow-hidden selection:bg-indigo-500/30 font-sans">
+    <div className="flex flex-col min-h-screen bg-[#0b0c10] text-slate-50 overflow-hidden selection:bg-indigo-500/30 font-sans relative">
       
       {/* Navigation Bar */}
       <nav className="absolute top-0 w-full z-50 px-6 py-6 flex items-center justify-between max-w-7xl mx-auto left-0 right-0">
@@ -29,11 +29,13 @@ export default function Home() {
       </nav>
 
       <main className="flex-1 relative">
-        {/* Background Decorative Elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[600px] opacity-30 pointer-events-none">
-          <div className="absolute top-[-20%] left-[0%] w-[500px] h-[500px] bg-indigo-600 rounded-full mix-blend-screen filter blur-[120px] animate-pulse"></div>
-          <div className="absolute top-[20%] right-[0%] w-[400px] h-[400px] bg-cyan-500 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-violet-600 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '4s' }}></div>
+        {/* Catchy Multi-Color Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse"></div>
+          <div className="absolute top-[10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute bottom-[-10%] left-[10%] w-[55vw] h-[55vw] bg-emerald-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '3s' }}></div>
+          <div className="absolute bottom-[20%] right-[20%] w-[40vw] h-[40vw] bg-cyan-600/40 rounded-full mix-blend-screen filter blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] bg-rose-600/40 rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 
         {/* Hero Section */}
@@ -113,7 +115,7 @@ export default function Home() {
       </main>
       
       {/* Footer */}
-      <footer className="border-t border-slate-800/60 bg-slate-950/80 backdrop-blur-lg mt-auto">
+      <footer className="relative border-t border-slate-800/60 bg-slate-950/40 backdrop-blur-xl mt-auto z-10">
         <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
             <BookOpen className="w-5 h-5 text-indigo-400" />

@@ -57,9 +57,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (category) params.append('topic', category.toLowerCase());
+      if (language) params.append('languages', language); // 'en', 'fr', etc.
       
       // Default query if nothing is provided
-      if (!searchQuery && !category) {
+      if (!searchQuery && !category && !language) {
         params.append('search', 'fiction');
       }
 
@@ -164,6 +165,17 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               <option value="">Any Category</option>
               {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
+            <select 
+              value={language} 
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="">Global Languages</option>
+              {languages.filter(l => l.code !== '').map(lang => (
+                // Gutendex uses 2-letter codes, so we slice the 3-letter codes to 2-letter (e.g. eng -> en, urd -> ur, etc)
+                <option key={lang.code} value={lang.code.slice(0, 2)}>{lang.label}</option>
+              ))}
+            </select>
             <Button onClick={searchOpenLibrary}>Search</Button>
           </div>
           
@@ -221,9 +233,39 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               </Card>
             ))
           ) : (
-            <div className="col-span-full py-12 text-center text-muted border border-dashed border-gray-800 rounded-xl">
-              <p>No books available yet.</p>
-            </div>
+            <>
+              {/* Fallback books so the site is never empty! */}
+              {[
+                { id: 'classic-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/64317.epub.images', is_premium: false },
+                { id: 'classic-2', title: 'Pride and Prejudice', author: 'Jane Austen', cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/1342.epub.images', is_premium: false },
+                { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.images', is_premium: true },
+                { id: 'classic-4', title: 'Moby Dick', author: 'Herman Melville', cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/2701.epub.images', is_premium: false },
+                { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.images', is_premium: true }
+              ].map(book => (
+                <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
+                  <a href={`/reader/${book.id}`} onClick={(e) => { e.preventDefault(); setLocalDeviceBookUrl(book.file_url); }}>
+                    <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
+                      <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      {book.is_premium && (
+                        <div className="absolute top-2 right-2 bg-warning text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                          PREMIUM
+                        </div>
+                      )}
+                      <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        READ NOW
+                      </div>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{book.title}</h3>
+                      <p className="text-xs text-muted truncate mt-1">{book.author}</p>
+                    </CardContent>
+                  </a>
+                </Card>
+              ))}
+              <div className="col-span-full mt-4 p-4 text-center text-muted border border-dashed border-gray-800 rounded-xl bg-surface/50">
+                <p>Welcome! Above are some classic starter books. You can upload more in the Admin panel.</p>
+              </div>
+            </>
           )
         )}
 

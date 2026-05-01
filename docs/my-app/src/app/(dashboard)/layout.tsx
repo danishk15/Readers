@@ -6,9 +6,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-[#0b0c10] text-slate-50 relative font-sans">
+      {/* Flashy Background for Dashboard */}
+      <div 
+        className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-cover bg-center bg-no-repeat opacity-20 mix-blend-screen"
+        style={{ backgroundImage: 'url(/hero-bg.png)' }}
+      ></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
+        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px]"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[40vw] h-[40vw] bg-cyan-600/20 rounded-full mix-blend-screen filter blur-[100px]"></div>
+      </div>
+
       {/* Sidebar (Communities & Navigation) */}
-      <aside className="w-64 flex-shrink-0 border-r border-gray-800 bg-surface flex flex-col">
+      <aside className="w-64 flex-shrink-0 border-r border-slate-800/60 bg-slate-950/80 backdrop-blur-md flex flex-col z-10 relative">
         <div className="p-4 border-b border-gray-800 flex items-center justify-center">
           <h1 className="text-xl font-bold text-primary">ReadSphere</h1>
         </div>

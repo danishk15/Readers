@@ -60,66 +60,99 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
-      let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=20`;
-      if (language) {
-        url += `&langRestrict=${language.slice(0, 2)}`; // Google Books uses 2-letter codes
-      }
-      
       let items: any[] = [];
       
       // 1. Try Google Books API
       try {
+        let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=20`;
+        if (language) url += `&langRestrict=${language.slice(0, 2)}`;
+        
         const res = await fetch(url);
-        const data = await res.json();
-        if (!data.error && data.items) {
-          items = data.items;
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.error && data.items) {
+            items = data.items;
+          }
         }
       } catch (e) {
         console.error('Google Books error:', e);
       }
 
-      // 2. Always fetch from Open Library to guarantee finding ANY book
+      // 2. Fetch from Open Library (massive database)
       try {
         let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(searchQuery || category || 'fiction')}&limit=30`;
-        if (language) {
-          olUrl += `&language=${language}`; // Open Library uses 3-letter codes (e.g., 'eng')
-        }
+        if (language) olUrl += `&language=${language}`;
         
         const olRes = await fetch(olUrl);
-        const olData = await olRes.json();
-        
-        const olItems = (olData.docs || []).map((b: any) => ({
-          id: b.key.replace('/works/', ''),
-          isOpenLibrary: true,
-          volumeInfo: {
-            title: b.title,
-            authors: b.author_name || ['Unknown Author'],
-            imageLinks: {
-              thumbnail: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null
+        if (olRes.ok) {
+          const olData = await olRes.json();
+          const olItems = (olData.docs || []).map((b: any) => ({
+            id: b.key ? b.key.replace('/works/', '') : Math.random().toString(),
+            isOpenLibrary: true,
+            volumeInfo: {
+              title: b.title || 'Unknown Title',
+              authors: b.author_name || ['Unknown Author'],
+              imageLinks: {
+                thumbnail: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null
+              },
+              infoLink: b.key ? `https://openlibrary.org${b.key}` : '#',
+              previewLink: b.key ? `https://openlibrary.org${b.key}` : '#',
+              language: b.language?.[0] || 'eng'
             },
-            infoLink: `https://openlibrary.org${b.key}`,
-            previewLink: `https://openlibrary.org${b.key}`,
-            language: b.language?.[0] || 'eng'
-          },
-          accessInfo: {
-            ia: b.ia?.[0]
-          }
-        }));
-        
-        items = [...items, ...olItems];
+            accessInfo: {
+              ia: b.ia?.[0]
+            }
+          }));
+          items = [...items, ...olItems];
+        } else {
+          console.warn('Open Library returned status:', olRes.status);
+        }
       } catch (e) {
-        console.error('Open Library error:', e);
+        console.error('Open Library fetch error:', e);
+      }
+      
+      // 3. Ultra-safe Fallback to Gutendex if both APIs failed (e.g. rate limit + 500 error)
+      if (items.length === 0) {
+        try {
+          console.warn('Both GB and OL failed or returned 0, falling back to Gutendex...');
+          let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(searchQuery || category || 'fiction')}`;
+          if (language) gutendexUrl += `&languages=${language.slice(0, 2)}`;
+          
+          const gRes = await fetch(gutendexUrl);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const gItems = (gData.results || []).map((b: any) => ({
+              id: b.id.toString(),
+              volumeInfo: {
+                title: b.title,
+                authors: b.authors.map((a: any) => a.name),
+                imageLinks: {
+                  thumbnail: b.formats['image/jpeg']
+                },
+                infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+                previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+                language: b.languages?.[0] || 'en'
+              },
+              accessInfo: {
+                epub: { downloadLink: b.formats['application/epub+zip'] }
+              }
+            }));
+            items = gItems;
+          }
+        } catch (e) {
+          console.error('Gutendex error:', e);
+        }
       }
       
       // Filter by language strictly if requested
-      if (language) {
+      if (language && items.length > 0) {
         const langCode = language.slice(0, 2);
         items = items.filter((book: any) => book.volumeInfo?.language?.startsWith(langCode));
       }
       
       setOnlineBooks(items);
     } catch (error) {
-      console.error('Error fetching books:', error);
+      console.error('Fatal Error fetching books:', error);
     } finally {
       setIsLoadingOnline(false);
     }

@@ -62,7 +62,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       
       let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=20`;
       if (language) {
-        url += `&langRestrict=${language.slice(0, 2)}`;
+        url += `&langRestrict=${language.slice(0, 2)}`; // Google Books uses 2-letter codes
       }
       
       let items: any[] = [];
@@ -82,8 +82,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       try {
         let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(searchQuery || category || 'fiction')}&limit=30`;
         if (language) {
-          // Open library uses full language names or 3-letter codes, but we'll stick to basic search for reliability
-          olUrl += `&language=${language.slice(0, 3)}`;
+          olUrl += `&language=${language}`; // Open Library uses 3-letter codes (e.g., 'eng')
         }
         
         const olRes = await fetch(olUrl);
@@ -235,8 +234,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             >
               <option value="">Global Languages</option>
               {languages.filter(l => l.code !== '').map(lang => (
-                // Gutendex uses 2-letter codes, so we slice the 3-letter codes to 2-letter (e.g. eng -> en, urd -> ur, etc)
-                <option key={lang.code} value={lang.code.slice(0, 2)}>{lang.label}</option>
+                <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
             </select>
             <Button onClick={searchOnlineLibrary}>Search</Button>

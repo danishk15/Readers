@@ -53,8 +53,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     setIsLoadingOnline(true);
     try {
       // Using Google Books API for a massive global library, super fast queries, and reliable embeddable readers!
-      let q = searchQuery || 'subject:fiction';
-      if (category) q += `+subject:${category.toLowerCase()}`;
+      let q = searchQuery || '';
+      if (category) {
+        q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
+      }
+      if (!q) {
+        q = 'subject:fiction';
+      }
       
       let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=24`;
       if (language) {
@@ -323,7 +328,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             <div className="col-span-full py-12 text-center border border-dashed border-gray-800 rounded-xl bg-surface/30">
               <p className="text-muted text-lg font-medium mb-2">No free books found.</p>
               <p className="text-sm text-slate-500 max-w-md mx-auto">
-                The public domain library (Gutenberg) might not have books matching this exact category or language. Check out the <strong>Premium Store Deals</strong> above for our exclusive collection!
+                The Global Library might not have books matching this exact category or language. Try adjusting your filters or check out the <strong>Premium Store Deals</strong> above for our exclusive collection!
               </p>
             </div>
           )

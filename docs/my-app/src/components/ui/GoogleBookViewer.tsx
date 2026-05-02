@@ -1,67 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-
-declare global {
-  interface Window {
-    google: any;
-  }
-}
+import React, { useState } from 'react';
 
 export default function GoogleBookViewer({ bookId }: { bookId: string }) {
-  const viewerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let viewer: any = null;
-
-    const initializeViewer = () => {
-      if (!viewerRef.current || !window.google?.books) return;
-      
-      try {
-        viewer = new window.google.books.DefaultViewer(viewerRef.current);
-        viewer.load(
-          bookId, 
-          () => {
-            // Success
-            setError(false);
-          },
-          () => {
-            // NotFound
-            setError(true);
-          }
-        );
-      } catch (e) {
-        console.error("Google Books Viewer error:", e);
-        setError(true);
-      }
-    };
-
-    if (!window.google?.books?.DefaultViewer) {
-      const script = document.createElement('script');
-      script.src = 'https://www.google.com/jsapi';
-      script.async = true;
-      script.onload = () => {
-        if (window.google?.load) {
-          window.google.load('books', '0', {
-            callback: initializeViewer
-          });
-        }
-      };
-      document.head.appendChild(script);
-    } else {
-      initializeViewer();
-    }
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, [bookId]);
+  const [iframeError, setIframeError] = useState(false);
 
   return (
-    <div className="relative w-full h-full min-h-[500px] bg-white">
-      {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface">
+    <div className="relative w-full h-full min-h-[500px] bg-white rounded-lg overflow-hidden flex flex-col">
+      {iframeError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface z-10">
           <p className="text-error font-semibold mb-2">Preview Not Available</p>
           <p className="text-muted text-sm max-w-md">
             This book's publisher has not made a preview available, or it is restricted in your region.
@@ -76,7 +23,13 @@ export default function GoogleBookViewer({ bookId }: { bookId: string }) {
           </a>
         </div>
       )}
-      <div ref={viewerRef} className="w-full h-full min-h-[500px]" />
+      <iframe 
+        src={`https://books.google.com/books?id=${bookId}&lpg=PP1&pg=PP1&output=embed`}
+        className="w-full h-full flex-1 border-0 min-h-[600px]"
+        allowFullScreen
+        title="Google Book Viewer"
+        onError={() => setIframeError(true)}
+      />
     </div>
   );
 }

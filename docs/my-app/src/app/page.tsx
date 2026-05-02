@@ -148,7 +148,7 @@ export default async function Home() {
             <span className="font-bold text-slate-300">ReadSphere MVP</span>
           </div>
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} ReadSphere. Designed for readers.
+            © {new Date().getFullYear()} ReadSphere by shanj. Designed for readers.
           </p>
         </div>
       </footer>

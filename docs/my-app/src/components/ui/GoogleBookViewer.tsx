@@ -37,14 +37,15 @@ export default function GoogleBookViewer({ bookId }: { bookId: string }) {
       }
     };
 
-    if (!window.google?.books) {
+    if (!window.google?.books?.DefaultViewer) {
       const script = document.createElement('script');
-      script.src = 'https://www.google.com/books/jsapi.js';
+      script.src = 'https://www.google.com/jsapi';
       script.async = true;
       script.onload = () => {
-        if (window.google?.books?.load) {
-          window.google.books.load();
-          window.google.books.setOnLoadCallback(initializeViewer);
+        if (window.google?.load) {
+          window.google.load('books', '0', {
+            callback: initializeViewer
+          });
         }
       };
       document.head.appendChild(script);
@@ -58,7 +59,7 @@ export default function GoogleBookViewer({ bookId }: { bookId: string }) {
   }, [bookId]);
 
   return (
-    <div className="relative w-full h-full bg-white">
+    <div className="relative w-full h-full min-h-[500px] bg-white">
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface">
           <p className="text-error font-semibold mb-2">Preview Not Available</p>
@@ -75,7 +76,7 @@ export default function GoogleBookViewer({ bookId }: { bookId: string }) {
           </a>
         </div>
       )}
-      <div ref={viewerRef} className="w-full h-full" />
+      <div ref={viewerRef} className="w-full h-full min-h-[500px]" />
     </div>
   );
 }

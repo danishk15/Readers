@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Reader from '@/components/ui/Reader';
+import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 
 interface LocalBook {
   id: string;
@@ -29,7 +30,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   
   
   // For local device reading or direct reading
-  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean} | null>(null);
+  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean, googleId?: string, isInternetArchive?: boolean} | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
   const languages = [
@@ -182,7 +183,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           </Button>
         </div>
         <div className="flex-1 relative bg-white/5 rounded-xl overflow-hidden">
-          {activeReadingBook.isGoogleBook ? (
+          {activeReadingBook.googleId ? (
+            <GoogleBookViewer bookId={activeReadingBook.googleId} />
+          ) : activeReadingBook.isGoogleBook || activeReadingBook.isInternetArchive ? (
             <iframe src={activeReadingBook.url} className="w-full h-full border-0 bg-white" allowFullScreen title={activeReadingBook.title}></iframe>
           ) : (
             <>
@@ -387,11 +390,15 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
                     if (book.isOpenLibrary) {
-                      window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
+                      if (book.accessInfo?.ia) {
+                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
+                      } else {
+                        window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
+                      }
                     } else if (book.accessInfo?.epub?.downloadLink) {
                       setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
                     } else {
-                      window.open(info.previewLink || info.infoLink || `https://books.google.com/books?id=${book.id}`, '_blank');
+                      setActiveReadingBook({ url: '', title: info.title, googleId: book.id });
                     }
                   }}
                 >

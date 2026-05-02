@@ -244,10 +244,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
       {activeTab === 'online' && (
         <div className="flex flex-col gap-4 bg-surface p-4 rounded-xl border border-gray-800">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <form onSubmit={(e) => { e.preventDefault(); searchOnlineLibrary(); }} className="flex flex-col sm:flex-row gap-4">
             <input 
               type="text" 
-              placeholder="Search books..." 
+              placeholder="Search global library for free books..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
@@ -270,8 +270,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
             </select>
-            <Button onClick={searchOnlineLibrary}>Search</Button>
-          </div>
+            <Button type="submit">Search</Button>
+          </form>
           
           <div className="mt-4 pt-4 border-t border-gray-800">
             <h3 className="text-sm font-semibold text-warning mb-3">Premium Store Deals</h3>
@@ -293,8 +293,15 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   <p className="text-xs font-semibold mt-1 truncate text-foreground group-hover:text-warning transition-colors">{book.title}</p>
                 </a>
               ))}
-              {initialBooks.filter(b => b.is_premium).length === 0 && (
-                <p className="text-xs text-muted">No premium deals available right now.</p>
+              {initialBooks
+                .filter(b => b.is_premium)
+                .filter(b => 
+                  searchQuery 
+                    ? b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      b.author.toLowerCase().includes(searchQuery.toLowerCase())
+                    : true
+                ).length === 0 && (
+                <p className="text-xs text-muted">No premium deals found. Press Enter to search the Global Library for free books!</p>
               )}
             </div>
           </div>
@@ -380,15 +387,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
                   onClick={() => {
                     if (book.isOpenLibrary) {
-                      if (book.accessInfo?.ia) {
-                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isGoogleBook: true });
-                      } else {
-                        window.open(info.infoLink, '_blank');
-                      }
+                      window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
                     } else if (book.accessInfo?.epub?.downloadLink) {
                       setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
-                    } else if (embedUrl) {
-                      setActiveReadingBook({ url: embedUrl, title: info.title, isGoogleBook: true });
+                    } else {
+                      window.open(info.previewLink || info.infoLink || `https://books.google.com/books?id=${book.id}`, '_blank');
                     }
                   }}
                 >
@@ -417,9 +420,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             })
           ) : (
             <div className="col-span-full py-12 text-center border border-dashed border-gray-800 rounded-xl bg-surface/30">
-              <p className="text-muted text-lg font-medium mb-2">No free books found.</p>
+              <p className="text-muted text-lg font-medium mb-2">No free books found for this search.</p>
               <p className="text-sm text-slate-500 max-w-md mx-auto">
-                The Global Library might not have books matching this exact category or language. Try adjusting your filters or check out the <strong>Premium Store Deals</strong> above for our exclusive collection!
+                We couldn't find any free books matching "{searchQuery || category || 'your search'}". Try using broader terms, checking your spelling, or adjusting the language filter. Remember to hit the <strong>Search</strong> button!
               </p>
             </div>
           )

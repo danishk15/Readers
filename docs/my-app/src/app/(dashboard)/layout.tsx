@@ -28,6 +28,9 @@ export default function DashboardLayout({
           <Link href="/dashboard" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-foreground">
             Library
           </Link>
+          <Link href="/dashboard?tab=online" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-indigo-300 hover:text-indigo-200 flex items-center gap-1.5">
+            <span>🌐</span> Public Library
+          </Link>
           <Link href="/communities" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-muted hover:text-foreground">
             Communities
           </Link>

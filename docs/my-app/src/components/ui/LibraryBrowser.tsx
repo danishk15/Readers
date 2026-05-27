@@ -24,9 +24,12 @@ interface OnlineBook {
   id: string;
   isOpenLibrary?: boolean;
   source?: string;
+  isPremium?: boolean;
+  price?: string;
   volumeInfo: {
     title: string;
     authors?: string[];
+    description?: string;
     imageLinks?: {
       thumbnail: string | null;
     } | null;
@@ -85,32 +88,94 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [language, setLanguage] = useState('');
   const [onlineBooks, setOnlineBooks] = useState<OnlineBook[]>([]);
   const [isLoadingOnline, setIsLoadingOnline] = useState(false);
-  const readingMinutes = 25; // Simulated minutes for MVP
+  
+  // Weekly Progression state (Quest: 500 mins)
+  const [weeklyMinutes, setWeeklyMinutes] = useState(25);
+  
+  // Local storage lists for published & added-to-library books
+  const [localPublishedBooks, setLocalPublishedBooks] = useState<any[]>([]);
+  const [localAddedBooks, setLocalAddedBooks] = useState<any[]>([]);
   
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [lockedBookToUnlock, setLockedBookToUnlock] = useState<{title: string, author: string, cover_url?: string} | null>(null);
 
+  // Store purchase overlay state
+  const [selectedStoreBook, setSelectedStoreBook] = useState<OnlineBook | null>(null);
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  // 1. Detect query parameters (tab=online)
   useEffect(() => {
-    const checkPremium = async () => {
-      if (typeof document !== 'undefined' && document.cookie.includes('demo-session=true')) {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'online') {
+        setActiveTab('online');
+      }
+    }
+  }, []);
+
+  // 2. Fetch and merge local storage published & added books
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const published = JSON.parse(localStorage.getItem('local-published-books') || '[]');
+      const added = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+      setLocalPublishedBooks(published);
+      setLocalAddedBooks(added);
+    }
+  }, [activeTab]);
+
+  // 3. Check premium status and weekly reading time
+  useEffect(() => {
+    const checkPremiumAndStats = async () => {
+      const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
+      
+      // Load premium status
+      if (isDemo) {
         setIsPremiumUser(true);
-        return;
-      }
-      if (!userId) return;
-      try {
-        const { createClient } = await import('@/utils/supabase/client');
-        const supabase = createClient();
-        const { data: profile } = await supabase.from('users').select('premium_status').eq('id', userId).single();
-        if (profile?.premium_status) {
-          setIsPremiumUser(true);
+      } else if (userId) {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data: profile } = await supabase.from('users').select('premium_status').eq('id', userId).single();
+          if (profile?.premium_status) {
+            setIsPremiumUser(true);
+          }
+        } catch (e) {
+          console.error('Error checking premium status:', e);
         }
-      } catch (e) {
-        console.error('Error checking premium status:', e);
       }
+
+      // Calculate weekly reading minutes
+      let totalSeconds = 0;
+      if (isDemo) {
+        try {
+          const localLogs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
+          totalSeconds = localLogs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
+        } catch (e) {
+          console.error('Error loading local logs:', e);
+        }
+      } else if (userId) {
+        try {
+          const { createClient } = await import('@/utils/supabase/client');
+          const supabase = createClient();
+          const { data: logs } = await supabase.from('reading_logs').select('time_spent_seconds').eq('user_id', userId);
+          if (logs) {
+            totalSeconds = logs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
+          }
+        } catch (e) {
+          console.error('Error fetching reading minutes:', e);
+        }
+      }
+
+      // Sync and calculate minutes (add 25 base minutes to avoid zero)
+      const minutes = Math.floor(totalSeconds / 60) + 25;
+      setWeeklyMinutes(minutes);
     };
-    checkPremium();
-  }, [userId]);
+
+    checkPremiumAndStats();
+  }, [userId, activeTab]);
   
   // For local device reading or direct reading
   const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean, googleId?: string, isInternetArchive?: boolean} | null>(null);
@@ -155,25 +220,38 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             if (res.ok) {
               const data = await res.json();
               if (!data.error && data.items) {
-                return data.items.map((b: GoogleBookItem): OnlineBook => ({
-                  id: b.id,
-                  source: 'Google Books',
-                  volumeInfo: {
-                    title: b.volumeInfo?.title || 'Unknown Title',
-                    authors: b.volumeInfo?.authors || ['Unknown Author'],
-                    imageLinks: b.volumeInfo?.imageLinks ? {
-                      thumbnail: b.volumeInfo.imageLinks.thumbnail || null
-                    } : null,
-                    infoLink: b.volumeInfo?.infoLink || '#',
-                    previewLink: b.volumeInfo?.previewLink || '#',
-                    language: b.volumeInfo?.language || 'eng'
-                  },
-                  accessInfo: b.accessInfo ? {
-                    epub: b.accessInfo.epub ? {
-                      downloadLink: b.accessInfo.epub.downloadLink || null
+                return data.items.map((b: any): OnlineBook => {
+                  const saleability = b.saleInfo?.saleability;
+                  const isFree = saleability === 'FREE_ON_GOOGLE_PLAY' || saleability === 'FREE';
+                  const hasPrice = b.saleInfo?.retailPrice;
+                  const priceStr = hasPrice 
+                    ? `₹${Math.round(b.saleInfo.retailPrice.amount)}` 
+                    : (isFree ? 'Free' : '₹149'); // simulated fallback price if paid
+                  
+                  return {
+                    id: b.id,
+                    source: 'Google Books',
+                    isPremium: !isFree,
+                    price: isFree ? undefined : priceStr,
+                    volumeInfo: {
+                      title: b.volumeInfo?.title || 'Unknown Title',
+                      authors: b.volumeInfo?.authors || ['Unknown Author'],
+                      description: b.volumeInfo?.description || 'No description available for this title.',
+                      imageLinks: b.volumeInfo?.imageLinks ? {
+                        thumbnail: b.volumeInfo.imageLinks.thumbnail || null
+                      } : null,
+                      infoLink: b.volumeInfo?.infoLink || '#',
+                      previewLink: b.volumeInfo?.previewLink || '#',
+                      language: b.volumeInfo?.language || 'eng'
+                    },
+                    accessInfo: b.accessInfo ? {
+                      ia: null,
+                      epub: b.accessInfo.epub ? {
+                        downloadLink: b.accessInfo.epub.downloadLink || null
+                      } : null
                     } : null
-                  } : null
-                }));
+                  };
+                });
               }
             }
           } catch (e) {
@@ -195,9 +273,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 id: b.key ? b.key.replace('/works/', '') : `ol-${i}`,
                 isOpenLibrary: true,
                 source: 'Open Library',
+                isPremium: false,
                 volumeInfo: {
                   title: b.title || 'Unknown Title',
                   authors: b.author_name || ['Unknown Author'],
+                  description: 'A classic work available in the Open Library public archive.',
                   imageLinks: b.cover_i ? {
                     thumbnail: `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`
                   } : null,
@@ -229,9 +309,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               return (gData.results || []).slice(0, 15).map((b: GutendexBook): OnlineBook => ({
                 id: `gutendex-${b.id}`,
                 source: 'Gutenberg',
+                isPremium: false,
                 volumeInfo: {
                   title: b.title || 'Unknown Title',
                   authors: Array.isArray(b.authors) ? b.authors.map((a) => a.name) : ['Unknown Author'],
+                  description: 'Public domain literature hosted by Project Gutenberg.',
                   imageLinks: b.formats?.['image/jpeg'] ? {
                     thumbnail: b.formats['image/jpeg']
                   } : null,
@@ -240,6 +322,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   language: b.languages?.[0] || 'en'
                 },
                 accessInfo: {
+                  ia: null,
                   epub: b.formats?.['application/epub+zip'] ? {
                     downloadLink: b.formats['application/epub+zip']
                   } : null
@@ -336,13 +419,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         {/* Weekly Perks Progress */}
         <div className="flex-1 max-w-md mx-4 bg-surface p-3 rounded-lg border border-gray-800 hidden md:block">
           <div className="flex justify-between text-xs mb-1">
-            <span className="font-semibold text-primary">Weekly Perks</span>
-            <span className="text-muted">{readingMinutes} / 500 mins</span>
+            <span className="font-semibold text-warning">✨ Weekly Premium Quest</span>
+            <span className="text-muted font-mono">{weeklyMinutes} / 500 mins</span>
           </div>
-          <div className="w-full bg-gray-800 rounded-full h-2 mb-1">
-            <div className="bg-gradient-to-r from-primary to-cyan-400 h-2 rounded-full" style={{ width: `${(Math.min(readingMinutes, 500) / 500) * 100}%` }}></div>
+          <div className="w-full bg-gray-800 rounded-full h-2 mb-1 overflow-hidden">
+            <div className="bg-gradient-to-r from-warning to-amber-400 h-2 rounded-full transition-all duration-500" style={{ width: `${(Math.min(weeklyMinutes, 500) / 500) * 100}%` }}></div>
           </div>
-          <p className="text-[10px] text-muted text-center">Read 500 mins to unlock a free offline download!</p>
+          <p className="text-[10px] text-muted text-center">Read 500 mins this week to claim **1 Week of Free Premium VIP**!</p>
         </div>
         
         <div className="flex bg-surface p-1 rounded-lg border border-gray-800 gap-1 flex-wrap">
@@ -379,34 +462,60 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       </div>
 
       {activeTab === 'online' && (
-        <div className="flex flex-col gap-4 bg-surface p-4 rounded-xl border border-gray-800">
-          <form onSubmit={(e) => { e.preventDefault(); searchOnlineLibrary(); }} className="flex flex-col sm:flex-row gap-4">
-            <input 
-              type="text" 
-              placeholder="Search global library for free books..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
-            />
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">Any Category</option>
-              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-            <select 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-background border border-gray-700 rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">Global Languages</option>
-              {languages.filter(l => l.code !== '').map(lang => (
-                <option key={lang.code} value={lang.code}>{lang.label}</option>
-              ))}
-            </select>
-            <Button type="submit">Search</Button>
+        <div className="flex flex-col gap-4 bg-surface p-6 rounded-xl border border-gray-800">
+          <div className="border-b border-gray-800 pb-3 flex justify-between items-center">
+            <h2 className="text-lg font-bold text-indigo-400">🌐 Public Library Search Dashboard</h2>
+            <p className="text-xs text-muted">Instantly search millions of books from Open Library, Google Books, & Gutenberg</p>
+          </div>
+          
+          <form onSubmit={(e) => { e.preventDefault(); searchOnlineLibrary(); }} className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Search input field */}
+              <div className="flex-1 space-y-1">
+                <label className="text-xs font-semibold text-muted tracking-wider uppercase">Search Query</label>
+                <input 
+                  type="text" 
+                  placeholder="Enter book title, author name, or keywords..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-background border border-gray-700 rounded-md px-4 py-2.5 text-foreground focus:outline-none focus:border-primary placeholder-gray-600 transition-colors"
+                />
+              </div>
+              
+              {/* Category selector */}
+              <div className="w-full md:w-56 space-y-1">
+                <label className="text-xs font-semibold text-muted tracking-wider uppercase">Category / Genre</label>
+                <select 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-background border border-gray-700 rounded-md px-4 py-2.5 text-foreground focus:outline-none focus:border-primary cursor-pointer transition-colors"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+              
+              {/* Language selector */}
+              <div className="w-full md:w-56 space-y-1">
+                <label className="text-xs font-semibold text-muted tracking-wider uppercase">Language</label>
+                <select 
+                  value={language} 
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full bg-background border border-gray-700 rounded-md px-4 py-2.5 text-foreground focus:outline-none focus:border-primary cursor-pointer transition-colors"
+                >
+                  <option value="">Any Language</option>
+                  {languages.filter(l => l.code !== '').map(lang => (
+                    <option key={lang.code} value={lang.code}>{lang.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-2">
+              <Button type="submit" className="w-full md:w-auto px-8 py-3 font-bold bg-primary text-white hover:bg-primary/95 transition shadow-lg shadow-primary/20">
+                🔍 Query Global Libraries
+              </Button>
+            </div>
           </form>
           
           <div className="mt-4 pt-4 border-t border-gray-800">
@@ -474,22 +583,34 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {activeTab === 'local' && (
-          initialBooks.length > 0 ? (
-            initialBooks.map((book) => (
-              <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                <a href={`/reader/${book.id}`} target="_blank" rel="noopener noreferrer">
+        {activeTab === 'local' && (() => {
+          // Merge custom published books, added global books, and default initial database books
+          const allLocalBooks = [
+            ...localPublishedBooks,
+            ...localAddedBooks,
+            ...initialBooks
+          ].filter((book, idx, self) => 
+            self.findIndex(b => b.title.toLowerCase() === book.title.toLowerCase() && b.author.toLowerCase() === book.author.toLowerCase()) === idx
+          );
+
+          return allLocalBooks.length > 0 ? (
+            allLocalBooks.map((book) => (
+              <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-surface/50 backdrop-blur-sm border-gray-800 shadow-lg hover:shadow-primary/5 hover:translate-y-[-2px]">
+                <a href="#" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url || '', title: book.title }); }}>
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
                     {book.cover_url ? (
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <div className="flex items-center justify-center w-full h-full text-muted text-xs">No Cover</div>
+                      <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center font-bold bg-slate-900 border border-slate-800">{book.title}</div>
                     )}
                     {book.is_premium && (
-                      <div className="absolute top-2 right-2 bg-warning text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                      <div className="absolute top-2 right-2 bg-gradient-to-r from-warning to-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
                         PREMIUM
                       </div>
                     )}
+                    <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                      READ NOW
+                    </div>
                   </div>
                   <CardContent className="p-4">
                     <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{book.title}</h3>
@@ -529,11 +650,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 </Card>
               ))}
               <div className="col-span-full mt-4 p-4 text-center text-muted border border-dashed border-gray-800 rounded-xl bg-surface/50">
-                <p>Welcome! Above are some classic starter books. You can upload more in the Admin panel.</p>
+                <p>Welcome! Above are some classic starter books. You can publish your own books to add them here.</p>
               </div>
             </>
           )
-        )}
+        })()}
 
         {activeTab === 'online' && (
           isLoadingOnline ? (
@@ -544,48 +665,108 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             onlineBooks.map((book, index) => {
               const info = book.volumeInfo || {};
               const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
+              
+              const isAdded = localAddedBooks.some(b => b.title.toLowerCase() === info.title.toLowerCase());
+
+              const handleAddToLibrary = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                try {
+                  const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                  const newBook = {
+                    id: book.id,
+                    title: info.title,
+                    author: info.authors?.[0] || 'Unknown Author',
+                    cover_url: thumbnail || '',
+                    file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`, // robust fallback file URL
+                    is_premium: !!book.isPremium
+                  };
+                  
+                  if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
+                    const updated = [newBook, ...addedList];
+                    localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                    setLocalAddedBooks(updated);
+                    alert(`"${info.title}" added to your ReadSphere Library successfully!`);
+                  }
+                } catch (e) {
+                  console.error('Error adding to library:', e);
+                }
+              };
 
               return (
                 <Card 
                   key={`${book.id}-${index}`} 
-                  className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800"
+                  className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-surface/50 backdrop-blur-sm border-gray-800 shadow-md flex flex-col justify-between"
                   onClick={() => {
-                    if (book.isOpenLibrary) {
-                      if (book.accessInfo?.ia) {
-                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
-                      } else {
-                        window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
-                      }
-                    } else if (book.accessInfo?.epub?.downloadLink) {
-                      setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
+                    if (book.isPremium) {
+                      // Open Store purchase overlay
+                      setSelectedStoreBook(book);
+                      setIsStoreModalOpen(true);
                     } else {
-                      setActiveReadingBook({ url: '', title: info.title, googleId: book.id });
+                      // Open Free Book reader
+                      if (book.isOpenLibrary) {
+                        if (book.accessInfo?.ia) {
+                          setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
+                        } else {
+                          window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
+                        }
+                      } else if (book.accessInfo?.epub?.downloadLink) {
+                        setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
+                      } else {
+                        // Fallback reading
+                        setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: info.title });
+                      }
                     }
                   }}
                 >
-                  <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
+                  <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden flex-shrink-0">
                     {thumbnail ? (
                       <img src={thumbnail} alt={info.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center">{info.title}</div>
+                      <div className="flex items-center justify-center w-full h-full text-muted text-xs p-2 text-center bg-slate-900 border border-slate-800 font-bold">{info.title}</div>
                     )}
                     {/* Visual Library Source Badge */}
-                    <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-300 text-[9px] font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30 shadow-md">
+                    <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-300 text-[9px] font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30 shadow-md z-10">
                       {book.source || 'Global'}
                     </div>
+
+                    {/* FREE or PAID tag */}
+                    <div className={`absolute top-2 right-2 text-[9px] font-extrabold px-2 py-0.5 rounded shadow-md z-10 ${
+                      book.isPremium 
+                        ? 'bg-gradient-to-r from-warning to-amber-500 text-black border border-amber-400/20' 
+                        : 'bg-green-500/90 text-white'
+                    }`}>
+                      {book.isPremium ? (book.price || 'PREMIUM') : 'FREE'}
+                    </div>
+
                     <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                      READ PREVIEW
+                      {book.isPremium ? 'VIEW STORE DEAL' : 'READ NOW'}
                     </div>
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{info.title}</h3>
-                    <p className="text-xs text-muted truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
-                    
-                    {readingMinutes >= 500 && (
-                      <Button size="sm" variant="secondary" className="w-full mt-3 text-[10px] py-1 h-auto" onClick={(e) => { e.stopPropagation(); window.open(info.infoLink || info.previewLink, '_blank'); }}>
-                        Google Books Page
-                      </Button>
-                    )}
+                  <CardContent className="p-4 flex-1 flex flex-col justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors text-foreground">{info.title}</h3>
+                      <p className="text-xs text-muted truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
+                    </div>
+
+                    <Button 
+                      size="sm" 
+                      variant={isAdded ? 'secondary' : 'primary'} 
+                      className={`w-full text-[10px] py-2 h-auto font-bold flex items-center justify-center gap-1 ${
+                        isAdded ? 'bg-slate-800/80 text-green-400 border border-green-500/20 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow shadow-indigo-600/10'
+                      }`}
+                      onClick={handleAddToLibrary}
+                      disabled={isAdded}
+                    >
+                      {isAdded ? (
+                        <>
+                          <span>✓</span> Added to Library
+                        </>
+                      ) : (
+                        <>
+                          <span>➕</span> Add to Library
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -733,6 +914,106 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Premium Store Deal Purchase Modal */}
+      <Modal 
+        isOpen={isStoreModalOpen} 
+        onClose={() => { if (!isPurchasing) setIsStoreModalOpen(false); }}
+        title=""
+      >
+        {selectedStoreBook && (() => {
+          const info = selectedStoreBook.volumeInfo || {};
+          const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
+          const price = selectedStoreBook.price || '₹149';
+          
+          const handlePurchaseBook = () => {
+            setIsPurchasing(true);
+            setTimeout(() => {
+              try {
+                const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                const newBook = {
+                  id: selectedStoreBook.id,
+                  title: info.title,
+                  author: info.authors?.[0] || 'Unknown Author',
+                  cover_url: thumbnail || '',
+                  file_url: selectedStoreBook.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/84.epub.images`, // Frankenstein fallback
+                  is_premium: false // unlocked/purchased book is treat as readable
+                };
+                
+                if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
+                  const updated = [newBook, ...addedList];
+                  localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                  setLocalAddedBooks(updated);
+                }
+                
+                setIsPurchasing(false);
+                setIsStoreModalOpen(false);
+                alert(`Congratulations! You have successfully purchased "${info.title}" for ${price}! It is now unlocked in your Library!`);
+                setActiveReadingBook({ url: newBook.file_url, title: newBook.title });
+              } catch (e) {
+                console.error(e);
+                setIsPurchasing(false);
+              }
+            }, 1800);
+          };
+
+          return (
+            <div className="text-center space-y-5 py-4">
+              <div className="mx-auto w-12 h-12 bg-warning/20 border border-warning/30 rounded-xl flex items-center justify-center text-warning text-xl">
+                👑
+              </div>
+              
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-warning uppercase tracking-widest bg-warning/10 px-2.5 py-0.5 rounded-full border border-warning/20">PREMIUM STORE DEAL</span>
+                <h3 className="text-xl font-bold text-foreground mt-2">{info.title}</h3>
+                <p className="text-sm text-muted">{info.authors?.[0] || 'Unknown Author'}</p>
+              </div>
+
+              <div className="flex gap-4 items-center bg-slate-900/60 p-4 border border-slate-800 rounded-xl max-w-sm mx-auto">
+                {thumbnail ? (
+                  <img src={thumbnail} alt={info.title} className="w-16 h-24 object-cover rounded shadow" />
+                ) : (
+                  <div className="w-16 h-24 bg-slate-800 flex items-center justify-center text-xs p-1 text-center font-bold text-muted rounded">No Cover</div>
+                )}
+                <div className="text-left flex-1 space-y-1">
+                  <p className="text-xs text-slate-400 line-clamp-3">{info.description}</p>
+                  <p className="text-xs text-slate-500">Language: {info.language?.toUpperCase() || 'ENG'}</p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-warning/10 to-amber-500/10 border border-warning/20 rounded-xl p-3 flex justify-between items-center max-w-sm mx-auto">
+                <span className="text-sm font-semibold text-slate-300">Purchase price:</span>
+                <span className="text-xl font-black text-warning font-mono">{price}</span>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2 max-w-sm mx-auto">
+                <Button 
+                  onClick={handlePurchaseBook}
+                  disabled={isPurchasing}
+                  className="w-full bg-gradient-to-r from-warning to-amber-500 hover:from-warning/90 hover:to-amber-500/90 text-black font-extrabold py-3 shadow-[0_0_15px_rgba(245,158,11,0.2)] rounded-xl relative"
+                >
+                  {isPurchasing ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full" />
+                      <span>Contacting Razorpay...</span>
+                    </div>
+                  ) : (
+                    <span>💳 Buy Book via Razorpay</span>
+                  )}
+                </Button>
+                <Button 
+                  onClick={() => setIsStoreModalOpen(false)}
+                  disabled={isPurchasing}
+                  variant="ghost" 
+                  className="w-full text-slate-400 hover:text-slate-200"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );

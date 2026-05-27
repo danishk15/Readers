@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/client';
 export async function uploadFile(bucket: string, path: string, file: File) {
   const supabase = createClient();
   
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
       cacheControl: '3600',

@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import ePub, { Book, Rendition } from 'epubjs';
+import ePub, { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
+
+interface LocationStart {
+  index: number;
+}
+interface EpubLocation {
+  start: LocationStart;
+}
 
 export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: string, bookId: string, userId: string, title?: string }) {
   const viewerRef = useRef<HTMLDivElement>(null);
@@ -35,7 +42,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       });
     });
 
-    rendition.on('relocated', (location: any) => {
+    rendition.on('relocated', (location: EpubLocation) => {
       // Very rough approximation for pages in EPUB
       setCurrentPage(location.start.index);
     });

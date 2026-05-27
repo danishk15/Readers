@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
 export default async function BookDetailsPage({ params }: { params: { id: string } }) {

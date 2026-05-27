@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
@@ -53,8 +53,12 @@ export default function AdminUploadPage() {
       setAuthor('');
       setCoverFile(null);
       setBookFile(null);
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setMessage(`Error: ${error.message}`);
+      } else {
+        setMessage('Error: An unknown error occurred during upload.');
+      }
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Reader from '@/components/ui/Reader';
@@ -19,15 +19,71 @@ interface LibraryBrowserProps {
   userId: string;
 }
 
+interface OnlineBook {
+  id: string;
+  isOpenLibrary?: boolean;
+  volumeInfo: {
+    title: string;
+    authors?: string[];
+    imageLinks?: {
+      thumbnail: string | null;
+    } | null;
+    infoLink?: string;
+    previewLink?: string;
+    language?: string;
+  };
+  accessInfo?: {
+    ia?: string | null;
+    epub?: {
+      downloadLink: string | null;
+    } | null;
+  } | null;
+}
+
+interface OpenLibraryDoc {
+  key?: string;
+  title?: string;
+  author_name?: string[];
+  cover_i?: number;
+  language?: string[];
+  ia?: string[];
+}
+
+interface GutendexBook {
+  id: number;
+  title: string;
+  authors?: { name: string }[];
+  formats?: Record<string, string>;
+  languages?: string[];
+}
+
+interface GoogleBookItem {
+  id: string;
+  volumeInfo?: {
+    title?: string;
+    authors?: string[];
+    imageLinks?: {
+      thumbnail?: string;
+    };
+    infoLink?: string;
+    previewLink?: string;
+    language?: string;
+  };
+  accessInfo?: {
+    epub?: {
+      downloadLink?: string;
+    };
+  };
+}
+
 export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserProps) {
   const [activeTab, setActiveTab] = useState<'local' | 'online' | 'device'>('local');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
   const [language, setLanguage] = useState('');
-  const [onlineBooks, setOnlineBooks] = useState<any[]>([]);
+  const [onlineBooks, setOnlineBooks] = useState<OnlineBook[]>([]);
   const [isLoadingOnline, setIsLoadingOnline] = useState(false);
-  const [readingMinutes, setReadingMinutes] = useState(25); // Simulated minutes for MVP
-  
+  const readingMinutes = 25; // Simulated minutes for MVP
   
   // For local device reading or direct reading
   const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean, googleId?: string, isInternetArchive?: boolean} | null>(null);
@@ -50,7 +106,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     { code: 'ita', label: 'Italian' }
   ];
 
-  const searchOnlineLibrary = async () => {
+  const searchOnlineLibrary = useCallback(async () => {
     setIsLoadingOnline(true);
     try {
       let q = searchQuery || '';
@@ -61,7 +117,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
-      let items: any[] = [];
+      let items: OnlineBook[] = [];
       
       // 1. Try Google Books API
       try {
@@ -72,7 +128,24 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         if (res.ok) {
           const data = await res.json();
           if (!data.error && data.items) {
-            items = data.items;
+            items = data.items.map((b: GoogleBookItem) => ({
+              id: b.id,
+              volumeInfo: {
+                title: b.volumeInfo?.title || 'Unknown Title',
+                authors: b.volumeInfo?.authors || ['Unknown Author'],
+                imageLinks: b.volumeInfo?.imageLinks ? {
+                  thumbnail: b.volumeInfo.imageLinks.thumbnail || null
+                } : null,
+                infoLink: b.volumeInfo?.infoLink || '#',
+                previewLink: b.volumeInfo?.previewLink || '#',
+                language: b.volumeInfo?.language || 'eng'
+              },
+              accessInfo: b.accessInfo ? {
+                epub: b.accessInfo.epub ? {
+                  downloadLink: b.accessInfo.epub.downloadLink || null
+                } : null
+              } : null
+            }));
           }
         }
       } catch (e) {
@@ -87,21 +160,22 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         const olRes = await fetch(olUrl);
         if (olRes.ok) {
           const olData = await olRes.json();
-          const olItems = (olData.docs || []).map((b: any, i: number) => ({
+          const olItems = (olData.docs || []).map((b: OpenLibraryDoc, i: number): OnlineBook => ({
             id: b.key ? b.key.replace('/works/', '') : `ol-${i}`,
             isOpenLibrary: true,
             volumeInfo: {
               title: b.title || 'Unknown Title',
               authors: b.author_name || ['Unknown Author'],
-              imageLinks: {
-                thumbnail: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null
-              },
+              imageLinks: b.cover_i ? {
+                thumbnail: `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`
+              } : null,
               infoLink: b.key ? `https://openlibrary.org${b.key}` : '#',
               previewLink: b.key ? `https://openlibrary.org${b.key}` : '#',
               language: b.language?.[0] || 'eng'
             },
             accessInfo: {
-              ia: b.ia?.[0]
+              ia: b.ia?.[0] || null,
+              epub: null
             }
           }));
           items = [...items, ...olItems];
@@ -112,7 +186,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         console.error('Open Library fetch error:', e);
       }
       
-      // 3. Ultra-safe Fallback to Gutendex if both APIs failed (e.g. rate limit + 500 error)
+      // 3. Fallback to Gutendex
       if (items.length === 0) {
         try {
           console.warn('Both GB and OL failed or returned 0, falling back to Gutendex...');
@@ -122,20 +196,22 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           const gRes = await fetch(gutendexUrl);
           if (gRes.ok) {
             const gData = await gRes.json();
-            const gItems = (gData.results || []).map((b: any) => ({
+            const gItems = (gData.results || []).map((b: GutendexBook): OnlineBook => ({
               id: `gutendex-${b.id}`,
               volumeInfo: {
                 title: b.title || 'Unknown Title',
-                authors: Array.isArray(b.authors) ? b.authors.map((a: any) => a.name) : ['Unknown Author'],
-                imageLinks: {
-                  thumbnail: b.formats?.['image/jpeg'] || null
-                },
+                authors: Array.isArray(b.authors) ? b.authors.map((a) => a.name) : ['Unknown Author'],
+                imageLinks: b.formats?.['image/jpeg'] ? {
+                  thumbnail: b.formats['image/jpeg']
+                } : null,
                 infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
                 previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
                 language: b.languages?.[0] || 'en'
               },
               accessInfo: {
-                epub: { downloadLink: b.formats?.['application/epub+zip'] || null }
+                epub: b.formats?.['application/epub+zip'] ? {
+                  downloadLink: b.formats['application/epub+zip']
+                } : null
               }
             }));
             items = gItems;
@@ -148,7 +224,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       // Filter by language strictly if requested
       if (language && items.length > 0) {
         const langCode = language.slice(0, 2);
-        items = items.filter((book: any) => book.volumeInfo?.language?.startsWith(langCode));
+        items = items.filter((book) => book.volumeInfo?.language?.startsWith(langCode));
       }
       
       setOnlineBooks(items);
@@ -157,13 +233,16 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     } finally {
       setIsLoadingOnline(false);
     }
-  };
+  }, [searchQuery, category, language]);
 
   useEffect(() => {
     if (activeTab === 'online') {
-      searchOnlineLibrary();
+      const timer = setTimeout(() => {
+        searchOnlineLibrary();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [activeTab]);
+  }, [activeTab, searchOnlineLibrary]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -288,9 +367,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                     : true
                 )
                 .map(book => (
-                <a key={book.id} href={`/reader/${book.id}`} target="_blank" className="flex-shrink-0 w-32 group">
+                <a key={book.id} href={`/reader/${book.id}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 w-32 group">
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded overflow-hidden">
-                    {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <div className="text-xs p-2 text-center text-muted">No Cover</div>}
+                    {book.cover_url ? (
+                      <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    ) : (
+                      <div className="text-xs p-2 text-center text-muted">No Cover</div>
+                    )}
                     <div className="absolute top-1 right-1 bg-warning text-black text-[9px] font-bold px-1.5 rounded">PREMIUM</div>
                   </div>
                   <p className="text-xs font-semibold mt-1 truncate text-foreground group-hover:text-warning transition-colors">{book.title}</p>
@@ -316,7 +399,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           initialBooks.length > 0 ? (
             initialBooks.map((book) => (
               <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                <a href={`/reader/${book.id}`} target="_blank">
+                <a href={`/reader/${book.id}`} target="_blank" rel="noopener noreferrer">
                   <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
                     {book.cover_url ? (
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -347,7 +430,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.images', is_premium: true }
               ].map(book => (
                 <Card key={book.id} className="group cursor-pointer hover:border-primary/50 transition-colors bg-surface/50 backdrop-blur-sm border-gray-800">
-                  <a href={`/reader/${book.id}`} target="_blank" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url, title: book.title }); }}>
+                  <a href={`/reader/${book.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url, title: book.title }); }}>
                     <div className="aspect-[2/3] w-full bg-gray-800 relative rounded-t-lg overflow-hidden">
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       {book.is_premium && (
@@ -382,7 +465,6 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             onlineBooks.map((book, index) => {
               const info = book.volumeInfo || {};
               const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
-              const embedUrl = book.isOpenLibrary ? null : `https://books.google.com/books?id=${book.id}&lpg=PP1&pg=PP1&output=embed`;
 
               return (
                 <Card 
@@ -429,7 +511,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             <div className="col-span-full py-12 text-center border border-dashed border-gray-800 rounded-xl bg-surface/30">
               <p className="text-muted text-lg font-medium mb-2">No free books found for this search.</p>
               <p className="text-sm text-slate-500 max-w-md mx-auto">
-                We couldn't find any free books matching "{searchQuery || category || 'your search'}". Try using broader terms, checking your spelling, or adjusting the language filter. Remember to hit the <strong>Search</strong> button!
+                We couldn&apos;t find any free books matching &quot;{searchQuery || category || 'your search'}&quot;. Try using broader terms, checking your spelling, or adjusting the language filter. Remember to hit the <strong>Search</strong> button!
               </p>
             </div>
           )

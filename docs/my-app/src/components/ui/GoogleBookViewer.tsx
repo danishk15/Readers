@@ -11,7 +11,7 @@ export default function GoogleBookViewer({ bookId }: { bookId: string }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-surface z-10">
           <p className="text-error font-semibold mb-2">Preview Not Available</p>
           <p className="text-muted text-sm max-w-md">
-            This book's publisher has not made a preview available, or it is restricted in your region.
+            This book&apos;s publisher has not made a preview available, or it is restricted in your region.
           </p>
           <a 
             href={`https://books.google.com/books?id=${bookId}`} 

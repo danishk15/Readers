@@ -1,28 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
 
+interface CommentType {
+  id: string;
+  created_at: string;
+  content: string;
+  users?: {
+    email?: string;
+  } | null;
+}
+
 export default function BookComments({ bookId }: { bookId: string }) {
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchComments();
-  }, [bookId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     const { data } = await supabase
       .from('comments')
       .select('*, users(email)')
       .eq('book_id', bookId)
       .order('created_at', { ascending: false });
     
-    if (data) setComments(data);
-  };
+    if (data) setComments(data as CommentType[]);
+  }, [bookId, supabase]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchComments();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchComments]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();

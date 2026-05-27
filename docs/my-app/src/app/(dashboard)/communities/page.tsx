@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export default async function CommunitiesPage() {
   const supabase = await createClient();
@@ -18,7 +19,9 @@ export default async function CommunitiesPage() {
           <h1 className="text-2xl font-bold text-foreground">Communities</h1>
           <p className="text-muted text-sm mt-1">Join a server to discuss your favorite books.</p>
         </div>
-        <Button><a href="/communities/create">Create Server</a></Button>
+        <Link href="/communities/create" passHref legacyBehavior>
+          <Button>Create Server</Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -34,9 +37,11 @@ export default async function CommunitiesPage() {
                 </div>
                 <h3 className="font-semibold text-lg">{community.name}</h3>
                 <p className="text-sm text-muted mt-1 line-clamp-2">{community.description || 'A community for readers.'}</p>
-                <Button variant="secondary" className="w-full mt-6" size="sm">
-                  <a href={`/communities/${community.id}`}>Join Server</a>
-                </Button>
+                <Link href={`/communities/${community.id}`} passHref legacyBehavior>
+                  <Button variant="secondary" className="w-full mt-6" size="sm">
+                    Join Server
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           ))

@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
     const orderOptions = {
       amount: amount * 100, // amount in smallest currency unit (paise)
-      currency: currency || 'INR',
+      currency: (currency as string) || 'INR',
       receipt: `receipt_${Date.now()}_${user.id.substring(0, 5)}`,
       notes: {
         userId: user.id,
@@ -30,7 +30,8 @@ export async function POST(req: Request) {
     const order = await razorpay.orders.create(orderOptions);
 
     return NextResponse.json(order);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

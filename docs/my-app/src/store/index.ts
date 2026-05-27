@@ -1,10 +1,11 @@
 import { create } from 'zustand';
+import { User } from '@supabase/supabase-js';
 
 interface AppState {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-  user: any | null; // Will type properly when Supabase is added
-  setUser: (user: any) => void;
+  user: User | null;
+  setUser: (user: User | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({

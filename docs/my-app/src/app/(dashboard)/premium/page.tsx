@@ -6,6 +6,23 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { createClient } from '@/utils/supabase/client';
 
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayErrorResponse {
+  error: {
+    description: string;
+  };
+}
+
+interface RazorpayInstance {
+  on(event: string, callback: (response: RazorpayErrorResponse) => void): void;
+  open(): void;
+}
+
 export default function PremiumPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,7 +53,7 @@ export default function PremiumPage() {
         name: `ReadSphere Premium - ${planName}`,
         description: 'Unlock exclusive books and offline downloads.',
         order_id: order.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           // Send verification to webhook/backend
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
@@ -63,14 +80,19 @@ export default function PremiumPage() {
         }
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (response: any) {
+      const windowWithRazorpay = window as unknown as { Razorpay: new (opts: typeof options) => RazorpayInstance };
+      const rzp = new windowWithRazorpay.Razorpay(options);
+      rzp.on('payment.failed', function (response: RazorpayErrorResponse) {
         setMessage(`Payment failed: ${response.error.description}`);
       });
       rzp.open();
 
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setMessage(`Error: ${error.message}`);
+      } else {
+        setMessage('An unknown error occurred during upgrade.');
+      }
     } finally {
       setLoading(false);
     }
@@ -185,7 +207,7 @@ export default function PremiumPage() {
         <div className="max-w-4xl mx-auto mt-16 p-8 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30 flex flex-col items-center text-center">
           <h2 className="text-2xl font-bold mb-3 text-foreground">Earn Weekly Premium for Free!</h2>
           <p className="text-muted mb-6 max-w-2xl">
-            Don't want to pay? No problem. Be an active reader in our community to earn your premium perks! Complete tasks like reading maximum books, engaging in comments, and interacting with the community. Hit the milestones and automatically unlock 1 week of Premium for free!
+            Don&apos;t want to pay? No problem. Be an active reader in our community to earn your premium perks! Complete tasks like reading maximum books, engaging in comments, and interacting with the community. Hit the milestones and automatically unlock 1 week of Premium for free!
           </p>
           <Button variant="secondary" onClick={() => window.location.href = '/dashboard'}>Start Reading Now</Button>
         </div>

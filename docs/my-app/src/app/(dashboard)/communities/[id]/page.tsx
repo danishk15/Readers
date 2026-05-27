@@ -2,13 +2,20 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Button } from '@/components/ui/Button';
 
 interface Message {
   id: string;
   content: string;
   created_at: string;
-  users: { username: string; avatar_url: string; email: string };
+  users: { username: string; avatar_url: string; email: string } | null;
+}
+
+interface MessageRow {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
 }
 
 export default function CommunityChatPage({ params }: { params: { id: string } }) {
@@ -38,7 +45,7 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
       }
     };
     init();
-  }, [params.id]);
+  }, [params.id, supabase]);
 
   useEffect(() => {
     if (!channelId) return;
@@ -51,7 +58,9 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
       
-      if (data) setMessages(data as any[]);
+      if (data) {
+        setMessages(data as unknown as Message[]);
+      }
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -61,9 +70,15 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
     const channel = supabase
       .channel(`room:${channelId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` }, payload => {
+        const newMessageRow = payload.new as MessageRow;
         // Fetch the user info for the new message
-        supabase.from('users').select('username, avatar_url, email').eq('id', payload.new.user_id).single().then(({ data: user }) => {
-          setMessages(prev => [...prev, { ...payload.new, users: user } as any]);
+        supabase.from('users').select('username, avatar_url, email').eq('id', newMessageRow.user_id).single().then(({ data: user }) => {
+          setMessages(prev => [...prev, {
+            id: newMessageRow.id,
+            content: newMessageRow.content,
+            created_at: newMessageRow.created_at,
+            users: user as { username: string; avatar_url: string; email: string } | null
+          }]);
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         });
       })
@@ -72,7 +87,7 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [channelId]);
+  }, [channelId, supabase]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import LogoutButton from '@/components/ui/LogoutButton';
 
 export default function DashboardLayout({
   children,
@@ -47,6 +48,7 @@ export default function DashboardLayout({
               <p className="text-xs text-muted">View stats & badges</p>
             </div>
           </Link>
+          <LogoutButton />
         </div>
       </aside>
 

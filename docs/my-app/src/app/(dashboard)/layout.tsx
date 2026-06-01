@@ -1,73 +1,125 @@
 import React from 'react';
 import Link from 'next/link';
 import LogoutButton from '@/components/ui/LogoutButton';
+import { createClient } from '@/utils/supabase/server';
+import { BookOpen, Globe, Users, BookMarked, Award, User, Sparkles } from 'lucide-react';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  let isPremium = false;
+  if (user) {
+    try {
+      const { data: profile } = await supabase.from('users').select('premium_status').eq('id', user.id).single();
+      isPremium = !!profile?.premium_status;
+    } catch {}
+  }
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0b0c10] text-slate-50 relative font-sans">
-      {/* Flashy Background for Dashboard */}
-      <div 
-        className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-cover bg-center bg-no-repeat opacity-20 mix-blend-screen"
-        style={{ backgroundImage: 'url(/dashboard-bg.png)' }}
-      ></div>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
-        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px]"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[40vw] h-[40vw] bg-cyan-600/20 rounded-full mix-blend-screen filter blur-[100px]"></div>
+    <div className="flex h-screen overflow-hidden bg-[#07090e] text-slate-50 relative font-sans">
+      {/* Immersive Dashboard Background and Blurs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-15%] w-[45vw] h-[45vw] bg-indigo-600/10 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-20%] right-[-15%] w-[45vw] h-[45vw] bg-cyan-600/10 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* Sidebar (Communities & Navigation) */}
-      <aside className="w-64 flex-shrink-0 border-r border-slate-800/60 bg-slate-950/80 backdrop-blur-md flex flex-col z-10 relative">
-        <div className="p-4 border-b border-gray-800 flex items-center justify-center">
-          <h1 className="text-xl font-bold text-primary">ReadSphere</h1>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-          <Link href="/dashboard" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-foreground">
-            Library
-          </Link>
-          <Link href="/dashboard?tab=online" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-indigo-300 hover:text-indigo-200 flex items-center gap-1.5">
-            <span>🌐</span> Public Library
-          </Link>
-          <Link href="/communities" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-muted hover:text-foreground">
-            Communities
-          </Link>
-          <Link href="/publish" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-muted hover:text-foreground">
-            Publish Book
-          </Link>
-          <Link href="/premium" className="px-3 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition-colors text-warning hover:text-warning/80">
-            Get Premium
-          </Link>
-        </div>
-        <div className="p-4 border-t border-gray-800">
-          <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white">
-              U
+      {/* Sidebar Navigation */}
+      <aside className="w-64 flex-shrink-0 border-r border-slate-900/60 bg-slate-950/80 backdrop-blur-md flex flex-col z-10 relative">
+        {/* App Title */}
+        <div className="p-5 border-b border-slate-900/60 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
+              <BookOpen className="text-white w-4.5 h-4.5" />
             </div>
-            <div className="text-sm">
-              <p className="font-medium">My Profile</p>
-              <p className="text-xs text-muted">View stats & badges</p>
+            <span className="text-base font-extrabold tracking-wider text-slate-100 group-hover:text-white transition-colors">ReadSphere</span>
+          </Link>
+          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-900 text-slate-500 uppercase tracking-widest border border-slate-850">MVP</span>
+        </div>
+
+        {/* Dynamic Navigation Links */}
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-1.5">
+          <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">
+            <BookMarked className="w-4 h-4 shrink-0" />
+            <span>My Bookshelf</span>
+          </Link>
+          
+          <Link href="/dashboard?tab=online" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-indigo-400 hover:text-indigo-300 hover:bg-slate-900/50 text-sm font-semibold transition-all">
+            <Globe className="w-4 h-4 shrink-0" />
+            <span>Global Catalog</span>
+          </Link>
+          
+          <Link href="/communities" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">
+            <Users className="w-4 h-4 shrink-0" />
+            <span>Communities</span>
+          </Link>
+          
+          <Link href="/publish" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">
+            <BookOpen className="w-4 h-4 shrink-0" />
+            <span>Publish Book</span>
+          </Link>
+          
+          <Link href="/premium" className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-extrabold transition-all ${
+            isPremium 
+              ? 'text-warning hover:text-warning/80 hover:bg-warning/5 border border-warning/10' 
+              : 'text-warning hover:text-warning/80 hover:bg-slate-900/50'
+          }`}>
+            <Award className="w-4 h-4 shrink-0" />
+            <span>Premium Lounge</span>
+          </Link>
+        </div>
+
+        {/* User Account / VIP details */}
+        <div className="p-4 border-t border-slate-900/60 space-y-4">
+          <Link href="/profile" className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-900/50 transition-colors group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center text-sm font-black text-white shadow shadow-indigo-600/10">
+              {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <div className="text-left flex-1 min-w-0">
+              <p className="font-extrabold text-xs text-slate-200 group-hover:text-white truncate transition-colors">
+                {user?.email?.split('@')[0] || 'User Profile'}
+              </p>
+              {isPremium ? (
+                <span className="text-[9px] font-black text-warning flex items-center gap-0.5 tracking-wider uppercase">
+                  👑 VIP Premium
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold text-slate-500 flex items-center gap-0.5 uppercase">
+                  📖 Standard Member
+                </span>
+              )}
             </div>
           </Link>
+          
           <LogoutButton />
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Top Navbar */}
-        <header className="h-14 border-b border-gray-800 bg-surface/50 backdrop-blur-sm flex items-center px-6 sticky top-0 z-10 flex-shrink-0">
-          <div className="flex-1" />
-          <div className="flex items-center gap-4 text-sm text-muted">
-            <button className="hover:text-foreground transition-colors">Search</button>
-            <button className="hover:text-foreground transition-colors">Notifications</button>
+      <div className="flex-1 flex flex-col relative overflow-hidden bg-slate-950/20 backdrop-blur-md">
+        {/* Top Header Navbar */}
+        <header className="h-16 border-b border-slate-900/60 bg-slate-950/30 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-10 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            {isPremium && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-warning/15 to-amber-500/15 text-warning text-[10px] font-black border border-warning/25 rounded-full uppercase tracking-wider shadow">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                <span>Premium Member Enabled</span>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-xs font-semibold text-slate-400">
+            <Link href="/dashboard?tab=online" className="hover:text-white transition-colors">Catalog Search</Link>
+            <span className="text-slate-800">|</span>
+            <Link href="/profile" className="hover:text-white transition-colors">Progression Stats</Link>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Page Content Viewport */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
           {children}
         </main>
       </div>

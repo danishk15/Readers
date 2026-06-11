@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { amount, currency } = await req.json();
+    const { amount, currency, planName } = await req.json();
 
     const orderOptions = {
       amount: amount * 100, // amount in smallest currency unit (paise)
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       receipt: `receipt_${Date.now()}_${user.id.substring(0, 5)}`,
       notes: {
         userId: user.id,
+        planName: planName || 'Premium Upgrade'
       }
     };
 

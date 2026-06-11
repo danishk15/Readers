@@ -84,7 +84,21 @@ export async function createClient() {
             const book = CLASSIC_BOOKS.find(b => b.id === eqId)
             if (book) return { data: book, error: null }
           }
-          return originalFrom(relation).select('*').eq('id', eqId).single()
+          if (isDemo) {
+            const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+            return { data: book || null, error: book ? null : { message: 'Book not found' } }
+          }
+          try {
+            const res = await originalFrom(relation).select('*').eq('id', eqId).single()
+            if (res.error || !res.data) {
+              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              if (book) return { data: book, error: null }
+            }
+            return res
+          } catch {
+            const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+            return { data: book || null, error: book ? null : { message: 'Book not found' } }
+          }
         },
         then: async (resolve: any, reject: any) => {
           try {
@@ -92,12 +106,30 @@ export async function createClient() {
               const book = CLASSIC_BOOKS.find(b => b.id === eqId)
               if (book) return resolve({ data: book, error: null })
             }
+            if (isDemo) {
+              if (eqId) {
+                const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+                return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+              }
+              return resolve({ data: CLASSIC_BOOKS, error: null })
+            }
             let realQuery = originalFrom(relation).select('*')
             if (eqId) realQuery = realQuery.eq('id', eqId)
             const res = await realQuery
+            if (res.error || !res.data || res.data.length === 0) {
+              if (eqId) {
+                const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+                return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+              }
+              return resolve({ data: CLASSIC_BOOKS, error: null })
+            }
             return resolve(res)
           } catch (e) {
-            return reject ? reject(e) : resolve({ data: [], error: e })
+            if (eqId) {
+              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+            }
+            return resolve({ data: CLASSIC_BOOKS, error: null })
           }
         }
       }

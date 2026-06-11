@@ -94,7 +94,28 @@ export function createClient() {
             const book = CLASSIC_BOOKS.find(b => b.id === eqId)
             if (book) return { data: book, error: null }
           }
-          return originalFrom(relation).select('*').eq('id', eqId).single()
+          if (eqId && eqId.startsWith('local-pub-')) {
+            try {
+              const localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]')
+              const book = localBooks.find((b: any) => b.id === eqId)
+              if (book) return { data: book, error: null }
+            } catch {}
+          }
+          if (isDemo) {
+            const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+            return { data: book || null, error: book ? null : { message: 'Book not found' } }
+          }
+          try {
+            const res = await originalFrom(relation).select('*').eq('id', eqId).single()
+            if (res.error || !res.data) {
+              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              if (book) return { data: book, error: null }
+            }
+            return res
+          } catch {
+            const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+            return { data: book || null, error: book ? null : { message: 'Book not found' } }
+          }
         },
         then: async (resolve: any, reject: any) => {
           try {
@@ -102,12 +123,61 @@ export function createClient() {
               const book = CLASSIC_BOOKS.find(b => b.id === eqId)
               if (book) return resolve({ data: book, error: null })
             }
+            if (eqId && eqId.startsWith('local-pub-')) {
+              try {
+                const localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]')
+                const book = localBooks.find((b: any) => b.id === eqId)
+                if (book) return resolve({ data: book, error: null })
+              } catch {}
+            }
+
+            if (isDemo) {
+              let localBooks: any[] = []
+              try {
+                localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]')
+              } catch {}
+              const allBooks = [...localBooks, ...CLASSIC_BOOKS]
+              if (eqId) {
+                const book = allBooks.find(b => b.id === eqId)
+                return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+              }
+              return resolve({ data: allBooks, error: null })
+            }
+
             let realQuery = originalFrom(relation).select('*')
             if (eqId) realQuery = realQuery.eq('id', eqId)
             const res = await realQuery
-            return resolve(res)
+
+            let localBooks: any[] = []
+            try {
+              if (typeof window !== 'undefined') {
+                localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]')
+              }
+            } catch {}
+
+            let dbBooks = res.data || []
+            if (res.error || dbBooks.length === 0) {
+              dbBooks = CLASSIC_BOOKS
+            }
+
+            const combined = [...localBooks, ...dbBooks]
+            if (eqId) {
+              const book = combined.find(b => b.id === eqId)
+              return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+            }
+            return resolve({ data: combined, error: null })
           } catch (e) {
-            return reject ? reject(e) : resolve({ data: [], error: e })
+            let localBooks: any[] = []
+            try {
+              if (typeof window !== 'undefined') {
+                localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]')
+              }
+            } catch {}
+            if (eqId) {
+              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
+            }
+            return resolve({ data: [...localBooks, ...CLASSIC_BOOKS], error: null })
           }
         }
       }

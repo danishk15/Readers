@@ -92,12 +92,41 @@ export default function PremiumPage() {
     setLoading(true);
     setMessage('');
 
+    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
+    if (isDemo) {
+      setTimeout(() => {
+        if (planName === '500 Reading Minutes') {
+          try {
+            const localLogs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
+            const mockLogs = Array.from({ length: 1000 }).map((_, i) => ({
+              id: 'local-log-simulated-' + i + '-' + Date.now(),
+              created_at: new Date().toISOString(),
+              user_id: 'demo-guest-id-12345',
+              book_id: 'classic-1',
+              time_spent_seconds: 30,
+              pages_read: 10
+            }));
+            localStorage.setItem('demo-reading_logs', JSON.stringify([...mockLogs, ...localLogs]));
+            setWeeklyMinutes(500);
+            setMessage('Success! Simulated 500 minutes of reading in guest cache! Click "Claim Free VIP Premium" below to unlock!');
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          setIsPremium(true);
+          setMessage(`Success! [Demo Mode] Upgraded to ${planName} VIP membership! 👑`);
+        }
+        setLoading(false);
+      }, 1000);
+      return;
+    }
+
     try {
       // 1. Create order on backend
       const res = await fetch('/api/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, currency: 'INR' })
+        body: JSON.stringify({ amount, currency: 'INR', planName })
       });
       const order = await res.json();
 
@@ -122,13 +151,19 @@ export default function PremiumPage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              userId: user?.id
+              userId: user?.id,
+              planName
             })
           });
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            setMessage('Success! Payment verified. You are now a Premium VIP member! 👑');
-            setIsPremium(true);
+            if (planName === '500 Reading Minutes') {
+              setMessage('Success! Payment verified. 500 Reading Minutes have been added to your milestone quest! 📚');
+              loadStats();
+            } else {
+              setMessage('Success! Payment verified. You are now a Premium VIP member! 👑');
+              setIsPremium(true);
+            }
           } else {
             setMessage('Error: Payment verification failed.');
           }
@@ -221,7 +256,7 @@ export default function PremiumPage() {
         </div>
 
         {/* Pricing card grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
           {/* Weekly Tier */}
           <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
             <CardHeader className="text-center pb-4 pt-6">
@@ -244,7 +279,7 @@ export default function PremiumPage() {
               </Button>
             </CardContent>
           </Card>
-
+ 
           {/* Monthly Tier */}
           <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
             <CardHeader className="text-center pb-4 pt-6">
@@ -267,7 +302,7 @@ export default function PremiumPage() {
               </Button>
             </CardContent>
           </Card>
-
+ 
           {/* Quarterly Tier */}
           <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
             <CardHeader className="text-center pb-4 pt-6">
@@ -290,7 +325,7 @@ export default function PremiumPage() {
               </Button>
             </CardContent>
           </Card>
-
+ 
           {/* Premium Yearly Tier */}
           <Card className="bg-[#0b0c10]/80 border-warning/40 shadow-2xl relative overflow-hidden group hover:shadow-warning/15 hover:border-warning/60 transition-all transform scale-105 z-10 flex flex-col justify-between">
             <div className="absolute top-0 right-0 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[10px] font-black px-4 py-1.5 rounded-bl-xl tracking-widest uppercase shadow">BEST VALUE</div>
@@ -311,6 +346,29 @@ export default function PremiumPage() {
                 disabled={loading}
               >
                 {loading ? 'Processing...' : 'Upgrade Membership'}
+              </Button>
+            </CardContent>
+          </Card>
+ 
+          {/* 500 Reading Minutes Tier */}
+          <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
+            <CardHeader className="text-center pb-4 pt-6">
+              <h2 className="text-lg font-bold text-slate-300">500 Reading Mins</h2>
+              <p className="text-2xl font-black text-white font-mono mt-2">₹99 <span className="text-xs text-slate-500 font-semibold font-sans">one-time</span></p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between">
+              <ul className="space-y-3.5 text-xs text-slate-400">
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Add 500 mins instantly</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Complete weekly quest</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Unlock VIP for 1 week</li>
+              </ul>
+              <Button 
+                variant="secondary"
+                className="w-full mt-6 bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:text-white py-2 rounded-xl text-xs font-bold" 
+                onClick={() => handleUpgrade(99, '500 Reading Minutes')}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Buy 500 Mins'}
               </Button>
             </CardContent>
           </Card>

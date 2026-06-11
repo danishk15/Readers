@@ -1,20 +1,32 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient, CLASSIC_BOOKS } from '@/utils/supabase/server';
 import LibraryBrowser from '@/components/ui/LibraryBrowser';
 
+export const dynamic = 'force-dynamic';
+
 export default async function LibraryPage() {
-  const supabase = await createClient();
-  
-  // Get current user for progress tracking in reader
-  const { data: { user } } = await supabase.auth.getUser();
+  let books: any[] = [];
+  let userId = '';
 
-  // Fetch books from Supabase (Step 22)
-  const { data: books, error } = await supabase.from('books').select('*').order('created_at', { ascending: false });
+  try {
+    const supabase = await createClient();
+    
+    // Get current user for progress tracking in reader
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id || '';
 
-  if (error) {
-    return <div className="p-4 bg-error/10 text-error rounded-md text-sm">Failed to load books: {error.message}</div>;
+    // Fetch books from Supabase (Step 22)
+    const { data, error } = await supabase.from('books').select('*').order('created_at', { ascending: false });
+    if (!error && data && data.length > 0) {
+      books = data;
+    } else {
+      books = CLASSIC_BOOKS;
+    }
+  } catch (err) {
+    console.error('Error in LibraryPage:', err);
+    books = CLASSIC_BOOKS;
   }
 
   return (
-    <LibraryBrowser initialBooks={books || []} userId={user?.id || ''} />
+    <LibraryBrowser initialBooks={books} userId={userId} />
   );
 }

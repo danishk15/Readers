@@ -256,7 +256,7 @@ export default function PremiumPage() {
         </div>
 
         {/* Pricing card grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {/* Weekly Tier */}
           <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
             <CardHeader className="text-center pb-4 pt-6">
@@ -346,29 +346,6 @@ export default function PremiumPage() {
                 disabled={loading}
               >
                 {loading ? 'Processing...' : 'Upgrade Membership'}
-              </Button>
-            </CardContent>
-          </Card>
- 
-          {/* 500 Reading Minutes Tier */}
-          <Card className="bg-slate-950/40 backdrop-blur-md border-slate-800/80 shadow-lg relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300 flex flex-col justify-between">
-            <CardHeader className="text-center pb-4 pt-6">
-              <h2 className="text-lg font-bold text-slate-300">500 Reading Mins</h2>
-              <p className="text-2xl font-black text-white font-mono mt-2">₹99 <span className="text-xs text-slate-500 font-semibold font-sans">one-time</span></p>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between">
-              <ul className="space-y-3.5 text-xs text-slate-400">
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Add 500 mins instantly</li>
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Complete weekly quest</li>
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Unlock VIP for 1 week</li>
-              </ul>
-              <Button 
-                variant="secondary"
-                className="w-full mt-6 bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:text-white py-2 rounded-xl text-xs font-bold" 
-                onClick={() => handleUpgrade(99, '500 Reading Minutes')}
-                disabled={loading}
-              >
-                {loading ? 'Processing...' : 'Buy 500 Mins'}
               </Button>
             </CardContent>
           </Card>

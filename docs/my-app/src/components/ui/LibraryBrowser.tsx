@@ -67,10 +67,19 @@ interface GutendexBook {
 export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserProps) {
   const [activeTab, setActiveTab] = useState<'local' | 'online' | 'device' | 'premium'>('local');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [category, setCategory] = useState('');
   const [language, setLanguage] = useState('');
   const [onlineBooks, setOnlineBooks] = useState<OnlineBook[]>([]);
   const [isLoadingOnline, setIsLoadingOnline] = useState(false);
+
+  // Debounce search query changes to make search responsive and automatic
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
   
   // Weekly Progression state (Quest: 500 mins)
   const [weeklyMinutes, setWeeklyMinutes] = useState(25);
@@ -172,10 +181,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     { code: 'ger', label: 'German' }
   ];
 
-  const searchOnlineLibrary = useCallback(async () => {
+  const searchOnlineLibrary = useCallback(async (forcedQuery?: string) => {
     setIsLoadingOnline(true);
+    setOnlineBooks([]); // Clear current results to give immediate feedback
+    
     try {
-      let q = searchQuery || '';
+      const queryVal = typeof forcedQuery === 'string' ? forcedQuery : debouncedSearchQuery;
+      let q = queryVal || '';
       if (category) {
         q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
       }
@@ -183,154 +195,165 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
-      const promises = [
-        // 1. Google Books API
-        (async () => {
-          try {
-            let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=15`;
-            if (language) url += `&langRestrict=${language.slice(0, 2)}`;
-            
-            const res = await fetch(url);
-            if (res.ok) {
-              const data = await res.json();
-              if (!data.error && data.items) {
-                return data.items.map((b: any): OnlineBook => {
-                  const saleability = b.saleInfo?.saleability;
-                  const isFree = saleability === 'FREE_ON_GOOGLE_PLAY' || saleability === 'FREE';
-                  const hasPrice = b.saleInfo?.retailPrice;
-                  const priceStr = hasPrice 
-                    ? `₹${Math.round(b.saleInfo.retailPrice.amount)}` 
-                    : (isFree ? 'Free' : '₹149');
-                  
-                  return {
-                    id: b.id,
-                    source: 'Google Books',
-                    isPremium: !isFree,
-                    price: isFree ? undefined : priceStr,
-                    volumeInfo: {
-                      title: b.volumeInfo?.title || 'Unknown Title',
-                      authors: b.volumeInfo?.authors || ['Unknown Author'],
-                      description: b.volumeInfo?.description || 'No description available for this title.',
-                      imageLinks: b.volumeInfo?.imageLinks ? {
-                        thumbnail: b.volumeInfo.imageLinks.thumbnail || null
-                      } : null,
-                      infoLink: b.volumeInfo?.infoLink || '#',
-                      previewLink: b.volumeInfo?.previewLink || '#',
-                      language: b.volumeInfo?.language || 'eng'
-                    },
-                    accessInfo: b.accessInfo ? {
-                      ia: null,
-                      epub: b.accessInfo.epub ? {
-                        downloadLink: b.accessInfo.epub.downloadLink || null
-                      } : null
+      const updateBooks = (newBooks: OnlineBook[]) => {
+        setOnlineBooks((prev) => {
+          let merged = [...prev, ...newBooks];
+          
+          // Apply language filter if language code is specified
+          if (language) {
+            const langCode = language.slice(0, 2);
+            merged = merged.filter((book) => book.volumeInfo?.language?.startsWith(langCode));
+          }
+          
+          // Filter out duplicate titles for cleaner rendering
+          return merged.filter((book, index, self) =>
+            self.findIndex(b => b.volumeInfo?.title?.toLowerCase() === book.volumeInfo?.title?.toLowerCase()) === index
+          );
+        });
+      };
+
+      const fetchGoogle = async () => {
+        try {
+          let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=25`;
+          if (language) url += `&langRestrict=${language.slice(0, 2)}`;
+          
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.error && data.items) {
+              const books = data.items.map((b: any): OnlineBook => {
+                const saleability = b.saleInfo?.saleability;
+                const isFree = saleability === 'FREE_ON_GOOGLE_PLAY' || saleability === 'FREE';
+                const hasPrice = b.saleInfo?.retailPrice;
+                const priceStr = hasPrice 
+                  ? `₹${Math.round(b.saleInfo.retailPrice.amount)}` 
+                  : (isFree ? 'Free' : '₹149');
+                
+                return {
+                  id: b.id,
+                  source: 'Google Books',
+                  isPremium: !isFree,
+                  price: isFree ? undefined : priceStr,
+                  volumeInfo: {
+                    title: b.volumeInfo?.title || 'Unknown Title',
+                    authors: b.volumeInfo?.authors || ['Unknown Author'],
+                    description: b.volumeInfo?.description || 'No description available for this title.',
+                    imageLinks: b.volumeInfo?.imageLinks ? {
+                      thumbnail: b.volumeInfo.imageLinks.thumbnail || null
+                    } : null,
+                    infoLink: b.volumeInfo?.infoLink || '#',
+                    previewLink: b.volumeInfo?.previewLink || '#',
+                    language: b.volumeInfo?.language || 'eng'
+                  },
+                  accessInfo: b.accessInfo ? {
+                    ia: null,
+                    epub: b.accessInfo.epub ? {
+                      downloadLink: b.accessInfo.epub.downloadLink || null
                     } : null
-                  };
-                });
-              }
-            }
-          } catch (e) {
-            console.error('Google Books error:', e);
-          }
-          return [];
-        })(),
-
-        // 2. Fetch from Open Library
-        (async () => {
-          try {
-            let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(searchQuery || category || 'fiction')}&limit=15`;
-            if (language) olUrl += `&language=${language}`;
-            
-            const olRes = await fetch(olUrl);
-            if (olRes.ok) {
-              const olData = await olRes.json();
-              return (olData.docs || []).map((b: OpenLibraryDoc, i: number): OnlineBook => ({
-                id: b.key ? b.key.replace('/works/', '') : `ol-${i}`,
-                isOpenLibrary: true,
-                source: 'Open Library',
-                isPremium: false,
-                volumeInfo: {
-                  title: b.title || 'Unknown Title',
-                  authors: b.author_name || ['Unknown Author'],
-                  description: 'A classic work available in the Open Library public archive.',
-                  imageLinks: b.cover_i ? {
-                    thumbnail: `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`
-                  } : null,
-                  infoLink: b.key ? `https://openlibrary.org${b.key}` : '#',
-                  previewLink: b.key ? `https://openlibrary.org${b.key}` : '#',
-                  language: b.language?.[0] || 'eng'
-                },
-                accessInfo: {
-                  ia: b.ia?.[0] || null,
-                  epub: null
-                }
-              }));
-            }
-          } catch (e) {
-            console.error('Open Library fetch error:', e);
-          }
-          return [];
-        })(),
-
-        // 3. Project Gutenberg via Gutendex
-        (async () => {
-          try {
-            let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(searchQuery || category || 'fiction')}`;
-            if (language) gutendexUrl += `&languages=${language.slice(0, 2)}`;
-            
-            const gRes = await fetch(gutendexUrl);
-            if (gRes.ok) {
-              const gData = await gRes.json();
-              return (gData.results || []).slice(0, 15).map((b: GutendexBook): OnlineBook => ({
-                id: `gutendex-${b.id}`,
-                source: 'Gutenberg',
-                isPremium: false,
-                volumeInfo: {
-                  title: b.title || 'Unknown Title',
-                  authors: Array.isArray(b.authors) ? b.authors.map((a) => a.name) : ['Unknown Author'],
-                  description: 'Public domain literature hosted by Project Gutenberg.',
-                  imageLinks: b.formats?.['image/jpeg'] ? {
-                    thumbnail: b.formats['image/jpeg']
-                  } : null,
-                  infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
-                  previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
-                  language: b.languages?.[0] || 'en'
-                },
-                accessInfo: {
-                  ia: null,
-                  epub: b.formats?.['application/epub+zip'] ? {
-                    downloadLink: b.formats['application/epub+zip']
                   } : null
-                }
-              }));
+                };
+              });
+              updateBooks(books);
             }
-          } catch (e) {
-            console.error('Gutendex error:', e);
           }
-          return [];
-        })()
-      ];
+        } catch (e) {
+          console.error('Google Books error:', e);
+        }
+      };
 
-      const results = await Promise.all(promises);
-      let items: OnlineBook[] = results.flat();
-      
-      if (language && items.length > 0) {
-        const langCode = language.slice(0, 2);
-        items = items.filter((book) => book.volumeInfo?.language?.startsWith(langCode));
-      }
-      
-      setOnlineBooks(items);
+      const fetchOpenLibrary = async () => {
+        try {
+          let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryVal || category || 'fiction')}&limit=25`;
+          if (language) olUrl += `&language=${language}`;
+          
+          const olRes = await fetch(olUrl);
+          if (olRes.ok) {
+            const olData = await olRes.json();
+            const books = (olData.docs || []).map((b: OpenLibraryDoc, i: number): OnlineBook => ({
+              id: b.key ? b.key.replace('/works/', '') : `ol-${i}`,
+              isOpenLibrary: true,
+              source: 'Open Library',
+              isPremium: false,
+              volumeInfo: {
+                title: b.title || 'Unknown Title',
+                authors: b.author_name || ['Unknown Author'],
+                description: 'A classic work available in the Open Library public archive.',
+                imageLinks: b.cover_i ? {
+                  thumbnail: `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg`
+                } : null,
+                infoLink: b.key ? `https://openlibrary.org${b.key}` : '#',
+                previewLink: b.key ? `https://openlibrary.org${b.key}` : '#',
+                language: b.language?.[0] || 'eng'
+              },
+              accessInfo: {
+                ia: b.ia?.[0] || null,
+                epub: null
+              }
+            }));
+            updateBooks(books);
+          }
+        } catch (e) {
+          console.error('Open Library fetch error:', e);
+        }
+      };
+
+      const fetchGutenberg = async () => {
+        try {
+          let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(queryVal || category || 'fiction')}`;
+          if (language) gutendexUrl += `&languages=${language.slice(0, 2)}`;
+          
+          const gRes = await fetch(gutendexUrl);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const books = (gData.results || []).slice(0, 25).map((b: GutendexBook): OnlineBook => ({
+              id: `gutendex-${b.id}`,
+              source: 'Gutenberg',
+              isPremium: false,
+              volumeInfo: {
+                title: b.title || 'Unknown Title',
+                authors: Array.isArray(b.authors) ? b.authors.map((a) => a.name) : ['Unknown Author'],
+                description: 'Public domain literature hosted by Project Gutenberg.',
+                imageLinks: b.formats?.['image/jpeg'] ? {
+                  thumbnail: b.formats['image/jpeg']
+                } : null,
+                infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+                previewLink: `https://www.gutenberg.org/ebooks/${b.id}`,
+                language: b.languages?.[0] || 'en'
+              },
+              accessInfo: {
+                ia: null,
+                epub: b.formats?.['application/epub+zip'] ? {
+                  downloadLink: b.formats['application/epub+zip']
+                } : null
+              }
+            }));
+            updateBooks(books);
+          }
+        } catch (e) {
+          console.error('Gutendex error:', e);
+        }
+      };
+
+      // Run fetches in parallel, letting each stream results into the UI as soon as it resolves.
+      // Google Books usually returns in <300ms, making the global catalog search feel instant.
+      await Promise.allSettled([
+        fetchGoogle(),
+        fetchOpenLibrary(),
+        fetchGutenberg()
+      ]);
     } catch (error) {
       console.error('Fatal Error fetching books:', error);
     } finally {
       setIsLoadingOnline(false);
     }
-  }, [searchQuery, category, language]);
+  }, [debouncedSearchQuery, category, language]);
 
+  // Execute search automatically when tab switches to online, or when query, category, or language changes
   useEffect(() => {
     if (activeTab === 'online') {
       searchOnlineLibrary();
     }
-  }, [activeTab]);
+  }, [activeTab, debouncedSearchQuery, category, language, searchOnlineLibrary]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -484,7 +507,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && activeTab === 'online') {
-                  searchOnlineLibrary();
+                  setDebouncedSearchQuery(searchQuery);
+                  searchOnlineLibrary(searchQuery);
                 }
               }}
               className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
@@ -524,7 +548,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           </div>
 
           <Button 
-            onClick={searchOnlineLibrary}
+            onClick={() => {
+              setDebouncedSearchQuery(searchQuery);
+              searchOnlineLibrary(searchQuery);
+            }}
             className="px-6 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-95 transition-all transform shrink-0 h-10 flex items-center justify-center gap-1.5"
           >
             <span>Query Servers</span>

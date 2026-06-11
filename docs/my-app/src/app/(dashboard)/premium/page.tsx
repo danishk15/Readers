@@ -26,7 +26,6 @@ interface RazorpayInstance {
 
 export default function PremiumPage() {
   const [loading, setLoading] = useState(false);
-  const [bypassing, setBypassing] = useState(false);
   const [message, setMessage] = useState('');
   
   // Weekly Quest States (Quest: 500 minutes)
@@ -194,46 +193,7 @@ export default function PremiumPage() {
     }
   };
 
-  // Instant Developer Sandbox Bypass to facilitate verification
-  const handleInstantBypass = async () => {
-    setBypassing(true);
-    setMessage('');
-    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-    
-    if (isDemo) {
-      // Create mock logs that total 500 minutes (30,000 seconds)
-      const mockLogs = Array.from({ length: 1000 }).map((_, i) => ({
-        id: 'local-log-simulated-' + i,
-        created_at: new Date().toISOString(),
-        user_id: 'demo-guest-id-12345',
-        book_id: 'classic-1',
-        time_spent_seconds: 30,
-        pages_read: 10
-      }));
-      localStorage.setItem('demo-reading_logs', JSON.stringify(mockLogs));
-      setIsPremium(true);
-      setWeeklyMinutes(500);
-      setMessage('Success! Simulated 500 minutes of reading in guest cache! Click "Claim Free VIP Premium" below to unlock!');
-    } else {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { error } = await supabase.from('users').update({ premium_status: true }).eq('id', user.id);
-          if (error) throw error;
-          setIsPremium(true);
-          setWeeklyMinutes(500);
-          setMessage('Success! Instantly unlocked Premium VIP in Supabase cloud! Enjoy best-sellers!');
-        } else {
-          setMessage('Error: You must be logged in or in Guest Session to trigger Cloud Bypass.');
-        }
-      } catch (err: any) {
-        console.error(err);
-        setMessage('Bypass failed: ' + err.message);
-      }
-    }
-    setBypassing(false);
-  };
+
 
   return (
     <>
@@ -446,25 +406,7 @@ export default function PremiumPage() {
           </div>
         </div>
 
-        {/* Developer Sandbox Bypass Panel */}
-        <div className="max-w-4xl mx-auto mt-8 p-6 rounded-3xl bg-slate-950/80 border border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative">
-          <div className="space-y-1.5 text-left">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-wider">
-              ⚡ Developer Console
-            </span>
-            <h3 className="text-lg font-bold text-white tracking-tight">VIP Simulation Sandbox</h3>
-            <p className="text-slate-500 text-xs max-w-md leading-relaxed">
-              Instantly bypass the 500-minute reading quest requirement or seed premium status to quickly test restricted lounge books and premium badges.
-            </p>
-          </div>
-          <Button 
-            onClick={handleInstantBypass}
-            disabled={bypassing}
-            className="w-full md:w-auto bg-slate-900 hover:bg-slate-850 border border-cyan-500/40 text-cyan-400 hover:text-cyan-300 font-extrabold px-6 py-3 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 text-xs shrink-0"
-          >
-            {bypassing ? 'Bypassing...' : '⚡ Instantly Add 500 Mins / Unlock VIP'}
-          </Button>
-        </div>
+
         
         {message && (
           <div className={`p-4 text-center rounded-xl max-w-lg mx-auto font-bold shadow-md border ${

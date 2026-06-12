@@ -1,56 +1,208 @@
-import { createClient } from '@/utils/supabase/server';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Users, MapPin, Tag, Filter } from 'lucide-react';
 
-export default async function CommunitiesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+interface Community {
+  id: string;
+  name: string;
+  description: string;
+  region?: string;
+  genre?: string;
+  created_at: string;
+}
 
-  if (!user) redirect('/login');
+export default function CommunitiesPage() {
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterRegion, setFilterRegion] = useState('');
+  const [filterGenre, setFilterGenre] = useState('');
+  const router = useRouter();
+  const supabase = createClient();
 
-  const { data: communities } = await supabase.from('communities').select('*').order('created_at', { ascending: false });
+  useEffect(() => {
+    const fetchCommunities = async () => {
+      const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
+      let user = null;
+      
+      if (isDemo) {
+        user = { id: 'demo-user-id', email: 'guest@readsphere.demo' };
+      } else {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+      }
+
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      let dbCommunities: Community[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('communities')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (data && !error) {
+          dbCommunities = data;
+        }
+      } catch (e) {
+        console.error('Supabase fetch communities error:', e);
+      }
+
+      let demoCommunities: Community[] = [];
+      try {
+        demoCommunities = JSON.parse(localStorage.getItem('demo-communities') || '[]');
+      } catch (e) {}
+
+      setCommunities([...demoCommunities, ...dbCommunities]);
+      setLoading(false);
+    };
+
+    fetchCommunities();
+  }, [supabase, router]);
+
+  const filteredCommunities = communities.filter(c => {
+    const matchRegion = !filterRegion || c.region === filterRegion;
+    const matchGenre = !filterGenre || c.genre === filterGenre;
+    return matchRegion && matchGenre;
+  });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Communities</h1>
-          <p className="text-muted text-sm mt-1">Join a server to discuss your favorite books.</p>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
+            <Users className="w-8 h-8 text-primary" />
+            <span>Discussion Servers</span>
+          </h1>
+          <p className="text-muted text-sm mt-1">Join a server to discuss your favorite book genres and connect with readers.</p>
         </div>
         <Link href="/communities/create" passHref legacyBehavior>
-          <Button>Create Server</Button>
+          <Button className="bg-primary hover:bg-primary/95 shadow-md shadow-primary/10">Create Server</Button>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {communities && communities.length > 0 ? (
-          communities.map((community) => (
-            <Card key={community.id} className="hover:border-secondary transition-colors group">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-secondary/20 text-secondary flex items-center justify-center font-bold text-xl mb-4 group-hover:scale-110 transition-transform">
-                    {community.name.substring(0, 2).toUpperCase()}
-                  </div>
-                  <span className="text-xs text-muted">12 Online</span>
-                </div>
-                <h3 className="font-semibold text-lg">{community.name}</h3>
-                <p className="text-sm text-muted mt-1 line-clamp-2">{community.description || 'A community for readers.'}</p>
-                <Link href={`/communities/${community.id}`} passHref legacyBehavior>
-                  <Button variant="secondary" className="w-full mt-6" size="sm">
-                    Join Server
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full py-12 text-center text-muted border border-dashed border-gray-800 rounded-xl">
-            <p>No communities found. Be the first to create one!</p>
-          </div>
+      {/* Interactive Filters */}
+      <div className="bg-slate-950/40 backdrop-blur-md border border-slate-900/60 p-5 rounded-2xl flex flex-wrap gap-4 items-center">
+        <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest">
+          <Filter className="w-4 h-4 text-indigo-400" />
+          <span>Filters:</span>
+        </div>
+        
+        <div className="flex-1 min-w-[150px]">
+          <select
+            value={filterRegion}
+            onChange={(e) => setFilterRegion(e.target.value)}
+            className="w-full bg-[#161b22] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-350 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-900/40 transition-colors"
+          >
+            <option value="">All Regions</option>
+            <option value="South Asia">South Asia</option>
+            <option value="Asia-Pacific">Asia-Pacific</option>
+            <option value="North America">North America</option>
+            <option value="Europe">Europe</option>
+            <option value="Middle East">Middle East</option>
+            <option value="South America">South America</option>
+          </select>
+        </div>
+
+        <div className="flex-1 min-w-[150px]">
+          <select
+            value={filterGenre}
+            onChange={(e) => setFilterGenre(e.target.value)}
+            className="w-full bg-[#161b22] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-355 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-900/40 transition-colors"
+          >
+            <option value="">All Genres</option>
+            <option value="Fiction">Fiction</option>
+            <option value="Sci-Fi">Sci-Fi</option>
+            <option value="Fantasy">Fantasy</option>
+            <option value="Mystery">Mystery</option>
+            <option value="History">History</option>
+            <option value="Biography">Biography</option>
+            <option value="Romance">Romance</option>
+          </select>
+        </div>
+
+        {(filterRegion || filterGenre) && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => { setFilterRegion(''); setFilterGenre(''); }} 
+            className="text-xs text-slate-400 hover:text-white"
+          >
+            Reset Filters
+          </Button>
         )}
       </div>
+
+      {/* Servers Grid */}
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-3">
+          <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+          <p className="text-xs text-slate-500 font-medium">Fetching servers...</p>
+        </div>
+      ) : filteredCommunities.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCommunities.map((community) => (
+            <Card key={community.id} className="hover:border-secondary transition-all duration-300 bg-slate-950/20 border-slate-850 hover:translate-y-[-2px] group relative flex flex-col justify-between overflow-hidden">
+              <CardContent className="p-6 flex flex-col justify-between h-full gap-5">
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center font-bold text-xl mb-4 group-hover:scale-110 transition-transform">
+                      {community.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    
+                    {/* Status badge */}
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        Active
+                      </span>
+                    </div>
+                  </div>
+
+                  <h3 className="font-bold text-lg text-slate-100 group-hover:text-primary transition-colors">{community.name}</h3>
+                  <p className="text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">{community.description || 'A community server for readers.'}</p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Meta tags */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-900/60">
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-slate-950/65 text-indigo-400 border border-indigo-500/15 px-2.5 py-1 rounded-lg font-bold tracking-wide uppercase">
+                      <MapPin className="w-3 h-3" />
+                      {community.region || 'Global'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-slate-950/65 text-cyan-400 border border-cyan-500/15 px-2.5 py-1 rounded-lg font-bold tracking-wide uppercase">
+                      <Tag className="w-3 h-3" />
+                      {community.genre || 'General'}
+                    </span>
+                  </div>
+
+                  <Link href={`/communities/${community.id}`} passHref legacyBehavior>
+                    <Button variant="secondary" className="w-full bg-[#161b22] border border-slate-800 hover:border-secondary hover:text-white" size="sm">
+                      Join Server Chat
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="py-20 text-center border border-dashed border-slate-850 rounded-2xl bg-slate-950/20 backdrop-blur-sm space-y-3">
+          <Users className="w-10 h-10 text-slate-700 mx-auto" />
+          <h3 className="font-bold text-slate-400">No servers found</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            {filterRegion || filterGenre 
+              ? 'Try modifying your filters to find active channels.' 
+              : 'Be the first to create a server and initiate discussions!'}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

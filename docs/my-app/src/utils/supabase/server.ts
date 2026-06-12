@@ -136,25 +136,135 @@ export async function createClient() {
       return chain as any
     }
 
-    if (isDemo && relation === 'users') {
-      const mockResponse = {
-        data: {
-          id: 'demo-guest-id-12345',
-          email: 'guest@readsphere.com',
-          username: 'Guest Reader',
-          role: 'authenticated',
-          premium_status: true,
-          created_at: new Date().toISOString()
-        },
-        error: null
+    if (isDemo) {
+      if (relation === 'users') {
+        const mockUserRegion = cookieStore.get('demo-user-region')?.value || 'South Asia'
+        const mockUserPremium = cookieStore.get('demo-premium_status')?.value === 'true'
+
+        const mockResponse = {
+          data: {
+            id: 'demo-guest-id-12345',
+            email: 'guest@readsphere.com',
+            username: 'Guest Reader',
+            role: 'authenticated',
+            region: mockUserRegion,
+            premium_status: mockUserPremium,
+            created_at: new Date().toISOString()
+          },
+          error: null
+        }
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          single: async () => mockResponse,
+          then: (resolve: any) => Promise.resolve(mockResponse).then(resolve)
+        }
+        return chain as any
       }
-      const chain = {
-        select: () => chain,
-        eq: () => chain,
-        single: async () => mockResponse,
-        then: (resolve: any) => Promise.resolve(mockResponse).then(resolve)
+
+      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries'].includes(relation)) {
+        let selectArgs: any[] = []
+        let eqFilters: { column: string; value: any }[] = []
+        let orderCol: string = ''
+
+        const chain = {
+          select: (...args: any[]) => {
+            selectArgs = args
+            return chain
+          },
+          eq: (column: string, value: any) => {
+            eqFilters.push({ column, value })
+            return chain
+          },
+          order: (col: string, options: any) => {
+            orderCol = col
+            return chain
+          },
+          single: async () => {
+            let localItems: any[] = []
+            const stored = cookieStore.get(`demo-${relation}`)?.value
+            if (stored) {
+              try { localItems = JSON.parse(decodeURIComponent(stored)) } catch {}
+            } else {
+              if (relation === 'communities') {
+                localItems = [
+                  { id: 'demo-comm-1', name: 'Fantasy Book Club', description: 'Discuss spells, swords, and magical worlds.', owner_id: 'demo-guest-id-12345', region: 'Asia-Pacific', genre: 'Fantasy', created_at: new Date().toISOString() },
+                  { id: 'demo-comm-2', name: 'Sci-Fi Explorers', description: 'Deep space exploration and cybernetic futures.', owner_id: 'other-user', region: 'Europe', genre: 'Sci-Fi', created_at: new Date().toISOString() },
+                  { id: 'demo-comm-3', name: 'Detective Guild', description: 'Solving mysteries, one chapter at a time.', owner_id: 'other-user', region: 'North America', region_name: 'North America', genre: 'Mystery', created_at: new Date().toISOString() }
+                ]
+              } else if (relation === 'channels') {
+                localItems = [
+                  { id: 'demo-chan-1', community_id: 'demo-comm-1', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                  { id: 'demo-chan-2', community_id: 'demo-comm-2', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                  { id: 'demo-chan-3', community_id: 'demo-comm-3', name: 'general', type: 'text', created_at: new Date().toISOString() }
+                ]
+              }
+            }
+
+            let matched = localItems
+            for (const filter of eqFilters) {
+              matched = matched.filter((item: any) => item[filter.column] === filter.value)
+            }
+            return { data: matched[0] || null, error: matched[0] ? null : { message: 'Item not found' } }
+          },
+          then: async (resolve: any, reject: any) => {
+            let localItems: any[] = []
+            const stored = cookieStore.get(`demo-${relation}`)?.value
+            if (stored) {
+              try { localItems = JSON.parse(decodeURIComponent(stored)) } catch {}
+            } else {
+              if (relation === 'communities') {
+                localItems = [
+                  { id: 'demo-comm-1', name: 'Fantasy Book Club', description: 'Discuss spells, swords, and magical worlds.', owner_id: 'demo-guest-id-12345', region: 'Asia-Pacific', genre: 'Fantasy', created_at: new Date().toISOString() },
+                  { id: 'demo-comm-2', name: 'Sci-Fi Explorers', description: 'Deep space exploration and cybernetic futures.', owner_id: 'other-user', region: 'Europe', genre: 'Sci-Fi', created_at: new Date().toISOString() },
+                  { id: 'demo-comm-3', name: 'Detective Guild', description: 'Solving mysteries, one chapter at a time.', owner_id: 'other-user', region: 'North America', genre: 'Mystery', created_at: new Date().toISOString() }
+                ]
+              } else if (relation === 'channels') {
+                localItems = [
+                  { id: 'demo-chan-1', community_id: 'demo-comm-1', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                  { id: 'demo-chan-2', community_id: 'demo-comm-2', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                  { id: 'demo-chan-3', community_id: 'demo-comm-3', name: 'general', type: 'text', created_at: new Date().toISOString() }
+                ]
+              }
+            }
+
+            let combined = [...localItems]
+            for (const filter of eqFilters) {
+              combined = combined.filter((item: any) => item[filter.column] === filter.value)
+            }
+
+            if (relation === 'competition_entries') {
+              const regionFilter = eqFilters.find(f => f.column === 'region')?.value || 'South Asia'
+              const monthFilter = eqFilters.find(f => f.column === 'month')?.value || '2026-06'
+              
+              const mockCompetitors = [
+                { id: 'comp-mock-1', user_id: 'demo-mock-user-1', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'The Great Gatsby', author: 'F. Scott Fitzgerald'}]), total_reading_time: 15600, created_at: new Date().toISOString(), users: { username: 'Aarav Sharma', email: 'aarav@readsphere.com' } },
+                { id: 'comp-mock-2', user_id: 'demo-mock-user-2', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'Pride and Prejudice', author: 'Jane Austen'}]), total_reading_time: 10800, created_at: new Date().toISOString(), users: { username: 'Zoya Khan', email: 'zoya@readsphere.com' } },
+                { id: 'comp-mock-3', user_id: 'demo-mock-user-3', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'Dracula', author: 'Bram Stoker'}]), total_reading_time: 21600, created_at: new Date().toISOString(), users: { username: 'Dev Patel', email: 'dev@readsphere.com' } }
+              ]
+
+              const mappedCombined = combined.map((item: any) => ({
+                ...item,
+                users: { username: 'Guest Reader (You)', email: 'guest@readsphere.com' }
+              }))
+
+              combined = [...mappedCombined, ...mockCompetitors]
+            }
+
+            if (orderCol) {
+              const ascending = true
+              combined.sort((a, b) => {
+                if (a[orderCol] < b[orderCol]) return ascending ? -1 : 1
+                if (a[orderCol] > b[orderCol]) return ascending ? 1 : -1
+                return 0
+              })
+            }
+
+            return resolve({ data: combined, error: null })
+          }
+        }
+        return chain as any
       }
-      return chain as any
     }
 
     return originalFrom(relation)

@@ -186,30 +186,57 @@ export function createClient() {
 
     if (isDemo) {
       if (relation === 'users') {
+        let updatePayload: any = null
+        const mockUserRegion = typeof window !== 'undefined' ? localStorage.getItem('demo-user-region') || 'South Asia' : 'South Asia'
+        const mockUserPremium = typeof window !== 'undefined' ? localStorage.getItem('demo-premium_status') === 'true' : false
+
         const mockResponse = {
           data: {
             id: 'demo-guest-id-12345',
             email: 'guest@readsphere.com',
             username: 'Guest Reader',
             role: 'authenticated',
-            premium_status: true,
+            region: mockUserRegion,
+            premium_status: mockUserPremium,
             created_at: new Date().toISOString()
           },
           error: null
         }
+
         const chain = {
           select: () => chain,
           eq: () => chain,
           single: async () => mockResponse,
-          then: (resolve: any) => Promise.resolve(mockResponse).then(resolve)
+          update: (payload: any) => {
+            updatePayload = payload
+            if (typeof window !== 'undefined') {
+              if (payload.region) {
+                localStorage.setItem('demo-user-region', payload.region)
+                document.cookie = "demo-user-region=" + encodeURIComponent(payload.region) + "; path=/; max-age=31536000"
+              }
+              if (payload.premium_status !== undefined) {
+                localStorage.setItem('demo-premium_status', String(payload.premium_status))
+                document.cookie = "demo-premium_status=" + String(payload.premium_status) + "; path=/; max-age=31536000"
+              }
+            }
+            return chain
+          },
+          then: (resolve: any) => {
+            if (updatePayload && typeof window !== 'undefined') {
+              if (updatePayload.region) mockResponse.data.region = updatePayload.region
+              if (updatePayload.premium_status !== undefined) mockResponse.data.premium_status = updatePayload.premium_status
+            }
+            return Promise.resolve(mockResponse).then(resolve)
+          }
         }
         return chain as any
       }
 
-      if (['comments', 'reading_logs', 'messages'].includes(relation)) {
+      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries'].includes(relation)) {
         let selectArgs: any[] = []
         let eqFilters: { column: string; value: any }[] = []
         let orderCol: string = ''
+        let updatePayload: any = null
 
         const chain = {
           select: (...args: any[]) => {
@@ -226,13 +253,33 @@ export function createClient() {
           },
           single: async () => {
             try {
-              let realQuery = originalFrom(relation).select(selectArgs.join(','))
-              for (const filter of eqFilters) {
-                realQuery = realQuery.eq(filter.column, filter.value)
+              let localItems: any[] = []
+              if (typeof window !== 'undefined') {
+                if (relation === 'communities') {
+                  const items = localStorage.getItem('demo-communities')
+                  localItems = items ? JSON.parse(items) : [
+                    { id: 'demo-comm-1', name: 'Fantasy Book Club', description: 'Discuss spells, swords, and magical worlds.', owner_id: 'demo-guest-id-12345', region: 'Asia-Pacific', genre: 'Fantasy', created_at: new Date().toISOString() },
+                    { id: 'demo-comm-2', name: 'Sci-Fi Explorers', description: 'Deep space exploration and cybernetic futures.', owner_id: 'other-user', region: 'Europe', genre: 'Sci-Fi', created_at: new Date().toISOString() },
+                    { id: 'demo-comm-3', name: 'Detective Guild', description: 'Solving mysteries, one chapter at a time.', owner_id: 'other-user', region: 'North America', genre: 'Mystery', created_at: new Date().toISOString() }
+                  ]
+                } else if (relation === 'channels') {
+                  const items = localStorage.getItem('demo-channels')
+                  localItems = items ? JSON.parse(items) : [
+                    { id: 'demo-chan-1', community_id: 'demo-comm-1', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                    { id: 'demo-chan-2', community_id: 'demo-comm-2', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                    { id: 'demo-chan-3', community_id: 'demo-comm-3', name: 'general', type: 'text', created_at: new Date().toISOString() }
+                  ]
+                } else {
+                  localItems = JSON.parse(localStorage.getItem(`demo-${relation}`) || '[]')
+                }
               }
-              const res = await realQuery.single()
-              return res
-            } catch (e) {
+              
+              let matched = localItems
+              for (const filter of eqFilters) {
+                matched = matched.filter((item: any) => item[filter.column] === filter.value)
+              }
+              return { data: matched[0] || null, error: matched[0] ? null : { message: 'Item not found' } }
+            } catch (e: any) {
               return { data: null, error: e }
             }
           },
@@ -241,13 +288,37 @@ export function createClient() {
               const payloadArray = Array.isArray(payload) ? payload : [payload]
               let items = []
               try {
-                items = JSON.parse(localStorage.getItem(`demo-${relation}`) || '[]')
+                if (typeof window !== 'undefined') {
+                  const stored = localStorage.getItem(`demo-${relation}`)
+                  if (stored) {
+                    items = JSON.parse(stored)
+                  } else {
+                    if (relation === 'communities') {
+                      items = [
+                        { id: 'demo-comm-1', name: 'Fantasy Book Club', description: 'Discuss spells, swords, and magical worlds.', owner_id: 'demo-guest-id-12345', region: 'Asia-Pacific', genre: 'Fantasy', created_at: new Date().toISOString() },
+                        { id: 'demo-comm-2', name: 'Sci-Fi Explorers', description: 'Deep space exploration and cybernetic futures.', owner_id: 'other-user', region: 'Europe', genre: 'Sci-Fi', created_at: new Date().toISOString() },
+                        { id: 'demo-comm-3', name: 'Detective Guild', description: 'Solving mysteries, one chapter at a time.', owner_id: 'other-user', region: 'North America', genre: 'Mystery', created_at: new Date().toISOString() }
+                      ]
+                    } else if (relation === 'channels') {
+                      items = [
+                        { id: 'demo-chan-1', community_id: 'demo-comm-1', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                        { id: 'demo-chan-2', community_id: 'demo-comm-2', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                        { id: 'demo-chan-3', community_id: 'demo-comm-3', name: 'general', type: 'text', created_at: new Date().toISOString() }
+                      ]
+                    }
+                  }
+                }
               } catch {}
 
               const newItems = payloadArray.map((item: any) => {
-                const idField = relation === 'comments' ? 'local-comment-' : relation === 'messages' ? 'local-message-' : 'local-log-'
+                const prefix = relation === 'comments' ? 'local-comment-' 
+                              : relation === 'messages' ? 'local-message-' 
+                              : relation === 'communities' ? 'demo-comm-'
+                              : relation === 'channels' ? 'demo-chan-'
+                              : relation === 'competition_entries' ? 'demo-comp-'
+                              : 'local-log-'
                 const newItem: any = {
-                  id: idField + Math.random().toString(36).substring(2),
+                  id: prefix + Math.random().toString(36).substring(2),
                   created_at: new Date().toISOString(),
                   user_id: item.user_id || 'demo-guest-id-12345',
                   ...item
@@ -256,55 +327,117 @@ export function createClient() {
                 return newItem
               })
 
-              localStorage.setItem(`demo-${relation}`, JSON.stringify([...newItems, ...items]))
-              return { data: newItems, error: null }
+              if (typeof window !== 'undefined') {
+                const combinedItems = [...newItems, ...items]
+                localStorage.setItem(`demo-${relation}`, JSON.stringify(combinedItems))
+                document.cookie = `demo-${relation}=` + encodeURIComponent(JSON.stringify(combinedItems)) + "; path=/; max-age=31536000"
+              }
+              const mockResult = { data: newItems, error: null }
+              return {
+                ...mockResult,
+                select: () => {
+                  return {
+                    single: async () => ({ data: newItems[0], error: null })
+                  }
+                }
+              } as any
             } catch (e: any) {
               return { data: null, error: e }
             }
           },
+          update: (payload: any) => {
+            updatePayload = payload
+            return chain
+          },
           then: async (resolve: any, reject: any) => {
             try {
-              let realQuery = originalFrom(relation).select(selectArgs.join(','))
-              for (const filter of eqFilters) {
-                realQuery = realQuery.eq(filter.column, filter.value)
-              }
-              if (orderCol) {
-                realQuery = realQuery.order(orderCol, { ascending: true })
-              }
-              const realRes = await realQuery
-
               let localItems = []
               try {
-                localItems = JSON.parse(localStorage.getItem(`demo-${relation}`) || '[]')
+                if (typeof window !== 'undefined') {
+                  const stored = localStorage.getItem(`demo-${relation}`)
+                  if (stored) {
+                    localItems = JSON.parse(stored)
+                  } else {
+                    if (relation === 'communities') {
+                      localItems = [
+                        { id: 'demo-comm-1', name: 'Fantasy Book Club', description: 'Discuss spells, swords, and magical worlds.', owner_id: 'demo-guest-id-12345', region: 'Asia-Pacific', genre: 'Fantasy', created_at: new Date().toISOString() },
+                        { id: 'demo-comm-2', name: 'Sci-Fi Explorers', description: 'Deep space exploration and cybernetic futures.', owner_id: 'other-user', region: 'Europe', genre: 'Sci-Fi', created_at: new Date().toISOString() },
+                        { id: 'demo-comm-3', name: 'Detective Guild', description: 'Solving mysteries, one chapter at a time.', owner_id: 'other-user', region: 'North America', genre: 'Mystery', created_at: new Date().toISOString() }
+                      ]
+                    } else if (relation === 'channels') {
+                      localItems = [
+                        { id: 'demo-chan-1', community_id: 'demo-comm-1', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                        { id: 'demo-chan-2', community_id: 'demo-comm-2', name: 'general', type: 'text', created_at: new Date().toISOString() },
+                        { id: 'demo-chan-3', community_id: 'demo-comm-3', name: 'general', type: 'text', created_at: new Date().toISOString() }
+                      ]
+                    }
+                  }
+                }
               } catch {}
 
-              let combined = [...(realRes.data || [])]
+              if (updatePayload && typeof window !== 'undefined') {
+                localItems = localItems.map((item: any) => {
+                  let match = true
+                  for (const filter of eqFilters) {
+                    if (item[filter.column] !== filter.value) match = false
+                  }
+                  if (match) {
+                    return { ...item, ...updatePayload }
+                  }
+                  return item
+                })
+                localStorage.setItem(`demo-${relation}`, JSON.stringify(localItems))
+                document.cookie = `demo-${relation}=` + encodeURIComponent(JSON.stringify(localItems)) + "; path=/; max-age=31536000"
+              }
+
+              let combined = [...localItems]
+
+              for (const filter of eqFilters) {
+                combined = combined.filter((item: any) => item[filter.column] === filter.value)
+              }
+
               if (relation === 'comments') {
-                const bookFilter = eqFilters.find(f => f.column === 'book_id')?.value
-                const filteredLocal = localItems
-                  .filter((c: any) => c.book_id === bookFilter)
-                  .map((c: any) => ({
-                    id: c.id,
-                    created_at: c.created_at,
-                    content: c.content,
-                    users: { email: c.user_email || 'guest@readsphere.com' }
-                  }))
-                combined = [...filteredLocal, ...combined]
-              } else if (relation === 'reading_logs') {
-                const userFilter = eqFilters.find(f => f.column === 'user_id')?.value
-                const filteredLocal = localItems.filter((log: any) => log.user_id === userFilter)
-                combined = [...combined, ...filteredLocal]
+                combined = combined.map((c: any) => ({
+                  id: c.id,
+                  created_at: c.created_at,
+                  content: c.content,
+                  book_id: c.book_id,
+                  users: { email: c.user_email || 'guest@readsphere.com' }
+                }))
               } else if (relation === 'messages') {
-                const channelFilter = eqFilters.find(f => f.column === 'channel_id')?.value
-                const filteredLocal = localItems
-                  .filter((m: any) => m.channel_id === channelFilter)
-                  .map((m: any) => ({
-                    id: m.id,
-                    created_at: m.created_at,
-                    content: m.content,
-                    users: { username: 'Guest Reader', avatar_url: null, email: 'guest@readsphere.com' }
-                  }))
-                combined = [...combined, ...filteredLocal]
+                combined = combined.map((m: any) => ({
+                  id: m.id,
+                  created_at: m.created_at,
+                  content: m.content,
+                  channel_id: m.channel_id,
+                  user_id: m.user_id,
+                  users: { username: 'Guest Reader', avatar_url: null, email: 'guest@readsphere.com' }
+                }))
+              } else if (relation === 'competition_entries') {
+                const regionFilter = eqFilters.find(f => f.column === 'region')?.value || 'South Asia'
+                const monthFilter = eqFilters.find(f => f.column === 'month')?.value || '2026-06'
+                
+                const mockCompetitors = [
+                  { id: 'comp-mock-1', user_id: 'demo-mock-user-1', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'The Great Gatsby', author: 'F. Scott Fitzgerald'}]), total_reading_time: 15600, created_at: new Date().toISOString(), users: { username: 'Aarav Sharma', email: 'aarav@readsphere.com' } },
+                  { id: 'comp-mock-2', user_id: 'demo-mock-user-2', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'Pride and Prejudice', author: 'Jane Austen'}]), total_reading_time: 10800, created_at: new Date().toISOString(), users: { username: 'Zoya Khan', email: 'zoya@readsphere.com' } },
+                  { id: 'comp-mock-3', user_id: 'demo-mock-user-3', region: regionFilter, month: monthFilter, selected_books: JSON.stringify([{title: 'Dracula', author: 'Bram Stoker'}]), total_reading_time: 21600, created_at: new Date().toISOString(), users: { username: 'Dev Patel', email: 'dev@readsphere.com' } }
+                ]
+                
+                const mappedCombined = combined.map((item: any) => ({
+                  ...item,
+                  users: { username: 'Guest Reader (You)', email: 'guest@readsphere.com' }
+                }))
+                
+                combined = [...mappedCombined, ...mockCompetitors]
+              }
+
+              if (orderCol) {
+                const ascending = true
+                combined.sort((a, b) => {
+                  if (a[orderCol] < b[orderCol]) return ascending ? -1 : 1
+                  if (a[orderCol] > b[orderCol]) return ascending ? 1 : -1
+                  return 0
+                })
               }
 
               return resolve({ data: combined, error: null })

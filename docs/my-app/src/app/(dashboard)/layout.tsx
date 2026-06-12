@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import LogoutButton from '@/components/ui/LogoutButton';
 import { createClient } from '@/utils/supabase/server';
-import { BookOpen, Globe, Users, BookMarked, Award, User, Sparkles } from 'lucide-react';
+import { BookOpen, Globe, Users, BookMarked, Award, User, Sparkles, Trophy } from 'lucide-react';
 
 export default async function DashboardLayout({
   children,
@@ -56,6 +56,11 @@ export default async function DashboardLayout({
           <Link href="/communities" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">
             <Users className="w-4 h-4 shrink-0" />
             <span>Communities</span>
+          </Link>
+          
+          <Link href="/competition" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">
+            <Trophy className="w-4 h-4 shrink-0" />
+            <span>Monthly Competition</span>
           </Link>
           
           <Link href="/publish" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900/50 text-sm font-semibold transition-all">

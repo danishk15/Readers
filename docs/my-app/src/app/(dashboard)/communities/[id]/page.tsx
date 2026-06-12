@@ -23,71 +23,109 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
   const [newMessage, setNewMessage] = useState('');
   const [channelId, setChannelId] = useState<string | null>(null);
   const [channels, setChannels] = useState<{id: string, name: string}[]>([]);
-  const [community, setCommunity] = useState<{name: string} | null>(null);
+  const [community, setCommunity] = useState<{name: string; region?: string; genre?: string} | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
+  const isDemo = params.id.startsWith('demo-comm-');
+
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      let user = null;
+      if (isDemo) {
+        user = { id: 'demo-user-id', email: 'guest@readsphere.demo' };
+      } else {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+      }
       if (user) setUserId(user.id);
 
-      // Fetch community info
-      const { data: comm } = await supabase.from('communities').select('name').eq('id', params.id).single();
-      if (comm) setCommunity(comm);
+      if (isDemo) {
+        // Fetch community info from localStorage
+        const demoComms = JSON.parse(localStorage.getItem('demo-communities') || '[]');
+        const comm = demoComms.find((c: any) => c.id === params.id);
+        if (comm) setCommunity(comm);
 
-      // Fetch channels
-      const { data: chs } = await supabase.from('channels').select('id, name').eq('community_id', params.id);
-      if (chs && chs.length > 0) {
-        setChannels(chs);
-        setChannelId(chs[0].id); // default to first channel (usually general)
+        // Fetch channels from localStorage
+        const demoChans = JSON.parse(localStorage.getItem('demo-channels') || '[]');
+        const chs = demoChans.filter((c: any) => c.community_id === params.id);
+        if (chs && chs.length > 0) {
+          setChannels(chs);
+          setChannelId(chs[0].id); // default to first channel
+        }
+      } else {
+        // Fetch community info
+        const { data: comm } = await supabase.from('communities').select('name, region, genre').eq('id', params.id).single();
+        if (comm) setCommunity(comm);
+
+        // Fetch channels
+        const { data: chs } = await supabase.from('channels').select('id, name').eq('community_id', params.id);
+        if (chs && chs.length > 0) {
+          setChannels(chs);
+          setChannelId(chs[0].id); // default to first channel
+        }
       }
     };
     init();
-  }, [params.id, supabase]);
+  }, [params.id, supabase, isDemo]);
 
   useEffect(() => {
     if (!channelId) return;
 
-    // Fetch existing messages
-    const fetchMessages = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select(`id, content, created_at, users(username, avatar_url, email)`)
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
-      
-      if (data) {
-        setMessages(data as unknown as Message[]);
-      }
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    if (isDemo) {
+      const fetchDemoMessages = () => {
+        const demoMsgs = JSON.parse(localStorage.getItem('demo-messages') || '[]');
+        const filtered = demoMsgs.filter((m: any) => m.channel_id === channelId);
+        setMessages(filtered);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      };
 
-    fetchMessages();
+      fetchDemoMessages();
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel(`room:${channelId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` }, payload => {
-        const newMessageRow = payload.new as MessageRow;
-        // Fetch the user info for the new message
-        supabase.from('users').select('username, avatar_url, email').eq('id', newMessageRow.user_id).single().then(({ data: user }) => {
-          setMessages(prev => [...prev, {
-            id: newMessageRow.id,
-            content: newMessageRow.content,
-            created_at: newMessageRow.created_at,
-            users: user as { username: string; avatar_url: string; email: string } | null
-          }]);
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        });
-      })
-      .subscribe();
+      // Poll localStorage for any updates in guest mode
+      const interval = setInterval(fetchDemoMessages, 1500);
+      return () => clearInterval(interval);
+    } else {
+      // Fetch existing messages
+      const fetchMessages = async () => {
+        const { data } = await supabase
+          .from('messages')
+          .select(`id, content, created_at, users(username, avatar_url, email)`)
+          .eq('channel_id', channelId)
+          .order('created_at', { ascending: true });
+        
+        if (data) {
+          setMessages(data as unknown as Message[]);
+        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      };
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [channelId, supabase]);
+      fetchMessages();
+
+      // Subscribe to realtime updates
+      const channel = supabase
+        .channel(`room:${channelId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` }, payload => {
+          const newMessageRow = payload.new as MessageRow;
+          // Fetch the user info for the new message
+          supabase.from('users').select('username, avatar_url, email').eq('id', newMessageRow.user_id).single().then(({ data: user }) => {
+            setMessages(prev => [...prev, {
+              id: newMessageRow.id,
+              content: newMessageRow.content,
+              created_at: newMessageRow.created_at,
+              users: user as { username: string; avatar_url: string; email: string } | null
+            }]);
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          });
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [channelId, supabase, isDemo]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,19 +134,40 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
     const content = newMessage;
     setNewMessage('');
 
-    await supabase.from('messages').insert({
-      channel_id: channelId,
-      user_id: userId,
-      content,
-    });
+    if (isDemo) {
+      const demoMsgs = JSON.parse(localStorage.getItem('demo-messages') || '[]');
+      const newMsg = {
+        id: `demo-msg-${Date.now()}`,
+        channel_id: channelId,
+        content,
+        created_at: new Date().toISOString(),
+        users: { username: 'Guest Reader', avatar_url: '', email: 'guest@readsphere.demo' }
+      };
+      localStorage.setItem('demo-messages', JSON.stringify([...demoMsgs, newMsg]));
+      setMessages(prev => [...prev, newMsg]);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } else {
+      await supabase.from('messages').insert({
+        channel_id: channelId,
+        user_id: userId,
+        content,
+      });
+    }
   };
 
   return (
     <div className="flex h-full border border-gray-800 rounded-xl overflow-hidden shadow-sm">
       {/* Channels Sidebar */}
       <div className="w-60 bg-surface border-r border-gray-800 flex flex-col">
-        <div className="p-4 border-b border-gray-800 shadow-sm z-10 font-bold flex items-center h-14">
-          {community?.name || 'Loading...'}
+        <div className="p-4 border-b border-gray-800 shadow-sm z-10 font-bold flex flex-col justify-center h-16 shrink-0 bg-slate-950/20">
+          <span className="truncate text-slate-100">{community?.name || 'Loading...'}</span>
+          {community && (
+            <span className="text-[9px] text-slate-400 font-semibold flex items-center gap-1.5 mt-0.5 uppercase tracking-wider">
+              <span>📍 {community.region || 'Global'}</span>
+              <span>•</span>
+              <span>🏷️ {community.genre || 'General'}</span>
+            </span>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-3 gap-1 flex flex-col">
           <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 ml-2">Text Channels</p>

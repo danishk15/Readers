@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Reader from '@/components/ui/Reader';
 import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { Modal } from '@/components/ui/Modal';
-import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle } from 'lucide-react';
+import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle, LayoutGrid, Library } from 'lucide-react';
 
 interface LocalBook {
   id: string;
@@ -64,6 +64,294 @@ interface GutendexBook {
   languages?: string[];
 }
 
+interface DomeGalleryProps {
+  books: any[];
+  activeTab: 'local' | 'online' | 'device' | 'premium';
+  isPremiumUser: boolean;
+  localAddedBooks: any[];
+  setLocalAddedBooks: (books: any[]) => void;
+  setActiveReadingBook: (book: any) => void;
+  setSelectedStoreBook: (book: any) => void;
+  setIsStoreModalOpen: (open: boolean) => void;
+  setIsUpgradeModalOpen: (open: boolean) => void;
+  setLockedBookToUnlock: (book: any) => void;
+}
+
+function DomeGallery({
+  books,
+  activeTab,
+  isPremiumUser,
+  localAddedBooks,
+  setLocalAddedBooks,
+  setActiveReadingBook,
+  setSelectedStoreBook,
+  setIsStoreModalOpen,
+  setIsUpgradeModalOpen,
+  setLockedBookToUnlock
+}: DomeGalleryProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [books.length]);
+
+  if (books.length === 0) {
+    return (
+      <div className="py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3 w-full">
+        <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
+        <h3 className="font-bold text-slate-400">No books found</h3>
+      </div>
+    );
+  }
+
+  const activeBook = books[activeIndex];
+
+  const handlePrev = () => {
+    setActiveIndex((prev) => (prev === 0 ? books.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev === books.length - 1 ? 0 : prev + 1));
+  };
+
+  const isLocal = activeTab === 'local';
+  const angleStep = 25;
+  const radius = 280;
+
+  return (
+    <div className="flex flex-col items-center justify-center space-y-8 py-10 relative overflow-hidden bg-slate-950/10 rounded-3xl border border-slate-900/40 p-6 md:p-10 shadow-2xl w-full">
+      <style dangerouslySetInnerHTML={{__html: `
+        .dome-scene {
+          perspective: 1200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 360px;
+          width: 100%;
+          position: relative;
+        }
+        .dome-carousel {
+          position: absolute;
+          width: 150px;
+          height: 225px;
+          transform-style: preserve-3d;
+          transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .dome-item {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.7s, filter 0.7s;
+          backface-visibility: hidden;
+        }
+        .dome-platform {
+          width: 600px;
+          height: 80px;
+          background: radial-gradient(ellipse at center, rgba(91,108,255,0.18) 0%, rgba(91,108,255,0.03) 50%, transparent 100%);
+          border-radius: 50%;
+          transform: rotateX(85deg) translateY(120px) translateZ(-80px);
+          box-shadow: 0 0 60px rgba(91,108,255,0.2), inset 0 0 30px rgba(91,108,255,0.3);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .dome-glow-ring {
+          position: absolute;
+          bottom: 35px;
+          width: 180px;
+          height: 15px;
+          background: radial-gradient(ellipse at center, rgba(6,182,212,0.4) 0%, transparent 70%);
+          filter: blur(4px);
+          pointer-events: none;
+          z-index: 1;
+          animation: pulse-ring 3s infinite ease-in-out;
+        }
+        @keyframes pulse-ring {
+          0%, 100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.15); opacity: 0.8; }
+        }
+      `}} />
+
+      <div className="dome-scene">
+        <div 
+          className="dome-carousel"
+          style={{
+            transform: `rotateY(${-activeIndex * angleStep}deg) translateY(-20px)`
+          }}
+        >
+          {books.map((book, idx) => {
+            const id = book.id || book.title;
+            const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
+            const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
+            const isPremium = isLocal ? book.is_premium : !!book.isPremium;
+            
+            const offset = idx - activeIndex;
+            const isCenter = idx === activeIndex;
+            const isVisible = Math.abs(offset) <= 4 || (idx === 0 && activeIndex >= books.length - 4) || (idx === books.length - 1 && activeIndex <= 3);
+            const opacity = isCenter ? 1 : (isVisible ? Math.max(0.25, 0.9 - Math.abs(offset) * 0.18) : 0);
+            const blur = isCenter ? 'blur(0)' : `blur(${Math.min(3, Math.abs(offset) * 0.8)}px)`;
+
+            const handleBookClick = (e: React.MouseEvent) => {
+              e.preventDefault();
+              if (!isCenter) {
+                setActiveIndex(idx);
+              } else {
+                if (isLocal) {
+                  setActiveReadingBook({ url: book.file_url || '', title: book.title });
+                } else {
+                  if (book.isPremium) {
+                    setSelectedStoreBook(book);
+                    setIsStoreModalOpen(true);
+                  } else {
+                    if (book.isOpenLibrary) {
+                      if (book.accessInfo?.ia) {
+                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: title, isInternetArchive: true });
+                      } else {
+                        window.open(book.volumeInfo?.infoLink || '#', '_blank');
+                      }
+                    } else if (book.accessInfo?.epub?.downloadLink) {
+                      setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: title });
+                    } else {
+                      setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: title });
+                    }
+                  }
+                }
+              }
+            };
+
+            return (
+              <div 
+                key={`${id}-${idx}`}
+                className="dome-item"
+                style={{
+                  transform: `rotateY(${idx * angleStep}deg) translateZ(${radius}px) scale(${isCenter ? 1.15 : 0.85})`,
+                  opacity: opacity,
+                  filter: blur,
+                  zIndex: isCenter ? 50 : 10 - Math.abs(offset),
+                  pointerEvents: isVisible ? 'auto' : 'none'
+                }}
+                onClick={handleBookClick}
+              >
+                <div 
+                  className={`w-full h-full rounded-xl overflow-hidden bg-slate-900 border ${isCenter ? 'border-primary shadow-[0_0_25px_rgba(91,108,255,0.45)]' : 'border-slate-800 shadow-[5px_10px_20px_rgba(0,0,0,0.5)]'} relative transition-all duration-300`}
+                >
+                  {cover ? (
+                    <img src={cover} alt={title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-3 text-center text-slate-500 h-full">
+                      <BookOpen className="w-8 h-8 mb-2 text-slate-700" />
+                      <span className="font-bold text-[10px] uppercase line-clamp-3">{title}</span>
+                    </div>
+                  )}
+
+                  {isPremium && (
+                    <div className="absolute top-2 right-2 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded shadow z-10 tracking-widest uppercase">
+                      VIP
+                    </div>
+                  )}
+
+                  <div className="absolute inset-y-0 left-0 w-[8px] bg-gradient-to-r from-black/50 via-black/15 to-transparent pointer-events-none" />
+                  <div className="absolute inset-y-0 right-0 w-[2px] bg-white/10 pointer-events-none" />
+
+                  {isCenter && (
+                    <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center animate-in fade-in duration-300">
+                      <span className="bg-primary hover:bg-primary/90 text-white text-[9px] font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1">
+                        <span>{isPremium && !isLocal ? '🔒 BUY' : '📖 READ'}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="dome-platform absolute" />
+        <div className="dome-glow-ring absolute" />
+      </div>
+
+      <div className="z-10 flex flex-col items-center space-y-4 w-full max-w-lg">
+        <div className="flex items-center gap-6">
+          <Button 
+            onClick={handlePrev}
+            variant="secondary"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-900/80 border border-slate-800 hover:bg-slate-800 hover:text-white"
+          >
+            ←
+          </Button>
+          <div className="text-center w-48 md:w-64">
+            <h3 className="text-sm md:text-base font-extrabold text-white line-clamp-1">{activeBook ? (isLocal ? activeBook.title : activeBook.volumeInfo?.title) : ''}</h3>
+            <p className="text-[11px] md:text-xs text-indigo-400 font-semibold line-clamp-1 mt-0.5">{activeBook ? (isLocal ? activeBook.author : (activeBook.volumeInfo?.authors?.[0] || 'Unknown Author')) : ''}</p>
+          </div>
+          <Button 
+            onClick={handleNext}
+            variant="secondary"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-900/80 border border-slate-800 hover:bg-slate-800 hover:text-white"
+          >
+            →
+          </Button>
+        </div>
+
+        {!isLocal && activeBook && (() => {
+          const title = activeBook.volumeInfo?.title || '';
+          const author = activeBook.volumeInfo?.authors?.[0] || 'Unknown Author';
+          const cover = activeBook.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '';
+          const isAdded = localAddedBooks.some(b => b.title.toLowerCase() === title.toLowerCase());
+
+          const handleAddBtn = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            try {
+              const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+              const newBook = {
+                id: activeBook.id,
+                title: title,
+                author: author,
+                cover_url: cover,
+                file_url: activeBook.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
+                is_premium: !!activeBook.isPremium
+              };
+              
+              if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
+                const updated = [newBook, ...addedList];
+                localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                setLocalAddedBooks(updated);
+                alert(`"${title}" added to bookshelf!`);
+              }
+            } catch (err) {}
+          };
+
+          return (
+            <Button
+              onClick={handleAddBtn}
+              disabled={isAdded}
+              size="sm"
+              variant={isAdded ? 'secondary' : 'primary'}
+              className={`px-5 py-2 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all ${
+                isAdded 
+                  ? 'bg-slate-900/80 text-green-400 border border-green-500/20 cursor-default shadow-none' 
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/15'
+              }`}
+            >
+              {isAdded ? '✓ Added to Bookshelf' : '➕ Add to Bookshelf'}
+            </Button>
+          );
+        })()}
+
+        <div className="flex gap-1.5 max-w-xs overflow-x-auto py-1 justify-center">
+          {books.map((_, idx) => (
+            <button
+              key={`dot-${idx}`}
+              onClick={() => setActiveIndex(idx)}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${idx === activeIndex ? 'bg-primary w-4' : 'bg-slate-800 hover:bg-slate-700'}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserProps) {
   const [activeTab, setActiveTab] = useState<'local' | 'online' | 'device' | 'premium'>('local');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +360,31 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [language, setLanguage] = useState('');
   const [onlineBooks, setOnlineBooks] = useState<OnlineBook[]>([]);
   const [isLoadingOnline, setIsLoadingOnline] = useState(false);
+  const [isBgLoading, setIsBgLoading] = useState(false);
+  
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'shelf' | 'dome'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('readsphere-layout-mode') as 'grid' | 'shelf' | 'dome') || 'grid';
+    }
+    return 'grid';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('readsphere-layout-mode', layoutMode);
+    }
+  }, [layoutMode]);
+
+  const searchCache = useRef<Record<string, OnlineBook[]>>({});
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('readsphere-search-cache');
+      if (stored) {
+        searchCache.current = JSON.parse(stored);
+      }
+    } catch (e) {}
+  }, []);
 
   // Debounce search query changes to make search responsive and automatic
   useEffect(() => {
@@ -182,11 +495,22 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   ];
 
   const searchOnlineLibrary = useCallback(async (forcedQuery?: string) => {
+    const queryVal = typeof forcedQuery === 'string' ? forcedQuery : debouncedSearchQuery;
+    const cacheKey = `query:${queryVal || ''}|cat:${category}|lang:${language}`;
+
+    // Try cache hit first
+    if (searchCache.current[cacheKey]) {
+      setOnlineBooks(searchCache.current[cacheKey]);
+      setIsLoadingOnline(false);
+      setIsBgLoading(false);
+      return;
+    }
+
     setIsLoadingOnline(true);
+    setIsBgLoading(true);
     setOnlineBooks([]); // Clear current results to give immediate feedback
     
     try {
-      const queryVal = typeof forcedQuery === 'string' ? forcedQuery : debouncedSearchQuery;
       let q = queryVal || '';
       if (category) {
         q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
@@ -206,9 +530,16 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           }
           
           // Filter out duplicate titles for cleaner rendering
-          return merged.filter((book, index, self) =>
+          const filtered = merged.filter((book, index, self) =>
             self.findIndex(b => b.volumeInfo?.title?.toLowerCase() === book.volumeInfo?.title?.toLowerCase()) === index
           );
+
+          // Save back to cache
+          searchCache.current[cacheKey] = filtered;
+          try {
+            sessionStorage.setItem('readsphere-search-cache', JSON.stringify(searchCache.current));
+          } catch (e) {}
+          return filtered;
         });
       };
 
@@ -258,6 +589,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           }
         } catch (e) {
           console.error('Google Books error:', e);
+        } finally {
+          // Google Books usually returns in <300ms. Set isLoadingOnline to false immediately 
+          // so the user sees results right away and the main loader vanishes.
+          setIsLoadingOnline(false);
         }
       };
 
@@ -335,7 +670,6 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       };
 
       // Run fetches in parallel, letting each stream results into the UI as soon as it resolves.
-      // Google Books usually returns in <300ms, making the global catalog search feel instant.
       await Promise.allSettled([
         fetchGoogle(),
         fetchOpenLibrary(),
@@ -345,6 +679,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       console.error('Fatal Error fetching books:', error);
     } finally {
       setIsLoadingOnline(false);
+      setIsBgLoading(false);
     }
   }, [debouncedSearchQuery, category, language]);
 
@@ -421,8 +756,27 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     );
   }
 
+  const chunkBooks = (booksList: any[], size: number = 5) => {
+    const chunks = [];
+    for (let i = 0; i < booksList.length; i += size) {
+      chunks.push(booksList.slice(i, i + size));
+    }
+    return chunks;
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <style dangerouslySetInnerHTML={{__html: `
+        .shelf-book-cover {
+          perspective: 1000px;
+          transform-style: preserve-3d;
+          transform: rotateY(-14deg) translateZ(10px) skewY(1deg);
+          transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease;
+        }
+        .shelf-book-container:hover .shelf-book-cover {
+          transform: rotateY(0deg) translateZ(35px) skewY(0deg) scale(1.08);
+        }
+      `}} />
       
       {/* Floating Glass Search & Overview Dashboard */}
       <div className="relative bg-slate-950/40 backdrop-blur-md border border-slate-800/60 p-6 md:p-8 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -496,23 +850,55 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
         {/* Real-time search/query field dynamically adapted to active tab */}
         {activeTab !== 'device' && activeTab !== 'premium' && (
-          <div className="relative w-full md:w-80 max-w-full">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <Search className="w-4 h-4" />
-            </span>
-            <input 
-              type="text" 
-              placeholder={activeTab === 'local' ? 'Search bookshelf...' : 'Search title, author or keyword...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && activeTab === 'online') {
-                  setDebouncedSearchQuery(searchQuery);
-                  searchOnlineLibrary(searchQuery);
-                }
-              }}
-              className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
-            />
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap md:flex-nowrap">
+            {/* View Toggle */}
+            {(activeTab === 'local' || activeTab === 'online') && (
+              <div className="flex items-center bg-slate-950/60 p-1 border border-slate-800/80 rounded-2xl shrink-0 h-11">
+                <button
+                  onClick={() => setLayoutMode('grid')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${layoutMode === 'grid' ? 'bg-slate-900 text-primary shadow border border-slate-800' : 'text-slate-500 hover:text-slate-350'}`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Grid</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode('shelf')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${layoutMode === 'shelf' ? 'bg-slate-900 text-amber-500 shadow border border-slate-800' : 'text-slate-500 hover:text-slate-350'}`}
+                  title="3D Bookshelf View"
+                >
+                  <Library className="w-3.5 h-3.5" />
+                  <span>Gallery</span>
+                </button>
+                <button
+                  onClick={() => setLayoutMode('dome')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${layoutMode === 'dome' ? 'bg-slate-900 text-indigo-400 shadow border border-slate-800' : 'text-slate-500 hover:text-slate-350'}`}
+                  title="3D Dome Gallery View"
+                >
+                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Dome</span>
+                </button>
+              </div>
+            )}
+
+            <div className="relative w-full md:w-85 max-w-full">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <Search className="w-4 h-4" />
+              </span>
+              <input 
+                type="text" 
+                placeholder={activeTab === 'local' ? 'Search bookshelf...' : 'Search title, author or keyword...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && activeTab === 'online') {
+                    setDebouncedSearchQuery(searchQuery);
+                    searchOnlineLibrary(searchQuery);
+                  }
+                }}
+                className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -559,6 +945,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         </div>
       )}
 
+      {activeTab === 'online' && isBgLoading && !isLoadingOnline && (
+        <div className="flex items-center gap-2 text-xs text-indigo-400 font-bold px-4 py-2.5 bg-indigo-950/20 border border-indigo-900/40 rounded-2xl w-full max-w-max animate-pulse">
+          <div className="animate-spin w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full" />
+          <span>Syncing Open Library & Project Gutenberg archives in the background...</span>
+        </div>
+      )}
+
       {/* Premium lounge banner card */}
       {activeTab === 'premium' && (
         <div className="bg-gradient-to-r from-amber-500/15 via-yellow-600/5 to-amber-500/15 p-6 md:p-8 rounded-3xl border border-warning/20 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_0_40px_rgba(245,158,11,0.02)] animate-in slide-in-from-top-2 duration-300">
@@ -585,16 +978,381 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         </div>
       )}
 
-      {/* Core Book List Grid Layout */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        
-        {/* Render Bookshelf Books */}
-        {activeTab === 'local' && (
-          filteredLocalBooks.length > 0 ? (
-            filteredLocalBooks.map((book) => (
-              <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden">
-                <a href="#" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url || '', title: book.title }); }}>
-                  <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center border-b border-slate-900">
+      {/* Core Book List Layout (Grid vs Shelf Gallery vs Dome Gallery) */}
+      {layoutMode === 'dome' && (activeTab === 'local' || activeTab === 'online') ? (
+        <DomeGallery 
+          books={activeTab === 'local' ? filteredLocalBooks : onlineBooks}
+          activeTab={activeTab}
+          isPremiumUser={isPremiumUser}
+          localAddedBooks={localAddedBooks}
+          setLocalAddedBooks={setLocalAddedBooks}
+          setActiveReadingBook={setActiveReadingBook}
+          setSelectedStoreBook={setSelectedStoreBook}
+          setIsStoreModalOpen={setIsStoreModalOpen}
+          setIsUpgradeModalOpen={setIsUpgradeModalOpen}
+          setLockedBookToUnlock={setLockedBookToUnlock}
+        />
+      ) : layoutMode === 'shelf' && (activeTab === 'local' || activeTab === 'online') ? (
+        <div className="space-y-12 py-4 animate-in fade-in duration-500">
+          {(() => {
+            const booksToRender = activeTab === 'local' ? filteredLocalBooks : onlineBooks;
+            
+            if (activeTab === 'online' && isLoadingOnline && booksToRender.length === 0) {
+              return (
+                <div className="py-20 flex flex-col items-center justify-center space-y-3">
+                  <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+                  <p className="text-xs text-slate-500 tracking-wide font-medium animate-pulse">Aggregating public servers... Gutenberg, Google, & Open Library</p>
+                </div>
+              );
+            }
+            
+            if (booksToRender.length === 0) {
+              return (
+                <div className="py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
+                  <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
+                  <h3 className="font-bold text-slate-400">No books found in bookshelf</h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                    {activeTab === 'local' 
+                      ? (searchQuery ? `We couldn't find any books matching "${searchQuery}".` : 'Try seeding database via /api/seed-books or publishing your own books!')
+                      : `No titles matching "${searchQuery}" found. Try adjusting keywords.`}
+                  </p>
+                </div>
+              );
+            }
+            
+            const shelves = chunkBooks(booksToRender, 5);
+            return shelves.map((shelfBooks, shelfIndex) => (
+              <div key={`shelf-${shelfIndex}`} className="relative pt-6 pb-2 px-4 md:px-8 bg-slate-950/15 rounded-3xl border border-slate-900/30 shadow-inner">
+                {/* Horizontal row of standing books */}
+                <div className="flex flex-wrap items-end justify-start gap-x-8 md:gap-x-12 gap-y-6 pb-2 px-2 z-10 relative">
+                  {shelfBooks.map((book, bookIndex) => {
+                    const id = book.id || book.title;
+                    
+                    // Unified book fields
+                    const isLocal = activeTab === 'local';
+                    const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
+                    const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
+                    const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
+                    const isPremium = isLocal ? book.is_premium : !!book.isPremium;
+                    const price = isLocal ? undefined : book.price;
+                    const isAdded = !isLocal && localAddedBooks.some(b => b.title.toLowerCase() === title.toLowerCase());
+                    
+                    const handleCoverClick = (e: React.MouseEvent) => {
+                      e.preventDefault();
+                      if (isLocal) {
+                        setActiveReadingBook({ url: book.file_url || '', title: book.title });
+                      } else {
+                        if (book.isPremium) {
+                          setSelectedStoreBook(book);
+                          setIsStoreModalOpen(true);
+                        } else {
+                          if (book.isOpenLibrary) {
+                            if (book.accessInfo?.ia) {
+                              setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: title, isInternetArchive: true });
+                            } else {
+                              window.open(book.volumeInfo?.infoLink || '#', '_blank');
+                            }
+                          } else if (book.accessInfo?.epub?.downloadLink) {
+                            setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: title });
+                          } else {
+                            setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: title });
+                          }
+                        }
+                      }
+                    };
+
+                    const handleAddBtn = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      try {
+                        const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                        const newBook = {
+                          id: book.id,
+                          title: title,
+                          author: author,
+                          cover_url: cover || '',
+                          file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
+                          is_premium: !!book.isPremium
+                        };
+                        
+                        if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
+                          const updated = [newBook, ...addedList];
+                          localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                          setLocalAddedBooks(updated);
+                          alert(`"${title}" added to bookshelf!`);
+                        }
+                      } catch (err) {}
+                    };
+
+                    return (
+                      <div 
+                        key={`${id}-${bookIndex}`}
+                        className="shelf-book-container group w-20 md:w-24 flex flex-col justify-end relative hover:z-20 cursor-pointer"
+                        onClick={handleCoverClick}
+                      >
+                        {/* 3D Book object */}
+                        <div 
+                          className="shelf-book-cover relative aspect-[2/3] w-full rounded-md overflow-hidden bg-slate-900 border border-slate-950 shadow-[5px_10px_20px_rgba(0,0,0,0.6)] group-hover:shadow-[0_20px_35px_rgba(0,0,0,0.8)]"
+                        >
+                          {/* Cover Image */}
+                          {cover ? (
+                            <img src={cover} alt={title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center p-3 text-center text-slate-500 h-full">
+                              <BookOpen className="w-6 h-6 mb-1 text-slate-700" />
+                              <span className="font-bold text-[9px] uppercase line-clamp-2">{title}</span>
+                            </div>
+                          )}
+                          
+                          {/* VIP Tag */}
+                          {isPremium && (
+                            <div className="absolute top-1 right-1 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[7px] font-black px-1.5 py-0.5 rounded shadow z-10 tracking-widest uppercase scale-75 md:scale-100">
+                              VIP
+                            </div>
+                          )}
+
+                          {/* 3D Spine Curve shadow overlay */}
+                          <div className="absolute inset-y-0 left-0 w-[6px] bg-gradient-to-r from-black/55 via-black/10 to-transparent pointer-events-none" />
+                          
+                          {/* Inner page edge shine */}
+                          <div className="absolute inset-y-0 right-0 w-[2px] bg-white/20 pointer-events-none" />
+
+                          {/* Read now Hover overlay */}
+                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="bg-primary/95 text-white text-[8px] font-black px-2 py-1 rounded shadow tracking-widest uppercase scale-75 group-hover:scale-100 transition-transform">
+                              {isPremium && !isLocal ? 'BUY' : 'READ'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Stand book shadow on the shelf */}
+                        <div className="absolute bottom-0 inset-x-2 h-2 bg-black/60 blur-[3px] rounded-full scale-y-50 group-hover:opacity-0 transition-opacity pointer-events-none" />
+
+                        {/* Title & Author tooltip-style beneath */}
+                        <div className="mt-3 text-center w-full">
+                          <h4 className="font-bold text-[10px] md:text-xs truncate text-slate-200 group-hover:text-primary transition-colors">{title}</h4>
+                          <p className="text-[9px] text-slate-500 truncate mt-0.5">{author}</p>
+                          
+                          {/* Inline Add button on online bookshelf view */}
+                          {!isLocal && (
+                            <button
+                              onClick={handleAddBtn}
+                              disabled={isAdded}
+                              className={`mt-1.5 px-2 py-0.5 rounded-md text-[8px] font-black w-full border ${
+                                isAdded 
+                                  ? 'text-green-400 border-green-500/20 bg-green-500/5 cursor-default' 
+                                  : 'text-indigo-400 border-indigo-500/25 bg-indigo-500/5 hover:bg-indigo-500 hover:text-white transition-colors'
+                              }`}
+                            >
+                              {isAdded ? '✓ Added' : '➕ Bookshelf'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* 3D Shelf Platform */}
+                <div className="w-full h-4 bg-gradient-to-r from-amber-950/90 via-[#452b1f] to-amber-950/90 border-t border-amber-800/40 rounded shadow-md mt-1 relative">
+                  {/* golden highlights */}
+                  <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-amber-500/20 via-yellow-400/40 to-amber-500/20"></div>
+                  {/* Under shelf shadow drop */}
+                  <div className="absolute inset-x-0 bottom-[-12px] h-3 bg-gradient-to-b from-black/70 to-transparent pointer-events-none"></div>
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          
+          {/* Render Bookshelf Books */}
+          {activeTab === 'local' && (
+            filteredLocalBooks.length > 0 ? (
+              filteredLocalBooks.map((book) => (
+                <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden">
+                  <a href="#" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url || '', title: book.title }); }}>
+                    <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center border-b border-slate-900">
+                      {book.cover_url ? (
+                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-4 text-center text-slate-500">
+                          <BookOpen className="w-8 h-8 mb-2 text-slate-700" />
+                          <span className="font-bold text-xs uppercase truncate max-w-xs">{book.title}</span>
+                        </div>
+                      )}
+                      {book.is_premium && (
+                        <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded shadow z-10 tracking-widest uppercase">
+                          VIP
+                        </div>
+                      )}
+                      <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10 flex items-center gap-1">
+                        <span>READ NOW</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{book.title}</h3>
+                      <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
+                    </CardContent>
+                  </a>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
+                <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
+                <h3 className="font-bold text-slate-400">No books found in bookshelf</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  {searchQuery ? `We couldn't find any books matching "${searchQuery}". Adjust your spelling or keywords.` : 'Try seeding database via /api/seed-books or publishing your own books!'}
+                </p>
+              </div>
+            )
+          )}
+
+          {/* Render Global Catalog Search Results */}
+          {activeTab === 'online' && (
+            (isLoadingOnline && onlineBooks.length === 0) ? (
+              <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-3">
+                <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+                <p className="text-xs text-slate-500 tracking-wide font-medium animate-pulse">Aggregating public servers... Gutenberg, Google, & Open Library</p>
+              </div>
+            ) : onlineBooks.length > 0 ? (
+              onlineBooks.map((book, index) => {
+                const info = book.volumeInfo || {};
+                const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
+                const isAdded = localAddedBooks.some(b => b.title.toLowerCase() === info.title.toLowerCase());
+
+                const handleAddToLibrary = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  try {
+                    const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                    const newBook = {
+                      id: book.id,
+                      title: info.title,
+                      author: info.authors?.[0] || 'Unknown Author',
+                      cover_url: thumbnail || '',
+                      file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
+                      is_premium: !!book.isPremium
+                    };
+                    
+                    if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
+                      const updated = [newBook, ...addedList];
+                      localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                      setLocalAddedBooks(updated);
+                      alert(`"${info.title}" added to your bookshelf successfully!`);
+                    }
+                  } catch (e) {
+                    console.error('Error adding to library:', e);
+                  }
+                };
+
+                return (
+                  <Card 
+                    key={`${book.id}-${index}`} 
+                    className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
+                    onClick={() => {
+                      if (book.isPremium) {
+                        setSelectedStoreBook(book);
+                        setIsStoreModalOpen(true);
+                      } else {
+                        if (book.isOpenLibrary) {
+                          if (book.accessInfo?.ia) {
+                            setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
+                          } else {
+                            window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
+                          }
+                        } else if (book.accessInfo?.epub?.downloadLink) {
+                          setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
+                        } else {
+                          // Standard Gutenberg fallback
+                          setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: info.title });
+                        }
+                      }
+                    }}
+                  >
+                    <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
+                      {thumbnail ? (
+                        <img src={thumbnail} alt={info.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-4 text-center text-slate-500">
+                          <BookOpen className="w-8 h-8 mb-2 text-slate-700" />
+                          <span className="font-bold text-xs uppercase truncate max-w-xs">{info.title}</span>
+                        </div>
+                      )}
+                      
+                      {/* Catalog Source Tag */}
+                      <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 shadow z-10 uppercase tracking-widest">
+                        {book.source || 'Global'}
+                      </div>
+
+                      {/* Pricing lock tag */}
+                      <div className={`absolute top-2 right-2 text-[8px] font-black px-2 py-0.5 rounded shadow z-10 uppercase tracking-widest ${
+                        book.isPremium 
+                          ? 'bg-gradient-to-r from-warning to-amber-500 text-slate-950' 
+                          : 'bg-green-500/10 text-green-400 border border-green-500/25'
+                      }`}>
+                        {book.isPremium ? (book.price || 'VIP') : 'FREE'}
+                      </div>
+
+                      <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
+                        {book.isPremium ? 'STORE DEAL' : 'READ NOW'}
+                      </div>
+                    </div>
+                    <CardContent className="p-4 flex-1 flex flex-col justify-between gap-3 bg-slate-950/10">
+                      <div>
+                        <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{info.title}</h3>
+                        <p className="text-xs text-slate-500 truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
+                      </div>
+
+                      <Button 
+                        size="sm" 
+                        variant={isAdded ? 'secondary' : 'primary'} 
+                        className={`w-full text-[10px] py-2 h-auto font-black flex items-center justify-center gap-1 rounded-xl transition-all ${
+                          isAdded ? 'bg-slate-900/60 text-green-400 border border-green-500/20 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        }`}
+                        onClick={handleAddToLibrary}
+                        disabled={isAdded}
+                      >
+                        {isAdded ? '✓ Added' : '➕ Add to Bookshelf'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
+                <Globe className="w-10 h-10 text-slate-700 mx-auto" />
+                <h3 className="font-bold text-slate-400">No matching search query</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  No titles matching "{searchQuery}" on Gutenberg or Open Library. Adjust your keywords or category, and click **Query Servers**.
+                </p>
+              </div>
+            )
+          )}
+
+          {/* Render Premium Lounge Exclusive Titles */}
+          {activeTab === 'premium' && (
+            premiumBooks.map((book) => {
+              const isClassic = book.id.startsWith('classic');
+              return (
+                <Card 
+                  key={book.id} 
+                  className="group cursor-pointer hover:border-warning/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden relative"
+                  onClick={() => {
+                    if (isPremiumUser) {
+                      if (isClassic) {
+                        setActiveReadingBook({ url: (book as any).file_url, title: book.title });
+                      } else {
+                        window.open(`/reader/${book.id}`, '_blank');
+                      }
+                    } else {
+                      setLockedBookToUnlock({ title: book.title, author: book.author, cover_url: book.cover_url });
+                      setIsUpgradeModalOpen(true);
+                    }
+                  }}
+                >
+                  <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center">
                     {book.cover_url ? (
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
@@ -603,234 +1361,56 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         <span className="font-bold text-xs uppercase truncate max-w-xs">{book.title}</span>
                       </div>
                     )}
-                    {book.is_premium && (
-                      <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded shadow z-10 tracking-widest uppercase">
-                        VIP
-                      </div>
-                    )}
-                    <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10 flex items-center gap-1">
-                      <span>READ NOW</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{book.title}</h3>
-                    <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
-                  </CardContent>
-                </a>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
-              <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
-              <h3 className="font-bold text-slate-400">No books found in bookshelf</h3>
-              <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                {searchQuery ? `We couldn't find any books matching "${searchQuery}". Adjust your spelling or keywords.` : 'Try seeding database via /api/seed-books or publishing your own books!'}
-              </p>
-            </div>
-          )
-        )}
-
-        {/* Render Global Catalog Search Results */}
-        {activeTab === 'online' && (
-          isLoadingOnline ? (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-3">
-              <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-              <p className="text-xs text-slate-500 tracking-wide font-medium animate-pulse">Aggregating public servers... Gutenberg, Google, & Open Library</p>
-            </div>
-          ) : onlineBooks.length > 0 ? (
-            onlineBooks.map((book, index) => {
-              const info = book.volumeInfo || {};
-              const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
-              const isAdded = localAddedBooks.some(b => b.title.toLowerCase() === info.title.toLowerCase());
-
-              const handleAddToLibrary = (e: React.MouseEvent) => {
-                e.stopPropagation();
-                try {
-                  const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
-                  const newBook = {
-                    id: book.id,
-                    title: info.title,
-                    author: info.authors?.[0] || 'Unknown Author',
-                    cover_url: thumbnail || '',
-                    file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
-                    is_premium: !!book.isPremium
-                  };
-                  
-                  if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
-                    const updated = [newBook, ...addedList];
-                    localStorage.setItem('added-to-library-books', JSON.stringify(updated));
-                    setLocalAddedBooks(updated);
-                    alert(`"${info.title}" added to your bookshelf successfully!`);
-                  }
-                } catch (e) {
-                  console.error('Error adding to library:', e);
-                }
-              };
-
-              return (
-                <Card 
-                  key={`${book.id}-${index}`} 
-                  className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
-                  onClick={() => {
-                    if (book.isPremium) {
-                      setSelectedStoreBook(book);
-                      setIsStoreModalOpen(true);
-                    } else {
-                      if (book.isOpenLibrary) {
-                        if (book.accessInfo?.ia) {
-                          setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
-                        } else {
-                          window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
-                        }
-                      } else if (book.accessInfo?.epub?.downloadLink) {
-                        setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
-                      } else {
-                        // Standard Gutenberg fallback
-                        setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: info.title });
-                      }
-                    }
-                  }}
-                >
-                  <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
-                    {thumbnail ? (
-                      <img src={thumbnail} alt={info.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-4 text-center text-slate-500">
-                        <BookOpen className="w-8 h-8 mb-2 text-slate-700" />
-                        <span className="font-bold text-xs uppercase truncate max-w-xs">{info.title}</span>
-                      </div>
-                    )}
                     
-                    {/* Catalog Source Tag */}
-                    <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 shadow z-10 uppercase tracking-widest">
-                      {book.source || 'Global'}
+                    <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded shadow z-10 tracking-widest uppercase">
+                      VIP
                     </div>
 
-                    {/* Pricing lock tag */}
-                    <div className={`absolute top-2 right-2 text-[8px] font-black px-2 py-0.5 rounded shadow z-10 uppercase tracking-widest ${
-                      book.isPremium 
-                        ? 'bg-gradient-to-r from-warning to-amber-500 text-slate-950' 
-                        : 'bg-green-500/10 text-green-400 border border-green-500/25'
-                    }`}>
-                      {book.isPremium ? (book.price || 'VIP') : 'FREE'}
-                    </div>
+                    {/* Lock Screen Overlay if user lacks premium */}
+                    {!isPremiumUser && (
+                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 group-hover:bg-slate-950/70 transition-all duration-300">
+                        <div className="w-10 h-10 rounded-2xl bg-warning/15 flex items-center justify-center border border-warning/20 text-warning group-hover:scale-110 transition-transform">
+                          <Lock className="w-5 h-5" />
+                        </div>
+                        <span className="text-[10px] font-extrabold text-warning tracking-widest uppercase bg-warning/10 px-2 py-0.5 rounded border border-warning/20">LOCKED</span>
+                      </div>
+                    )}
 
-                    <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
-                      {book.isPremium ? 'STORE DEAL' : 'READ NOW'}
-                    </div>
+                    {isPremiumUser && (
+                      <div className="absolute bottom-2.5 right-2.5 bg-warning text-black text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
+                        READ NOW
+                      </div>
+                    )}
                   </div>
-                  <CardContent className="p-4 flex-1 flex flex-col justify-between gap-3 bg-slate-950/10">
-                    <div>
-                      <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{info.title}</h3>
-                      <p className="text-xs text-slate-500 truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
-                    </div>
-
-                    <Button 
-                      size="sm" 
-                      variant={isAdded ? 'secondary' : 'primary'} 
-                      className={`w-full text-[10px] py-2 h-auto font-black flex items-center justify-center gap-1 rounded-xl transition-all ${
-                        isAdded ? 'bg-slate-900/60 text-green-400 border border-green-500/20 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                      }`}
-                      onClick={handleAddToLibrary}
-                      disabled={isAdded}
-                    >
-                      {isAdded ? '✓ Added' : '➕ Add to Bookshelf'}
-                    </Button>
+                  <CardContent className="p-4 bg-slate-950/10">
+                    <h3 className="font-bold text-sm truncate group-hover:text-warning transition-colors text-slate-100">{book.title}</h3>
+                    <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
                   </CardContent>
                 </Card>
               );
             })
-          ) : (
-            <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
-              <Globe className="w-10 h-10 text-slate-700 mx-auto" />
-              <h3 className="font-bold text-slate-400">No matching search query</h3>
-              <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                No titles matching "{searchQuery}" on Gutenberg or Open Library. Adjust your keywords or category, and click **Query Servers**.
-              </p>
+          )}
+
+          {/* Local Device EPUB Upload Section */}
+          {activeTab === 'device' && (
+            <div className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-4 max-w-2xl mx-auto px-6 text-center animate-in slide-in-from-top-2 duration-300">
+              <div className="w-14 h-14 bg-primary/10 border border-primary/20 text-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <FolderOpen className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-white tracking-tight">Read From Local Device</h2>
+                <p className="text-slate-500 text-sm max-w-sm">
+                  Upload any standard EPUB book directly from your hard drive to read it securely in your browser cache.
+                </p>
+              </div>
+              <label className="cursor-pointer bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2">
+                <span>Choose EPUB File</span>
+                <input type="file" accept=".epub" className="hidden" onChange={handleFileUpload} />
+              </label>
             </div>
-          )
-        )}
-
-        {/* Render Premium Lounge Exclusive Titles */}
-        {activeTab === 'premium' && (
-          premiumBooks.map((book) => {
-            const isClassic = book.id.startsWith('classic');
-            return (
-              <Card 
-                key={book.id} 
-                className="group cursor-pointer hover:border-warning/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden relative"
-                onClick={() => {
-                  if (isPremiumUser) {
-                    if (isClassic) {
-                      setActiveReadingBook({ url: (book as any).file_url, title: book.title });
-                    } else {
-                      window.open(`/reader/${book.id}`, '_blank');
-                    }
-                  } else {
-                    setLockedBookToUnlock({ title: book.title, author: book.author, cover_url: book.cover_url });
-                    setIsUpgradeModalOpen(true);
-                  }
-                }}
-              >
-                <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center">
-                  {book.cover_url ? (
-                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-4 text-center text-slate-500">
-                      <BookOpen className="w-8 h-8 mb-2 text-slate-700" />
-                      <span className="font-bold text-xs uppercase truncate max-w-xs">{book.title}</span>
-                    </div>
-                  )}
-                  
-                  <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded shadow z-10 tracking-widest uppercase">
-                    VIP
-                  </div>
-
-                  {/* Lock Screen Overlay if user lacks premium */}
-                  {!isPremiumUser && (
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 group-hover:bg-slate-950/70 transition-all duration-300">
-                      <div className="w-10 h-10 rounded-2xl bg-warning/15 flex items-center justify-center border border-warning/20 text-warning group-hover:scale-110 transition-transform">
-                        <Lock className="w-5 h-5" />
-                      </div>
-                      <span className="text-[10px] font-extrabold text-warning tracking-widest uppercase bg-warning/10 px-2 py-0.5 rounded border border-warning/20">LOCKED</span>
-                    </div>
-                  )}
-
-                  {isPremiumUser && (
-                    <div className="absolute bottom-2.5 right-2.5 bg-warning text-black text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
-                      READ NOW
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4 bg-slate-950/10">
-                  <h3 className="font-bold text-sm truncate group-hover:text-warning transition-colors text-slate-100">{book.title}</h3>
-                  <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-
-        {/* Local Device EPUB Upload Section */}
-        {activeTab === 'device' && (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-4 max-w-2xl mx-auto px-6 text-center animate-in slide-in-from-top-2 duration-300">
-            <div className="w-14 h-14 bg-primary/10 border border-primary/20 text-primary rounded-2xl flex items-center justify-center shadow-lg">
-              <FolderOpen className="w-7 h-7" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-white tracking-tight">Read From Local Device</h2>
-              <p className="text-slate-500 text-sm max-w-sm">
-                Upload any standard EPUB book directly from your hard drive to read it securely in your browser cache.
-              </p>
-            </div>
-            <label className="cursor-pointer bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2">
-              <span>Choose EPUB File</span>
-              <input type="file" accept=".epub" className="hidden" onChange={handleFileUpload} />
-            </label>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Premium Upgrade Modal */}
       <Modal 

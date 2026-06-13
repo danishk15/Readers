@@ -8,6 +8,27 @@ import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { Modal } from '@/components/ui/Modal';
 import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle, LayoutGrid, Library } from 'lucide-react';
 
+function getOnlineBookReadParams(book: any) {
+  const title = book.volumeInfo?.title || 'Unknown Title';
+  if (book.isOpenLibrary) {
+    if (book.accessInfo?.ia) {
+      return { url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title, isInternetArchive: true };
+    } else {
+      return { url: '', title, openUrl: book.volumeInfo?.infoLink || '#' };
+    }
+  } else if (book.source === 'Google Books') {
+    return { url: '', title, googleId: book.id, isGoogleBook: true };
+  } else if (book.accessInfo?.epub?.downloadLink) {
+    return { url: book.accessInfo.epub.downloadLink, title };
+  } else if (book.id?.startsWith('gutendex-')) {
+    const gutenId = book.id.replace('gutendex-', '');
+    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.images`, title };
+  } else {
+    return { url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title };
+  }
+}
+
+
 interface LocalBook {
   id: string;
   title: string;
@@ -198,23 +219,18 @@ function DomeGallery({
                 setActiveIndex(idx);
               } else {
                 if (isLocal) {
-                  setActiveReadingBook({ url: book.file_url || '', title: book.title });
-                } else {
-                  if (book.isPremium) {
-                    setSelectedStoreBook(book);
-                    setIsStoreModalOpen(true);
+                  if (book.googleId) {
+                    setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
                   } else {
-                    if (book.isOpenLibrary) {
-                      if (book.accessInfo?.ia) {
-                        setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: title, isInternetArchive: true });
-                      } else {
-                        window.open(book.volumeInfo?.infoLink || '#', '_blank');
-                      }
-                    } else if (book.accessInfo?.epub?.downloadLink) {
-                      setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: title });
-                    } else {
-                      setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: title });
-                    }
+                    setActiveReadingBook({ url: book.file_url || '', title: book.title });
+                  }
+                } else {
+                  // Direct bypass of premium purchase for online search results
+                  const params = getOnlineBookReadParams(book);
+                  if (params.openUrl) {
+                    window.open(params.openUrl, '_blank');
+                  } else {
+                    setActiveReadingBook(params);
                   }
                 }
               }
@@ -303,13 +319,19 @@ function DomeGallery({
             e.stopPropagation();
             try {
               const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+              const file_url = activeBook.accessInfo?.epub?.downloadLink || 
+                (activeBook.id?.startsWith('gutendex-') 
+                  ? `https://www.gutenberg.org/ebooks/${activeBook.id.replace('gutendex-', '')}.epub.images` 
+                  : `https://www.gutenberg.org/ebooks/1342.epub.images`);
               const newBook = {
                 id: activeBook.id,
                 title: title,
                 author: author,
                 cover_url: cover,
-                file_url: activeBook.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
-                is_premium: !!activeBook.isPremium
+                file_url: file_url,
+                is_premium: !!activeBook.isPremium,
+                googleId: activeBook.source === 'Google Books' ? activeBook.id : undefined,
+                language: activeBook.volumeInfo?.language || 'en'
               };
               
               if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
@@ -401,7 +423,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [localPublishedBooks, setLocalPublishedBooks] = useState<any[]>([]);
   const [localAddedBooks, setLocalAddedBooks] = useState<any[]>([]);
   
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(true);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [lockedBookToUnlock, setLockedBookToUnlock] = useState<{title: string, author: string, cover_url?: string} | null>(null);
 
@@ -436,21 +458,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     const checkPremiumAndStats = async () => {
       const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
       
-      // Load premium status
-      if (isDemo) {
-        setIsPremiumUser(true);
-      } else if (userId) {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { data: profile } = await supabase.from('users').select('premium_status').eq('id', userId).single();
-          if (profile?.premium_status) {
-            setIsPremiumUser(true);
-          }
-        } catch (e) {
-          console.error('Error checking premium status:', e);
-        }
-      }
+      // Load premium status - Always enable VIP/Premium for everyone
+      setIsPremiumUser(true);
 
       // Calculate weekly reading minutes
       let totalSeconds = 0;
@@ -734,10 +743,21 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   );
 
   // Client-side real-time filter of local library books
-  const filteredLocalBooks = allLocalBooks.filter(b => 
-    b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    b.author.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredLocalBooks = allLocalBooks.filter(b => {
+    const matchesSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.author.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    
+    if (language) {
+      const selectedLangObj = languages.find(l => l.code === language);
+      const lang1 = selectedLangObj?.iso6391 || '';
+      const lang2 = selectedLangObj?.iso6392 || '';
+      
+      const bookLang = (b.language || 'en').toLowerCase();
+      return bookLang.startsWith(lang1.toLowerCase()) || bookLang.startsWith(lang2.toLowerCase());
+    }
+    return true;
+  });
 
   if (activeReadingBook) {
     return (
@@ -921,22 +941,24 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         )}
       </div>
 
-      {/* Advanced filters on Online tab */}
-      {activeTab === 'online' && (
+      {/* Advanced filters on Online and Local tabs */}
+      {(activeTab === 'online' || activeTab === 'local') && (
         <div className="bg-slate-950/20 border border-slate-850 p-5 rounded-2xl flex flex-wrap gap-4 items-end animate-in slide-in-from-top-2 duration-300">
-          <div className="flex-1 min-w-[200px] space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-              <Globe className="w-3.5 h-3.5 text-indigo-400" /> Genre subject
-            </label>
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-900/60 transition-colors"
-            >
-              <option value="">All Categories</option>
-              {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-          </div>
+          {activeTab === 'online' && (
+            <div className="flex-1 min-w-[200px] space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-indigo-400" /> Genre subject
+              </label>
+              <select 
+                value={category} 
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-900/60 transition-colors"
+              >
+                <option value="">All Categories</option>
+                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+          )}
 
           <div className="flex-grow-0 min-w-[150px] space-y-1.5">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language</label>
@@ -951,15 +973,17 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </select>
           </div>
 
-          <Button 
-            onClick={() => {
-              setDebouncedSearchQuery(searchQuery);
-              searchOnlineLibrary(searchQuery);
-            }}
-            className="px-6 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-95 transition-all transform shrink-0 h-10 flex items-center justify-center gap-1.5"
-          >
-            <span>Query Servers</span>
-          </Button>
+          {activeTab === 'online' && (
+            <Button 
+              onClick={() => {
+                setDebouncedSearchQuery(searchQuery);
+                searchOnlineLibrary(searchQuery);
+              }}
+              className="px-6 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-95 transition-all transform shrink-0 h-10 flex items-center justify-center gap-1.5"
+            >
+              <span>Query Servers</span>
+            </Button>
+          )}
         </div>
       )}
 
@@ -1058,23 +1082,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                     const handleCoverClick = (e: React.MouseEvent) => {
                       e.preventDefault();
                       if (isLocal) {
-                        setActiveReadingBook({ url: book.file_url || '', title: book.title });
-                      } else {
-                        if (book.isPremium) {
-                          setSelectedStoreBook(book);
-                          setIsStoreModalOpen(true);
+                        if (book.googleId) {
+                          setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
                         } else {
-                          if (book.isOpenLibrary) {
-                            if (book.accessInfo?.ia) {
-                              setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: title, isInternetArchive: true });
-                            } else {
-                              window.open(book.volumeInfo?.infoLink || '#', '_blank');
-                            }
-                          } else if (book.accessInfo?.epub?.downloadLink) {
-                            setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: title });
-                          } else {
-                            setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: title });
-                          }
+                          setActiveReadingBook({ url: book.file_url || '', title: book.title });
+                        }
+                      } else {
+                        // Direct bypass of premium purchase for online search results
+                        const params = getOnlineBookReadParams(book);
+                        if (params.openUrl) {
+                          window.open(params.openUrl, '_blank');
+                        } else {
+                          setActiveReadingBook(params);
                         }
                       }
                     };
@@ -1084,13 +1103,19 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                       e.preventDefault();
                       try {
                         const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                        const file_url = book.accessInfo?.epub?.downloadLink || 
+                          (book.id?.startsWith('gutendex-') 
+                            ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.images` 
+                            : `https://www.gutenberg.org/ebooks/1342.epub.images`);
                         const newBook = {
                           id: book.id,
                           title: title,
                           author: author,
                           cover_url: cover || '',
-                          file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
-                          is_premium: !!book.isPremium
+                          file_url: file_url,
+                          is_premium: !!book.isPremium,
+                          googleId: book.source === 'Google Books' ? book.id : undefined,
+                          language: book.volumeInfo?.language || 'en'
                         };
                         
                         if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
@@ -1190,7 +1215,14 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             filteredLocalBooks.length > 0 ? (
               filteredLocalBooks.map((book) => (
                 <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden">
-                  <a href="#" onClick={(e) => { e.preventDefault(); setActiveReadingBook({ url: book.file_url || '', title: book.title }); }}>
+                  <a href="#" onClick={(e) => { 
+                    e.preventDefault(); 
+                    if (book.googleId) {
+                      setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
+                    } else {
+                      setActiveReadingBook({ url: book.file_url || '', title: book.title }); 
+                    }
+                  }}>
                     <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center border-b border-slate-900">
                       {book.cover_url ? (
                         <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -1241,54 +1273,50 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
                 const isAdded = localAddedBooks.some(b => b.title.toLowerCase() === info.title.toLowerCase());
 
-                const handleAddToLibrary = (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  try {
-                    const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
-                    const newBook = {
-                      id: book.id,
-                      title: info.title,
-                      author: info.authors?.[0] || 'Unknown Author',
-                      cover_url: thumbnail || '',
-                      file_url: book.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/1342.epub.images`,
-                      is_premium: !!book.isPremium
-                    };
-                    
-                    if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
-                      const updated = [newBook, ...addedList];
-                      localStorage.setItem('added-to-library-books', JSON.stringify(updated));
-                      setLocalAddedBooks(updated);
-                      alert(`"${info.title}" added to your bookshelf successfully!`);
-                    }
-                  } catch (e) {
-                    console.error('Error adding to library:', e);
-                  }
-                };
-
-                return (
-                  <Card 
-                    key={`${book.id}-${index}`} 
-                    className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
-                    onClick={() => {
-                      if (book.isPremium) {
-                        setSelectedStoreBook(book);
-                        setIsStoreModalOpen(true);
-                      } else {
-                        if (book.isOpenLibrary) {
-                          if (book.accessInfo?.ia) {
-                            setActiveReadingBook({ url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title: info.title, isInternetArchive: true });
-                          } else {
-                            window.open(info.infoLink || `https://archive.org/details/${book.accessInfo?.ia}`, '_blank');
-                          }
-                        } else if (book.accessInfo?.epub?.downloadLink) {
-                          setActiveReadingBook({ url: book.accessInfo.epub.downloadLink, title: info.title, isGoogleBook: false });
-                        } else {
-                          // Standard Gutenberg fallback
-                          setActiveReadingBook({ url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title: info.title });
-                        }
-                      }
-                    }}
-                  >
+                 const handleAddToLibrary = (e: React.MouseEvent) => {
+                   e.stopPropagation();
+                   try {
+                     const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                     const file_url = book.accessInfo?.epub?.downloadLink || 
+                       (book.id?.startsWith('gutendex-') 
+                         ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.images` 
+                         : `https://www.gutenberg.org/ebooks/1342.epub.images`);
+                     const newBook = {
+                       id: book.id,
+                       title: info.title,
+                       author: info.authors?.[0] || 'Unknown Author',
+                       cover_url: thumbnail || '',
+                       file_url: file_url,
+                       is_premium: !!book.isPremium,
+                       googleId: book.source === 'Google Books' ? book.id : undefined,
+                       language: book.volumeInfo?.language || 'en'
+                     };
+                     
+                     if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
+                       const updated = [newBook, ...addedList];
+                       localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                       setLocalAddedBooks(updated);
+                       alert(`"${info.title}" added to your bookshelf successfully!`);
+                     }
+                   } catch (e) {
+                     console.error('Error adding to library:', e);
+                   }
+                 };
+ 
+                 return (
+                   <Card 
+                     key={`${book.id}-${index}`} 
+                     className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
+                     onClick={() => {
+                       // Bypass premium buy step for everyone
+                       const params = getOnlineBookReadParams(book);
+                       if (params.openUrl) {
+                         window.open(params.openUrl, '_blank');
+                       } else {
+                         setActiveReadingBook(params);
+                       }
+                     }}
+                   >
                     <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
                       {thumbnail ? (
                         <img src={thumbnail} alt={info.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -1509,13 +1537,19 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             setTimeout(() => {
               try {
                 const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+                const file_url = selectedStoreBook.accessInfo?.epub?.downloadLink || 
+                  (selectedStoreBook.id?.startsWith('gutendex-') 
+                    ? `https://www.gutenberg.org/ebooks/${selectedStoreBook.id.replace('gutendex-', '')}.epub.images` 
+                    : `https://www.gutenberg.org/ebooks/1342.epub.images`);
                 const newBook = {
                   id: selectedStoreBook.id,
                   title: info.title,
                   author: info.authors?.[0] || 'Unknown Author',
                   cover_url: thumbnail || '',
-                  file_url: selectedStoreBook.accessInfo?.epub?.downloadLink || `https://www.gutenberg.org/ebooks/84.epub.images`,
-                  is_premium: false
+                  file_url: file_url,
+                  is_premium: false,
+                  googleId: selectedStoreBook.source === 'Google Books' ? selectedStoreBook.id : undefined,
+                  language: selectedStoreBook.volumeInfo?.language || 'en'
                 };
                 
                 if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {

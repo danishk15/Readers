@@ -103,7 +103,9 @@ export default async function BookDetailsPage({ params }: { params: { id: string
               <span className="inline-flex text-cyan-400 gap-1 items-center text-xs font-semibold uppercase tracking-wider mb-1">
                 <Languages className="w-3.5 h-3.5" /> Lang.
               </span>
-              <p className="font-extrabold text-base text-slate-100 font-mono">EN</p>
+              <p className="font-extrabold text-base text-slate-100 font-mono">
+                {book.language ? book.language.toUpperCase() : 'EN'}
+              </p>
             </div>
           </div>
 

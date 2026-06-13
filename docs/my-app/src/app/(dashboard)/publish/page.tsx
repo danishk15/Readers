@@ -15,6 +15,28 @@ export default function PublishPage() {
   const [bookFile, setBookFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [language, setLanguage] = useState('en');
+
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'hi', label: 'Hindi (हिन्दी)' },
+    { code: 'es', label: 'Spanish (Español)' },
+    { code: 'fr', label: 'French (Français)' },
+    { code: 'de', label: 'German (Deutsch)' },
+    { code: 'ar', label: 'Arabic (العربية)' },
+    { code: 'fa', label: 'Persian (فارسی)' },
+    { code: 'ur', label: 'Urdu (اردو)' },
+    { code: 'ja', label: 'Japanese (日本語)' },
+    { code: 'zh', label: 'Chinese (中文)' },
+    { code: 'ru', label: 'Russian (Русский)' },
+    { code: 'pt', label: 'Portuguese (Português)' },
+    { code: 'it', label: 'Italian (Italiano)' },
+    { code: 'tr', label: 'Turkish (Türkçe)' },
+    { code: 'da', label: 'Danish (Dansk)' },
+    { code: 'sv', label: 'Swedish (Svenska)' },
+    { code: 'nl', label: 'Dutch (Nederlands)' },
+    { code: 'ko', label: 'Korean (한국어)' }
+  ];
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +65,7 @@ export default function PublishPage() {
               cover_url: base64Cover,
               file_url: localFileUrl,
               is_premium: false,
+              language: language,
               created_at: new Date().toISOString()
             };
             
@@ -64,6 +87,7 @@ export default function PublishPage() {
                 cover_url: '',
                 file_url: localFileUrl,
                 is_premium: false,
+                language: language,
                 created_at: new Date().toISOString()
               };
               localStorage.setItem('local-published-books', JSON.stringify([newBook, ...localPublishedList]));
@@ -101,13 +125,23 @@ export default function PublishPage() {
           const fileUrl = await uploadFile('books_media', bookPath, bookFile);
 
           // 3. Insert into Database
-          const { error } = await supabase.from('books').insert({
+          let insertData: any = {
             title,
             author,
             cover_url: coverUrl,
             file_url: fileUrl,
             is_premium: false,
-          });
+            language: language,
+          };
+
+          let { error } = await supabase.from('books').insert(insertData);
+
+          if (error && error.message?.includes('column "language" of relation "books" does not exist')) {
+            console.warn('Language column does not exist on Supabase, retrying without language...');
+            delete insertData.language;
+            const retry = await supabase.from('books').insert(insertData);
+            error = retry.error;
+          }
 
           if (error) throw error;
           setMessage('Book published successfully to ReadSphere cloud database!');
@@ -124,6 +158,7 @@ export default function PublishPage() {
       setAuthor('');
       setCoverFile(null);
       setBookFile(null);
+      setLanguage('en');
     } catch (error: unknown) {
       if (error instanceof Error) {
         setMessage(`Error: ${error.message}`);
@@ -163,6 +198,19 @@ export default function PublishPage() {
                 onChange={e => setAuthor(e.target.value)} 
                 required 
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Book Language</label>
+              <select 
+                value={language}
+                onChange={e => setLanguage(e.target.value)}
+                className="w-full bg-slate-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-slate-350 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-800 transition-colors h-11"
+              >
+                {languages.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
             </div>
             
             <div className="space-y-2 p-4 border border-dashed border-gray-700 rounded-xl bg-background/50">

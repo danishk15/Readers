@@ -40,38 +40,9 @@ export default async function ReaderPage({ params }: { params: { id: string } })
     );
   }
 
-  // Check premium access
-  if (book.is_premium) {
-    // Need to fetch user profile to check premium status
-    const { data: profile } = await supabase.from('users').select('premium_status').eq('id', user.id).single();
-    if (!profile?.premium_status) {
-      return (
-        <div className="max-w-xl mx-auto p-12 text-center flex flex-col items-center gap-6 bg-gradient-to-br from-slate-900 to-slate-950 border border-warning/30 rounded-3xl my-16 relative overflow-hidden shadow-[0_0_50px_rgba(245,158,11,0.05)]">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-warning to-amber-500"></div>
-          <div className="w-16 h-16 rounded-2xl bg-warning/10 text-warning flex items-center justify-center shadow-lg border border-warning/20">
-            <Lock className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold text-foreground tracking-tight">Premium Content Locked</h2>
-            <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-              This high-end title is reserved for ReadSphere Premium members or readers who complete the 500-minute Weekly Quest.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full justify-center pt-2">
-            <Link href="/premium" passHref legacyBehavior>
-              <Button className="px-8 py-3 bg-gradient-to-r from-warning to-amber-500 text-black font-extrabold rounded-xl hover:from-warning/90 hover:to-amber-500/90 shadow-lg shadow-warning/20 transform hover:scale-[1.02] active:scale-95 transition-all">
-                Unlock Instantly
-              </Button>
-            </Link>
-            <Link href="/dashboard" passHref legacyBehavior>
-              <Button variant="secondary" className="px-8 py-3 rounded-xl border border-slate-800 text-slate-300 hover:text-white transition-colors">
-                Back to Library
-              </Button>
-            </Link>
-          </div>
-        </div>
-      );
-    }
+  // Check premium access - bypassed to allow everyone to read books
+  if (false && book.is_premium) {
+    // Bypassed
   }
 
   return (

@@ -17,6 +17,7 @@ CREATE TABLE public.books (
   cover_url TEXT,
   file_url TEXT NOT NULL,
   is_premium BOOLEAN DEFAULT false,
+  language TEXT DEFAULT 'en',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

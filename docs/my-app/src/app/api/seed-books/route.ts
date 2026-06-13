@@ -24,35 +24,64 @@ export async function GET() {
         author: 'F. Scott Fitzgerald',
         cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/64317.epub.images',
-        is_premium: false
+        is_premium: false,
+        language: 'en'
       },
       {
         title: 'Pride and Prejudice',
         author: 'Jane Austen',
         cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/1342.epub.images',
-        is_premium: false
+        is_premium: false,
+        language: 'en'
       },
       {
         title: 'Frankenstein',
         author: 'Mary Shelley',
         cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/84.epub.images',
-        is_premium: true
+        is_premium: true,
+        language: 'en'
       },
       {
         title: 'Moby Dick',
         author: 'Herman Melville',
         cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/2701.epub.images',
-        is_premium: false
+        is_premium: false,
+        language: 'en'
       },
       {
         title: 'Dracula',
         author: 'Bram Stoker',
         cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/345.epub.images',
-        is_premium: true
+        is_premium: true,
+        language: 'en'
+      },
+      {
+        title: 'Don Quijote',
+        author: 'Miguel de Cervantes Saavedra',
+        cover_url: 'https://covers.openlibrary.org/b/id/8254881-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/2000.epub.images',
+        is_premium: false,
+        language: 'es'
+      },
+      {
+        title: 'Le Tour du monde en quatre-vingts jours',
+        author: 'Jules Verne',
+        cover_url: 'https://covers.openlibrary.org/b/id/8313431-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/800.epub.images',
+        is_premium: false,
+        language: 'fr'
+      },
+      {
+        title: 'Faust: Eine Tragödie',
+        author: 'Johann Wolfgang von Goethe',
+        cover_url: 'https://covers.openlibrary.org/b/id/8282121-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/2229.epub.images',
+        is_premium: false,
+        language: 'de'
       }
     ];
 
@@ -69,10 +98,30 @@ export async function GET() {
       });
     }
 
-    const { data: inserted, error: insertError } = await supabase
-      .from('books')
-      .insert(booksToInsert)
-      .select();
+    let insertError: any = null;
+    let inserted: any = null;
+
+    try {
+      const res = await supabase
+        .from('books')
+        .insert(booksToInsert)
+        .select();
+      inserted = res.data;
+      insertError = res.error;
+      
+      if (insertError && insertError.message?.includes('column "language" of relation "books" does not exist')) {
+        console.warn('Language column does not exist on Supabase, retrying insert without language field...');
+        const cleanBooks = booksToInsert.map(({ language, ...rest }) => rest);
+        const retry = await supabase
+          .from('books')
+          .insert(cleanBooks)
+          .select();
+        inserted = retry.data;
+        insertError = retry.error;
+      }
+    } catch (e: any) {
+      insertError = e;
+    }
 
     if (insertError) {
       return NextResponse.json({ 

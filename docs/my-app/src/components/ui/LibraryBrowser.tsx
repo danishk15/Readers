@@ -485,13 +485,25 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
   const languages = [
-    { code: '', label: 'Any Language' },
-    { code: 'eng', label: 'English' },
-    { code: 'hin', label: 'Hindi' },
-    { code: 'urd', label: 'Urdu' },
-    { code: 'spa', label: 'Spanish' },
-    { code: 'fre', label: 'French' },
-    { code: 'ger', label: 'German' }
+    { code: '', label: 'Any Language', iso6391: '', iso6392: '' },
+    { code: 'eng', label: 'English', iso6391: 'en', iso6392: 'eng' },
+    { code: 'ara', label: 'Arabic (العربية)', iso6391: 'ar', iso6392: 'ara' },
+    { code: 'per', label: 'Persian (فارسی)', iso6391: 'fa', iso6392: 'per' },
+    { code: 'hin', label: 'Hindi (हिन्दी)', iso6391: 'hi', iso6392: 'hin' },
+    { code: 'urd', label: 'Urdu (اردو)', iso6391: 'ur', iso6392: 'urd' },
+    { code: 'spa', label: 'Spanish (Español)', iso6391: 'es', iso6392: 'spa' },
+    { code: 'fre', label: 'French (Français)', iso6391: 'fr', iso6392: 'fre' },
+    { code: 'ger', label: 'German (Deutsch)', iso6391: 'de', iso6392: 'ger' },
+    { code: 'jpn', label: 'Japanese (日本語)', iso6391: 'ja', iso6392: 'jpn' },
+    { code: 'chi', label: 'Chinese (中文)', iso6391: 'zh', iso6392: 'chi' },
+    { code: 'rus', label: 'Russian (Русский)', iso6391: 'ru', iso6392: 'rus' },
+    { code: 'por', label: 'Portuguese (Português)', iso6391: 'pt', iso6392: 'por' },
+    { code: 'ita', label: 'Italian (Italiano)', iso6391: 'it', iso6392: 'ita' },
+    { code: 'tur', label: 'Turkish (Türkçe)', iso6391: 'tr', iso6392: 'tur' },
+    { code: 'dan', label: 'Danish (Dansk)', iso6391: 'da', iso6392: 'dan' },
+    { code: 'swe', label: 'Swedish (Svenska)', iso6391: 'sv', iso6392: 'swe' },
+    { code: 'nld', label: 'Dutch (Nederlands)', iso6391: 'nl', iso6392: 'dut' },
+    { code: 'kor', label: 'Korean (한국어)', iso6391: 'ko', iso6392: 'kor' }
   ];
 
   const searchOnlineLibrary = useCallback(async (forcedQuery?: string) => {
@@ -519,14 +531,20 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         q = 'subject:fiction';
       }
       
+      const selectedLangObj = languages.find(l => l.code === language);
+      const lang1 = selectedLangObj?.iso6391 || '';
+      const lang2 = selectedLangObj?.iso6392 || '';
+
       const updateBooks = (newBooks: OnlineBook[]) => {
         setOnlineBooks((prev) => {
           let merged = [...prev, ...newBooks];
           
           // Apply language filter if language code is specified
           if (language) {
-            const langCode = language.slice(0, 2);
-            merged = merged.filter((book) => book.volumeInfo?.language?.startsWith(langCode));
+            merged = merged.filter((book) => 
+              book.volumeInfo?.language?.startsWith(lang1) || 
+              book.volumeInfo?.language?.startsWith(lang2)
+            );
           }
           
           // Filter out duplicate titles for cleaner rendering
@@ -546,7 +564,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const fetchGoogle = async () => {
         try {
           let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=25`;
-          if (language) url += `&langRestrict=${language.slice(0, 2)}`;
+          if (lang1) url += `&langRestrict=${lang1}`;
           
           const res = await fetch(url);
           if (res.ok) {
@@ -599,7 +617,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const fetchOpenLibrary = async () => {
         try {
           let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryVal || category || 'fiction')}&limit=25`;
-          if (language) olUrl += `&language=${language}`;
+          if (lang2) olUrl += `&language=${lang2}`;
           
           const olRes = await fetch(olUrl);
           if (olRes.ok) {
@@ -635,7 +653,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const fetchGutenberg = async () => {
         try {
           let gutendexUrl = `https://gutendex.com/books/?search=${encodeURIComponent(queryVal || category || 'fiction')}`;
-          if (language) gutendexUrl += `&languages=${language.slice(0, 2)}`;
+          if (lang1) gutendexUrl += `&languages=${lang1}`;
           
           const gRes = await fetch(gutendexUrl);
           if (gRes.ok) {

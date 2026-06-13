@@ -60,7 +60,15 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
     let timeoutId: any = null;
 
     try {
-      book = ePub(bookUrl);
+      const isExternal = bookUrl && 
+        (bookUrl.startsWith('http://') || bookUrl.startsWith('https://')) && 
+        (typeof window !== 'undefined' && !bookUrl.startsWith(window.location.origin));
+        
+      const resolvedUrl = isExternal 
+        ? `/api/books/proxy?url=${encodeURIComponent(bookUrl)}` 
+        : bookUrl;
+
+      book = ePub(resolvedUrl);
       const rendition = book.renderTo(viewerRef.current, {
         width: '100%',
         height: '100%',

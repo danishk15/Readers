@@ -14,7 +14,7 @@ function getOnlineBookReadParams(book: any) {
     if (book.accessInfo?.ia) {
       return { url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title, isInternetArchive: true };
     } else {
-      return { url: '', title, openUrl: book.volumeInfo?.infoLink || '#' };
+      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title };
     }
   } else if (book.source === 'Google Books') {
     return { url: '', title, googleId: book.id, isGoogleBook: true };
@@ -22,9 +22,9 @@ function getOnlineBookReadParams(book: any) {
     return { url: book.accessInfo.epub.downloadLink, title };
   } else if (book.id?.startsWith('gutendex-')) {
     const gutenId = book.id.replace('gutendex-', '');
-    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.images`, title };
+    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title };
   } else {
-    return { url: `https://www.gutenberg.org/ebooks/1342.epub.images`, title };
+    return { url: `https://www.gutenberg.org/ebooks/1342.epub.noimages`, title };
   }
 }
 
@@ -227,11 +227,7 @@ function DomeGallery({
                 } else {
                   // Direct bypass of premium purchase for online search results
                   const params = getOnlineBookReadParams(book);
-                  if (params.openUrl) {
-                    window.open(params.openUrl, '_blank');
-                  } else {
-                    setActiveReadingBook(params);
-                  }
+                  setActiveReadingBook(params);
                 }
               }
             };
@@ -321,8 +317,8 @@ function DomeGallery({
               const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
               const file_url = activeBook.accessInfo?.epub?.downloadLink || 
                 (activeBook.id?.startsWith('gutendex-') 
-                  ? `https://www.gutenberg.org/ebooks/${activeBook.id.replace('gutendex-', '')}.epub.images` 
-                  : `https://www.gutenberg.org/ebooks/1342.epub.images`);
+                  ? `https://www.gutenberg.org/ebooks/${activeBook.id.replace('gutendex-', '')}.epub.noimages` 
+                  : `https://www.gutenberg.org/ebooks/1342.epub.noimages`);
               const newBook = {
                 id: activeBook.id,
                 title: title,
@@ -337,6 +333,11 @@ function DomeGallery({
               if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
                 const updated = [newBook, ...addedList];
                 localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                const cleanList = updated.map((b: any) => ({
+                  ...b,
+                  cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
+                }));
+                document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                 setLocalAddedBooks(updated);
                 alert(`"${title}" added to bookshelf!`);
               }
@@ -728,8 +729,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const premiumBooks = [
     ...initialBooks.filter(b => b.is_premium),
     ...[
-      { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.images', is_premium: true },
-      { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.images', is_premium: true }
+      { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.noimages', is_premium: true, language: 'en' },
+      { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages', is_premium: true, language: 'en' }
     ].filter(b => !initialBooks.some(ib => ib.title.toLowerCase() === b.title.toLowerCase()))
   ];
 
@@ -1090,11 +1091,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                       } else {
                         // Direct bypass of premium purchase for online search results
                         const params = getOnlineBookReadParams(book);
-                        if (params.openUrl) {
-                          window.open(params.openUrl, '_blank');
-                        } else {
-                          setActiveReadingBook(params);
-                        }
+                        setActiveReadingBook(params);
                       }
                     };
 
@@ -1105,8 +1102,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
                         const file_url = book.accessInfo?.epub?.downloadLink || 
                           (book.id?.startsWith('gutendex-') 
-                            ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.images` 
-                            : `https://www.gutenberg.org/ebooks/1342.epub.images`);
+                            ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.noimages` 
+                            : `https://www.gutenberg.org/ebooks/1342.epub.noimages`);
                         const newBook = {
                           id: book.id,
                           title: title,
@@ -1121,6 +1118,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         if (!addedList.some((b: any) => b.title.toLowerCase() === title.toLowerCase())) {
                           const updated = [newBook, ...addedList];
                           localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                          const cleanList = updated.map((b: any) => ({
+                            ...b,
+                            cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
+                          }));
+                          document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                           setLocalAddedBooks(updated);
                           alert(`"${title}" added to bookshelf!`);
                         }
@@ -1279,8 +1281,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                      const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
                      const file_url = book.accessInfo?.epub?.downloadLink || 
                        (book.id?.startsWith('gutendex-') 
-                         ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.images` 
-                         : `https://www.gutenberg.org/ebooks/1342.epub.images`);
+                         ? `https://www.gutenberg.org/ebooks/${book.id.replace('gutendex-', '')}.epub.noimages` 
+                         : `https://www.gutenberg.org/ebooks/1342.epub.noimages`);
                      const newBook = {
                        id: book.id,
                        title: info.title,
@@ -1295,6 +1297,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                      if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
                        const updated = [newBook, ...addedList];
                        localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                       const cleanList = updated.map((b: any) => ({
+                         ...b,
+                         cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
+                       }));
+                       document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                        setLocalAddedBooks(updated);
                        alert(`"${info.title}" added to your bookshelf successfully!`);
                      }
@@ -1310,11 +1317,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                      onClick={() => {
                        // Bypass premium buy step for everyone
                        const params = getOnlineBookReadParams(book);
-                       if (params.openUrl) {
-                         window.open(params.openUrl, '_blank');
-                       } else {
-                         setActiveReadingBook(params);
-                       }
+                       setActiveReadingBook(params);
                      }}
                    >
                     <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -1539,8 +1542,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
                 const file_url = selectedStoreBook.accessInfo?.epub?.downloadLink || 
                   (selectedStoreBook.id?.startsWith('gutendex-') 
-                    ? `https://www.gutenberg.org/ebooks/${selectedStoreBook.id.replace('gutendex-', '')}.epub.images` 
-                    : `https://www.gutenberg.org/ebooks/1342.epub.images`);
+                    ? `https://www.gutenberg.org/ebooks/${selectedStoreBook.id.replace('gutendex-', '')}.epub.noimages` 
+                    : `https://www.gutenberg.org/ebooks/1342.epub.noimages`);
                 const newBook = {
                   id: selectedStoreBook.id,
                   title: info.title,
@@ -1555,6 +1558,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
                   const updated = [newBook, ...addedList];
                   localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                  const cleanList = updated.map((b: any) => ({
+                    ...b,
+                    cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
+                  }));
+                  document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                   setLocalAddedBooks(updated);
                 }
                 

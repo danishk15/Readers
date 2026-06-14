@@ -1,18 +1,45 @@
-import { createClient } from '@/utils/supabase/server';
+'use client';
+
+import React, { useEffect, useState, use } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, BookOpen, Star, Languages, Award, BookMarked } from 'lucide-react';
 import Link from 'next/link';
 
-export default async function BookDetailsPage({ params }: { params: { id: string } }) {
-  const supabase = await createClient();
-  const { id } = await params;
+export default function BookDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [book, setBook] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
 
-  // Fetch book details (will auto-resolve classic books through our Supabase interceptor)
-  const { data: book, error } = await supabase
-    .from('books')
-    .select('*')
-    .eq('id', id)
-    .single();
+  useEffect(() => {
+    async function loadBook() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('books')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        setBook(data);
+      } catch (err: any) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadBook();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto p-8 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl space-y-4 my-12 backdrop-blur-md flex flex-col items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+        <p className="text-slate-400 text-sm">Loading book details...</p>
+      </div>
+    );
+  }
 
   if (error || !book) {
     return (

@@ -19,6 +19,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
+  const [isPdf, setIsPdf] = useState(false);
   
   // Reflowable Fallback state (extremely robust in case CORS blocks EPUB loading)
   const [useReflowableFallback, setUseReflowableFallback] = useState(false);
@@ -52,9 +53,37 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
 
   const chapters = getSimulatedBookChapters();
 
+  // Detect if the file is a PDF
+  useEffect(() => {
+    if (!bookUrl) return;
+    
+    const urlLower = bookUrl.toLowerCase().split('?')[0];
+    const isPdfUrl = urlLower.endsWith('.pdf') || 
+                     bookUrl.startsWith('data:application/pdf') ||
+                     (typeof window !== 'undefined' && bookUrl.startsWith('blob:') && (title?.toLowerCase().endsWith('.pdf') || bookUrl.includes('pdf')));
+                     
+    if (isPdfUrl) {
+      setIsPdf(true);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]');
+      const found = localBooks.find((b: any) => b.file_url === bookUrl);
+      if (found && (found.file_type === 'application/pdf' || found.file_name?.toLowerCase().endsWith('.pdf'))) {
+        setIsPdf(true);
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
+    setIsPdf(false);
+  }, [bookUrl, title]);
+
   // 1. Try to load using standard EPUB.js
   useEffect(() => {
-    if (!viewerRef.current || useReflowableFallback) return;
+    if (!viewerRef.current || useReflowableFallback || isPdf) return;
 
     let book: any = null;
     let timeoutId: any = null;
@@ -98,12 +127,12 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
         setCurrentPage(location.start.index);
       });
 
-      // 4.5 seconds fallback trigger if loading is stalled (CORS or network issues)
+      // 15 seconds fallback trigger if loading is stalled (CORS or network issues)
       timeoutId = setTimeout(() => {
         console.warn('EPUB loading stalled, switching to Reflowable fallback');
         setUseReflowableFallback(true);
         setLoading(false);
-      }, 4500);
+      }, 15000);
 
     } catch (e) {
       console.warn('EPUB initialization crashed, fallback activated:', e);
@@ -119,7 +148,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       }
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [bookUrl, useReflowableFallback]);
+  }, [bookUrl, useReflowableFallback, isPdf]);
 
   // 2. Local progress increment
   useEffect(() => {
@@ -219,7 +248,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
         </div>
 
         {/* Reflowable Customize Options */}
-        {useReflowableFallback && (
+        {!isPdf && useReflowableFallback && (
           <div className="hidden md:flex items-center gap-3 text-[11px] bg-slate-900/60 border border-slate-800/80 px-4 py-1.5 rounded-xl shadow-inner">
             {/* Font Select */}
             <div className="flex items-center gap-1.5">
@@ -258,8 +287,12 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
         )}
 
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold">Prev</Button>
-          <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === chapters.length} className="font-bold">Next</Button>
+          {!isPdf && (
+            <>
+              <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold">Prev</Button>
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === chapters.length} className="font-bold">Next</Button>
+            </>
+          )}
         </div>
       </div>
       
@@ -272,7 +305,13 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       
       {/* Main View Area */}
       <div className="flex-1 w-full relative z-0 overflow-y-auto bg-slate-950">
-        {useReflowableFallback ? (
+        {isPdf ? (
+          <iframe 
+            src={bookUrl} 
+            className="w-full h-full border-0 bg-slate-900" 
+            title={title || "PDF Reader"} 
+          />
+        ) : useReflowableFallback ? (
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
             <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
               {/* Chapter Title */}
@@ -282,7 +321,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
               
               {/* Chapter Content */}
               <p 
-                className="leading-relaxed whitespace-pre-line flex-1 pt-2 transition-all duration-300 text-justify"
+                className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify"
                 style={{ 
                   fontSize: `${fontSize}px`, 
                   fontFamily: fontFamily,

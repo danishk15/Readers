@@ -47,6 +47,14 @@ export default function PublishPage() {
 
     const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
 
+    const syncBooksCookie = (books: any[]) => {
+      const cleanList = books.map(({ cover_url, ...rest }) => ({
+        ...rest,
+        cover_url: cover_url?.startsWith('data:') ? '' : (cover_url || '')
+      }));
+      document.cookie = "local-published-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
+    };
+
     // Helper to save locally using Base64 cover and session Object URL
     const saveLocallyFallback = () => {
       return new Promise<void>((resolve, reject) => {
@@ -55,7 +63,7 @@ export default function PublishPage() {
           reader.onloadend = () => {
             const base64Cover = coverFile ? (reader.result as string) : '';
             // Create session Object URL for the uploaded EPUB/PDF
-            const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.images';
+            const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
             
             const localPublishedList = JSON.parse(localStorage.getItem('local-published-books') || '[]');
             const newBook = {
@@ -64,12 +72,15 @@ export default function PublishPage() {
               author,
               cover_url: base64Cover,
               file_url: localFileUrl,
+              file_type: bookFile ? bookFile.type : 'application/epub+zip',
               is_premium: false,
               language: language,
               created_at: new Date().toISOString()
             };
             
-            localStorage.setItem('local-published-books', JSON.stringify([newBook, ...localPublishedList]));
+            const updatedList = [newBook, ...localPublishedList];
+            localStorage.setItem('local-published-books', JSON.stringify(updatedList));
+            syncBooksCookie(updatedList);
             resolve();
           };
 
@@ -78,7 +89,7 @@ export default function PublishPage() {
           } else {
             // Immediately compile without cover
             setTimeout(() => {
-              const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.images';
+              const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
               const localPublishedList = JSON.parse(localStorage.getItem('local-published-books') || '[]');
               const newBook = {
                 id: 'local-pub-' + Math.random().toString(36).substring(2),
@@ -86,11 +97,14 @@ export default function PublishPage() {
                 author,
                 cover_url: '',
                 file_url: localFileUrl,
+                file_type: bookFile ? bookFile.type : 'application/epub+zip',
                 is_premium: false,
                 language: language,
                 created_at: new Date().toISOString()
               };
-              localStorage.setItem('local-published-books', JSON.stringify([newBook, ...localPublishedList]));
+              const updatedList = [newBook, ...localPublishedList];
+              localStorage.setItem('local-published-books', JSON.stringify(updatedList));
+              syncBooksCookie(updatedList);
               resolve();
             }, 0);
           }

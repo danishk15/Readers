@@ -2,11 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export const CLASSIC_BOOKS = [
-  { id: 'classic-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/64317.epub.images', is_premium: false },
-  { id: 'classic-2', title: 'Pride and Prejudice', author: 'Jane Austen', cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/1342.epub.images', is_premium: false },
-  { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.images', is_premium: true },
-  { id: 'classic-4', title: 'Moby Dick', author: 'Herman Melville', cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/2701.epub.images', is_premium: false },
-  { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.images', is_premium: true }
+  { id: 'classic-1', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/64317.epub.noimages', is_premium: false, language: 'en' },
+  { id: 'classic-2', title: 'Pride and Prejudice', author: 'Jane Austen', cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', is_premium: false, language: 'en' },
+  { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.noimages', is_premium: true, language: 'en' },
+  { id: 'classic-4', title: 'Moby Dick', author: 'Herman Melville', cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/2701.epub.noimages', is_premium: false, language: 'en' },
+  { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages', is_premium: true, language: 'en' }
 ];
 
 export async function createClient() {
@@ -80,9 +80,26 @@ export async function createClient() {
         },
         order: () => chain,
         single: async () => {
-          if (eqId && eqId.startsWith('classic-')) {
-            const book = CLASSIC_BOOKS.find(b => b.id === eqId)
-            if (book) return { data: book, error: null }
+          const getCookieBooks = (name: string) => {
+            const val = cookieStore.get(name)?.value
+            if (val) {
+              try { return JSON.parse(decodeURIComponent(val)) } catch {}
+            }
+            return []
+          }
+
+          if (eqId) {
+            if (eqId.startsWith('classic-')) {
+              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              if (book) return { data: book, error: null }
+            }
+            const localPubBooks = getCookieBooks('local-published-books')
+            let b = localPubBooks.find((x: any) => x.id === eqId)
+            if (b) return { data: b, error: null }
+            
+            const addedBooks = getCookieBooks('added-to-library-books')
+            b = addedBooks.find((x: any) => x.id === eqId)
+            if (b) return { data: b, error: null }
           }
           if (isDemo) {
             const book = CLASSIC_BOOKS.find(b => b.id === eqId)
@@ -101,35 +118,59 @@ export async function createClient() {
           }
         },
         then: async (resolve: any, reject: any) => {
-          try {
-            if (eqId && eqId.startsWith('classic-')) {
-              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
-              if (book) return resolve({ data: book, error: null })
+          const getCookieBooks = (name: string) => {
+            const val = cookieStore.get(name)?.value
+            if (val) {
+              try { return JSON.parse(decodeURIComponent(val)) } catch {}
             }
+            return []
+          }
+
+          try {
+            if (eqId) {
+              if (eqId.startsWith('classic-')) {
+                const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+                if (book) return resolve({ data: book, error: null })
+              }
+              const localPubBooks = getCookieBooks('local-published-books')
+              let b = localPubBooks.find((x: any) => x.id === eqId)
+              if (b) return resolve({ data: b, error: null })
+
+              const addedBooks = getCookieBooks('added-to-library-books')
+              b = addedBooks.find((x: any) => x.id === eqId)
+              if (b) return resolve({ data: b, error: null })
+            }
+
+            const localPubBooks = getCookieBooks('local-published-books')
+            const addedBooks = getCookieBooks('added-to-library-books')
+            const localCombined = [...localPubBooks, ...addedBooks]
+
             if (isDemo) {
               if (eqId) {
-                const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+                const book = [...localCombined, ...CLASSIC_BOOKS].find(b => b.id === eqId)
                 return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
               }
-              return resolve({ data: CLASSIC_BOOKS, error: null })
+              return resolve({ data: [...localCombined, ...CLASSIC_BOOKS], error: null })
             }
             let realQuery = originalFrom(relation).select('*')
             if (eqId) realQuery = realQuery.eq('id', eqId)
             const res = await realQuery
             if (res.error || !res.data || res.data.length === 0) {
               if (eqId) {
-                const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+                const book = [...localCombined, ...CLASSIC_BOOKS].find(b => b.id === eqId)
                 return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
               }
-              return resolve({ data: CLASSIC_BOOKS, error: null })
+              return resolve({ data: [...localCombined, ...CLASSIC_BOOKS], error: null })
             }
             return resolve(res)
           } catch (e) {
+            const localPubBooks = getCookieBooks('local-published-books')
+            const addedBooks = getCookieBooks('added-to-library-books')
             if (eqId) {
-              const book = CLASSIC_BOOKS.find(b => b.id === eqId)
+              const book = [...localPubBooks, ...addedBooks, ...CLASSIC_BOOKS].find(b => b.id === eqId)
               return resolve({ data: book || null, error: book ? null : { message: 'Book not found' } })
             }
-            return resolve({ data: CLASSIC_BOOKS, error: null })
+            return resolve({ data: [...localPubBooks, ...addedBooks, ...CLASSIC_BOOKS], error: null })
           }
         }
       }

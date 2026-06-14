@@ -31,7 +31,7 @@ export async function POST(req: Request) {
           const { data: newBook } = await supabase.from('books').insert({
             title: 'The Great Gatsby',
             author: 'F. Scott Fitzgerald',
-            file_url: 'https://www.gutenberg.org/ebooks/64317.epub.images',
+            file_url: 'https://www.gutenberg.org/ebooks/64317.epub.noimages',
             cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg'
           }).select('id').single();
           if (newBook) bookId = newBook.id;

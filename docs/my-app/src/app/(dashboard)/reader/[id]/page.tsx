@@ -1,27 +1,57 @@
-import { createClient } from '@/utils/supabase/server';
+'use client';
+
+import React, { useEffect, useState, use } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import Reader from '@/components/ui/Reader';
 import BookComments from '@/components/ui/BookComments';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Lock, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-export default async function ReaderPage({ params }: { params: { id: string } }) {
-  const supabase = await createClient();
-  const { id } = await params;
+export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [book, setBook] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/login');
+          return;
+        }
+        setUser(user);
+
+        const { data, error } = await supabase
+          .from('books')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        setBook(data);
+      } catch (err: any) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [id, router]);
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto p-8 text-center bg-slate-900/40 border border-slate-800 rounded-2xl space-y-4 my-12 backdrop-blur-md flex flex-col items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+        <p className="text-slate-400 text-sm">Loading book reader...</p>
+      </div>
+    );
   }
-
-  // Fetch book details (will auto-resolve classic books through our Supabase interceptor)
-  const { data: book, error } = await supabase
-    .from('books')
-    .select('*')
-    .eq('id', id)
-    .single();
 
   if (error || !book) {
     return (
@@ -38,11 +68,6 @@ export default async function ReaderPage({ params }: { params: { id: string } })
         </Link>
       </div>
     );
-  }
-
-  // Check premium access - bypassed to allow everyone to read books
-  if (false && book.is_premium) {
-    // Bypassed
   }
 
   return (

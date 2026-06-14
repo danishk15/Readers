@@ -23,7 +23,7 @@ export async function GET() {
         title: 'The Great Gatsby',
         author: 'F. Scott Fitzgerald',
         cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/64317.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/64317.epub.noimages',
         is_premium: false,
         language: 'en'
       },
@@ -31,7 +31,7 @@ export async function GET() {
         title: 'Pride and Prejudice',
         author: 'Jane Austen',
         cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/1342.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages',
         is_premium: false,
         language: 'en'
       },
@@ -39,7 +39,7 @@ export async function GET() {
         title: 'Frankenstein',
         author: 'Mary Shelley',
         cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/84.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/84.epub.noimages',
         is_premium: true,
         language: 'en'
       },
@@ -47,7 +47,7 @@ export async function GET() {
         title: 'Moby Dick',
         author: 'Herman Melville',
         cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/2701.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/2701.epub.noimages',
         is_premium: false,
         language: 'en'
       },
@@ -55,7 +55,7 @@ export async function GET() {
         title: 'Dracula',
         author: 'Bram Stoker',
         cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/345.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages',
         is_premium: true,
         language: 'en'
       },
@@ -63,7 +63,7 @@ export async function GET() {
         title: 'Don Quijote',
         author: 'Miguel de Cervantes Saavedra',
         cover_url: 'https://covers.openlibrary.org/b/id/8254881-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/2000.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/2000.epub.noimages',
         is_premium: false,
         language: 'es'
       },
@@ -71,7 +71,7 @@ export async function GET() {
         title: 'Le Tour du monde en quatre-vingts jours',
         author: 'Jules Verne',
         cover_url: 'https://covers.openlibrary.org/b/id/8313431-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/800.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/800.epub.noimages',
         is_premium: false,
         language: 'fr'
       },
@@ -79,7 +79,7 @@ export async function GET() {
         title: 'Faust: Eine Tragödie',
         author: 'Johann Wolfgang von Goethe',
         cover_url: 'https://covers.openlibrary.org/b/id/8282121-M.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/2229.epub.images',
+        file_url: 'https://www.gutenberg.org/ebooks/2229.epub.noimages',
         is_premium: false,
         language: 'de'
       }

@@ -5,6 +5,7 @@ import ePub, { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
 import { BookOpen } from 'lucide-react';
+import { getCachedBook } from '@/utils/offlineStorage';
 
 interface LocationStart {
   index: number;
@@ -20,6 +21,25 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
   const [currentPage, setCurrentPage] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
+  const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
+
+  // Check if there is an offline cached version in IndexedDB
+  useEffect(() => {
+    async function checkOffline() {
+      try {
+        const cached = await getCachedBook(bookId);
+        if (cached) {
+          const blobUrl = URL.createObjectURL(cached.fileData);
+          setResolvedBookUrl(blobUrl);
+        } else {
+          setResolvedBookUrl(bookUrl);
+        }
+      } catch {
+        setResolvedBookUrl(bookUrl);
+      }
+    }
+    checkOffline();
+  }, [bookUrl, bookId]);
   
   // Reflowable Fallback state (extremely robust in case CORS blocks EPUB loading)
   const [useReflowableFallback, setUseReflowableFallback] = useState(false);
@@ -55,12 +75,12 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
 
   // Detect if the file is a PDF
   useEffect(() => {
-    if (!bookUrl) return;
+    if (!resolvedBookUrl) return;
     
-    const urlLower = bookUrl.toLowerCase().split('?')[0];
+    const urlLower = resolvedBookUrl.toLowerCase().split('?')[0];
     const isPdfUrl = urlLower.endsWith('.pdf') || 
-                     bookUrl.startsWith('data:application/pdf') ||
-                     (typeof window !== 'undefined' && bookUrl.startsWith('blob:') && (title?.toLowerCase().endsWith('.pdf') || bookUrl.includes('pdf')));
+                     resolvedBookUrl.startsWith('data:application/pdf') ||
+                     (typeof window !== 'undefined' && resolvedBookUrl.startsWith('blob:') && (title?.toLowerCase().endsWith('.pdf') || resolvedBookUrl.includes('pdf')));
                      
     if (isPdfUrl) {
       setIsPdf(true);
@@ -70,7 +90,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
 
     try {
       const localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]');
-      const found = localBooks.find((b: any) => b.file_url === bookUrl);
+      const found = localBooks.find((b: any) => b.file_url === resolvedBookUrl);
       if (found && (found.file_type === 'application/pdf' || found.file_name?.toLowerCase().endsWith('.pdf'))) {
         setIsPdf(true);
         setLoading(false);
@@ -79,7 +99,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
     } catch {}
 
     setIsPdf(false);
-  }, [bookUrl, title]);
+  }, [resolvedBookUrl, title]);
 
   // 1. Try to load using standard EPUB.js
   useEffect(() => {
@@ -89,13 +109,13 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
     let timeoutId: any = null;
 
     try {
-      const isExternal = bookUrl && 
-        (bookUrl.startsWith('http://') || bookUrl.startsWith('https://')) && 
-        (typeof window !== 'undefined' && !bookUrl.startsWith(window.location.origin));
+      const isExternal = resolvedBookUrl && 
+        (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
+        (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
         
       const resolvedUrl = isExternal 
-        ? `/api/books/proxy?url=${encodeURIComponent(bookUrl)}` 
-        : bookUrl;
+        ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
+        : resolvedBookUrl;
 
       book = ePub(resolvedUrl);
       const rendition = book.renderTo(viewerRef.current, {
@@ -148,7 +168,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       }
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [bookUrl, useReflowableFallback, isPdf]);
+  }, [resolvedBookUrl, useReflowableFallback, isPdf]);
 
   // 2. Local progress increment
   useEffect(() => {
@@ -307,7 +327,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       <div className="flex-1 w-full relative z-0 overflow-y-auto bg-slate-950">
         {isPdf ? (
           <iframe 
-            src={bookUrl} 
+            src={resolvedBookUrl} 
             className="w-full h-full border-0 bg-slate-900" 
             title={title || "PDF Reader"} 
           />

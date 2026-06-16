@@ -138,8 +138,8 @@ BEGIN
   INSERT INTO public.users (id, email, username, avatar_url, role)
   VALUES (
     NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'username', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.email, ''),
+    COALESCE(NEW.raw_user_meta_data->>'username', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1), 'User'),
     NEW.raw_user_meta_data->>'avatar_url',
     'user'
   )

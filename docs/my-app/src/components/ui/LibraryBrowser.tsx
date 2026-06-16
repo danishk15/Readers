@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button';
 import Reader from '@/components/ui/Reader';
 import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { Modal } from '@/components/ui/Modal';
-import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle, LayoutGrid, Library } from 'lucide-react';
+import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle, LayoutGrid, Library, Download, CheckCircle2 } from 'lucide-react';
+import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllCachedBooks } from '@/utils/offlineStorage';
 
 function getOnlineBookReadParams(book: any) {
   const title = book.volumeInfo?.title || 'Unknown Title';
@@ -91,7 +92,8 @@ interface DomeGalleryProps {
   isPremiumUser: boolean;
   localAddedBooks: any[];
   setLocalAddedBooks: (books: any[]) => void;
-  setActiveReadingBook: (book: any) => void;
+  handleStartReading: (book: any) => void;
+  triggerOfflineDownload: (id: string, title: string, author: string, cover: string, fileUrl: string) => void;
   setSelectedStoreBook: (book: any) => void;
   setIsStoreModalOpen: (open: boolean) => void;
   setIsUpgradeModalOpen: (open: boolean) => void;
@@ -104,7 +106,8 @@ function DomeGallery({
   isPremiumUser,
   localAddedBooks,
   setLocalAddedBooks,
-  setActiveReadingBook,
+  handleStartReading,
+  triggerOfflineDownload,
   setSelectedStoreBook,
   setIsStoreModalOpen,
   setIsUpgradeModalOpen,
@@ -218,17 +221,7 @@ function DomeGallery({
               if (!isCenter) {
                 setActiveIndex(idx);
               } else {
-                if (isLocal) {
-                  if (book.googleId) {
-                    setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
-                  } else {
-                    setActiveReadingBook({ url: book.file_url || '', title: book.title });
-                  }
-                } else {
-                  // Direct bypass of premium purchase for online search results
-                  const params = getOnlineBookReadParams(book);
-                  setActiveReadingBook(params);
-                }
+                handleStartReading(book);
               }
             };
 
@@ -339,6 +332,8 @@ function DomeGallery({
                 }));
                 document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                 setLocalAddedBooks(updated);
+                // Trigger background download automatically!
+                triggerOfflineDownload(newBook.id, newBook.title, newBook.author, newBook.cover_url, newBook.file_url);
                 alert(`"${title}" added to bookshelf!`);
               }
             } catch (err) {}
@@ -432,6 +427,101 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [selectedStoreBook, setSelectedStoreBook] = useState<OnlineBook | null>(null);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
+
+  // Offline storage states
+  const [downloadedBookIds, setDownloadedBookIds] = useState<string[]>([]);
+  const [downloadingBookIds, setDownloadingBookIds] = useState<string[]>([]);
+
+  // Function to scan IndexedDB and update the cached status of all books
+  const updateOfflineStatus = useCallback(async () => {
+    try {
+      const cached = await getAllCachedBooks();
+      setDownloadedBookIds(cached.map(b => b.id));
+    } catch (err) {
+      console.warn('Failed to retrieve offline books list:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateOfflineStatus();
+  }, [updateOfflineStatus, activeTab, localAddedBooks]);
+
+  const triggerOfflineDownload = async (
+    id: string,
+    title: string,
+    author: string,
+    cover: string,
+    fileUrl: string
+  ) => {
+    if (!fileUrl || fileUrl.includes('googleId') || fileUrl.includes('google') || fileUrl.includes('archive.org/stream')) {
+      return; // Skip non-downloadable titles
+    }
+    
+    setDownloadingBookIds(prev => [...prev, id]);
+    try {
+      await saveBookOffline(id, title, author, cover, fileUrl);
+      setDownloadedBookIds(prev => {
+        if (!prev.includes(id)) return [...prev, id];
+        return prev;
+      });
+      alert(`"${title}" is now downloaded and available offline!`);
+    } catch (err: any) {
+      console.error('Failed to download book:', err);
+      alert(`Could not download "${title}" for offline reading: ${err.message}`);
+    } finally {
+      setDownloadingBookIds(prev => prev.filter(x => x !== id));
+    }
+  };
+
+  const triggerRemoveDownload = async (id: string, title: string) => {
+    try {
+      await deleteCachedBook(id);
+      setDownloadedBookIds(prev => prev.filter(x => x !== id));
+      alert(`"${title}" offline cache removed.`);
+    } catch (err) {
+      console.error('Failed to remove cached book:', err);
+    }
+  };
+
+  const handleStartReading = async (book: any) => {
+    const isLocal = activeTab === 'local' || book.file_url !== undefined;
+    const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
+    const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
+    const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
+    const id = book.id || book.title;
+
+    try {
+      const cached = await getCachedBook(id);
+      if (cached) {
+        const blobUrl = URL.createObjectURL(cached.fileData);
+        setActiveReadingBook({ url: blobUrl, title: cached.title });
+        return;
+      }
+    } catch (err) {
+      console.warn('IndexedDB read failed, falling back to network:', err);
+    }
+
+    if (isLocal) {
+      if (book.googleId) {
+        setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
+      } else {
+        if (book.file_url && !book.file_url.startsWith('blob:')) {
+          saveBookOffline(id, title, author, cover, book.file_url)
+            .then(() => setDownloadedBookIds(prev => [...prev, id]))
+            .catch(err => console.warn('Background caching failed:', err));
+        }
+        setActiveReadingBook({ url: book.file_url || '', title: book.title });
+      }
+    } else {
+      const params = getOnlineBookReadParams(book);
+      if (params.url && !params.isGoogleBook && !params.isInternetArchive) {
+        saveBookOffline(id, title, author, cover, params.url)
+          .then(() => setDownloadedBookIds(prev => [...prev, id]))
+          .catch(err => console.warn('Background caching failed:', err));
+      }
+      setActiveReadingBook(params);
+    }
+  };
 
   // Detect query parameters (tab=online)
   useEffect(() => {
@@ -1029,7 +1119,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           isPremiumUser={isPremiumUser}
           localAddedBooks={localAddedBooks}
           setLocalAddedBooks={setLocalAddedBooks}
-          setActiveReadingBook={setActiveReadingBook}
+          handleStartReading={handleStartReading}
+          triggerOfflineDownload={triggerOfflineDownload}
           setSelectedStoreBook={setSelectedStoreBook}
           setIsStoreModalOpen={setIsStoreModalOpen}
           setIsUpgradeModalOpen={setIsUpgradeModalOpen}
@@ -1082,17 +1173,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                     
                     const handleCoverClick = (e: React.MouseEvent) => {
                       e.preventDefault();
-                      if (isLocal) {
-                        if (book.googleId) {
-                          setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
-                        } else {
-                          setActiveReadingBook({ url: book.file_url || '', title: book.title });
-                        }
-                      } else {
-                        // Direct bypass of premium purchase for online search results
-                        const params = getOnlineBookReadParams(book);
-                        setActiveReadingBook(params);
-                      }
+                      handleStartReading(book);
                     };
 
                     const handleAddBtn = (e: React.MouseEvent) => {
@@ -1124,6 +1205,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                           }));
                           document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                           setLocalAddedBooks(updated);
+                          // Trigger background download automatically!
+                          triggerOfflineDownload(newBook.id, newBook.title, newBook.author, newBook.cover_url, newBook.file_url);
                           alert(`"${title}" added to bookshelf!`);
                         }
                       } catch (err) {}
@@ -1153,6 +1236,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                           {isPremium && (
                             <div className="absolute top-1 right-1 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[7px] font-black px-1.5 py-0.5 rounded shadow z-10 tracking-widest uppercase scale-75 md:scale-100">
                               VIP
+                            </div>
+                          )}
+
+                          {/* Offline Download Status Badges */}
+                          {downloadedBookIds.includes(String(id)) && (
+                            <div className="absolute top-1 left-1.5 bg-emerald-500 text-white p-0.5 rounded-full z-10 shadow" title="Available Offline">
+                              <CheckCircle2 className="w-3.5 h-3.5 fill-emerald-600 text-white" />
+                            </div>
+                          )}
+                          {downloadingBookIds.includes(String(id)) && (
+                            <div className="absolute top-1 left-1.5 bg-primary text-white p-0.5 rounded-full z-10 shadow" title="Downloading...">
+                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full block animate-spin" />
                             </div>
                           )}
 
@@ -1219,11 +1314,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden">
                   <a href="#" onClick={(e) => { 
                     e.preventDefault(); 
-                    if (book.googleId) {
-                      setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
-                    } else {
-                      setActiveReadingBook({ url: book.file_url || '', title: book.title }); 
-                    }
+                    handleStartReading(book);
                   }}>
                     <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center border-b border-slate-900">
                       {book.cover_url ? (
@@ -1239,14 +1330,58 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                           VIP
                         </div>
                       )}
+                      
+                      {/* Offline Download Status Badges */}
+                      {downloadedBookIds.includes(String(book.id)) && (
+                        <div className="absolute top-2.5 left-2.5 bg-emerald-500 text-white p-0.5 rounded-full z-10 shadow" title="Available Offline">
+                          <CheckCircle2 className="w-4 h-4 fill-emerald-600 text-white" />
+                        </div>
+                      )}
+                      {downloadingBookIds.includes(String(book.id)) && (
+                        <div className="absolute top-2.5 left-2.5 bg-primary text-white p-0.5 rounded-full z-10 shadow" title="Downloading...">
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full block animate-spin" />
+                        </div>
+                      )}
+
                       <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10 flex items-center gap-1">
                         <span>READ NOW</span>
                         <ArrowRight className="w-3 h-3" />
                       </div>
                     </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{book.title}</h3>
-                      <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
+                    <CardContent className="p-4 flex flex-col justify-between flex-1">
+                      <div>
+                        <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors text-slate-100">{book.title}</h3>
+                        <p className="text-xs text-slate-500 truncate mt-1">{book.author}</p>
+                      </div>
+                      
+                      {/* Download Actions */}
+                      {book.file_url && !book.file_url.startsWith('blob:') && (
+                        <div className="mt-3 pt-2 border-t border-slate-900/35 flex justify-between items-center">
+                          {downloadedBookIds.includes(String(book.id)) ? (
+                            <>
+                              <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">✓ Offline</span>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); triggerRemoveDownload(book.id, book.title); }}
+                                className="text-[9px] text-slate-500 hover:text-rose-450 font-bold transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          ) : downloadingBookIds.includes(String(book.id)) ? (
+                            <span className="text-[10px] font-bold text-primary flex items-center gap-1.5 animate-pulse">
+                              <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full block animate-spin" />
+                              Downloading...
+                            </span>
+                          ) : (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); e.preventDefault(); triggerOfflineDownload(book.id, book.title, book.author, book.cover_url, book.file_url); }}
+                              className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                            >
+                              <Download className="w-3.5 h-3.5" /> Download Offline
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </a>
                 </Card>
@@ -1303,6 +1438,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                        }));
                        document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
                        setLocalAddedBooks(updated);
+                       triggerOfflineDownload(newBook.id, newBook.title, newBook.author, newBook.cover_url, newBook.file_url);
                        alert(`"${info.title}" added to your bookshelf successfully!`);
                      }
                    } catch (e) {
@@ -1315,9 +1451,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                      key={`${book.id}-${index}`} 
                      className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
                      onClick={() => {
-                       // Bypass premium buy step for everyone
-                       const params = getOnlineBookReadParams(book);
-                       setActiveReadingBook(params);
+                       handleStartReading(book);
                      }}
                    >
                     <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -1334,6 +1468,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                       <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 shadow z-10 uppercase tracking-widest">
                         {book.source || 'Global'}
                       </div>
+
+                      {/* Offline Download Status Badges */}
+                      {downloadedBookIds.includes(String(book.id)) && (
+                        <div className="absolute bottom-2.5 left-2.5 bg-emerald-500 text-white p-0.5 rounded-full z-10 shadow" title="Available Offline">
+                          <CheckCircle2 className="w-4 h-4 fill-emerald-600 text-white" />
+                        </div>
+                      )}
+                      {downloadingBookIds.includes(String(book.id)) && (
+                        <div className="absolute bottom-2.5 left-2.5 bg-primary text-white p-0.5 rounded-full z-10 shadow" title="Downloading...">
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full block animate-spin" />
+                        </div>
+                      )}
 
                       {/* Pricing lock tag */}
                       <div className={`absolute top-2 right-2 text-[8px] font-black px-2 py-0.5 rounded shadow z-10 uppercase tracking-widest ${

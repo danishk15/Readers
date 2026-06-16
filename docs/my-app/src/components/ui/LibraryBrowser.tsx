@@ -908,7 +908,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       `}} />
       
       {/* Floating Glass Search & Overview Dashboard */}
-      <div className="relative bg-slate-950/40 backdrop-blur-md border border-slate-800/60 p-6 md:p-8 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="relative theme-card p-6 md:p-8 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="absolute top-[-50%] right-[-10%] w-[35vw] h-[35vw] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[-50%] left-[-10%] w-[35vw] h-[35vw] bg-cyan-600/10 rounded-full blur-[100px] pointer-events-none"></div>
         
@@ -1311,7 +1311,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           {activeTab === 'local' && (
             filteredLocalBooks.length > 0 ? (
               filteredLocalBooks.map((book) => (
-                <Card key={book.id || book.title} className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden">
+                <Card key={book.id || book.title} className="group cursor-pointer theme-card flex flex-col justify-between overflow-hidden">
                   <a href="#" onClick={(e) => { 
                     e.preventDefault(); 
                     handleStartReading(book);
@@ -1437,7 +1437,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                          cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
                        }));
                        document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
-                       setLocalAddedBooks(updated);
+                              setLocalAddedBooks(updated);
                        triggerOfflineDownload(newBook.id, newBook.title, newBook.author, newBook.cover_url, newBook.file_url);
                        alert(`"${info.title}" added to your bookshelf successfully!`);
                      }
@@ -1449,7 +1449,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                  return (
                    <Card 
                      key={`${book.id}-${index}`} 
-                     className="group cursor-pointer hover:border-primary/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl flex flex-col justify-between overflow-hidden"
+                     className="group cursor-pointer theme-card flex flex-col justify-between overflow-hidden"
                      onClick={() => {
                        handleStartReading(book);
                      }}
@@ -1533,7 +1533,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               return (
                 <Card 
                   key={book.id} 
-                  className="group cursor-pointer hover:border-warning/50 transition-all duration-300 bg-slate-950/40 backdrop-blur-sm border-slate-800 shadow-xl hover:translate-y-[-2px] flex flex-col justify-between overflow-hidden relative"
+                  className="group cursor-pointer theme-card flex flex-col justify-between overflow-hidden relative"
                   onClick={() => {
                     if (isPremiumUser) {
                       if (isClassic) {

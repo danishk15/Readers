@@ -1,33 +1,144 @@
 @import "tailwindcss";
 
+:root {
+  --primary: #5B6CFF;
+  --secondary: #8B5CF6;
+  --bg-color: #0b0c10;
+  --surface-color: #1f2833;
+  --card-bg-color: #161b22;
+  --card-border-color: rgba(255, 255, 255, 0.08);
+  --card-shadow-style: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-radius-card: 1.25rem;
+  --font-heading-family: var(--font-outfit), sans-serif;
+  --font-body-family: var(--font-plus-jakarta), sans-serif;
+  
+  /* Background gradients */
+  --bg-gradient: radial-gradient(circle at top left, rgba(91, 108, 255, 0.12), transparent 45%),
+                 radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 45%),
+                 linear-gradient(135deg, #0b0c10 0%, #161b22 100%);
+}
+
+/* Glassmorphism overrides */
+html.theme-glass {
+  --primary: #8b5cf6;
+  --secondary: #06b6d4;
+  --bg-color: #030712;
+  --surface-color: rgba(15, 23, 42, 0.4);
+  --card-bg-color: rgba(15, 23, 42, 0.35);
+  --card-border-color: rgba(255, 255, 255, 0.07);
+  --card-shadow-style: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --border-radius-card: 1.5rem;
+  --bg-gradient: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.2), transparent 40%),
+                 radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.15), transparent 40%),
+                 linear-gradient(180deg, #030712 0%, #090d16 100%);
+}
+
+/* Neomorphism overrides */
+html.theme-neo {
+  --primary: #4f46e5;
+  --secondary: #0d9488;
+  --bg-color: #1e2022;
+  --surface-color: #1e2022;
+  --card-bg-color: #1e2022;
+  --card-border-color: rgba(255, 255, 255, 0.02);
+  --card-shadow-style: 6px 6px 16px #121314, -6px -6px 16px #2a2d30;
+  --border-radius-card: 1.75rem;
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+  --bg-gradient: linear-gradient(135deg, #1e2022 0%, #17181a 100%);
+}
+
+/* Brutalism overrides */
+html.theme-brutalist {
+  --primary: #facc15; /* Neon yellow */
+  --secondary: #ec4899; /* Neon pink */
+  --bg-color: #080808;
+  --surface-color: #141414;
+  --card-bg-color: #141414;
+  --card-border-color: #ffffff;
+  --card-shadow-style: 6px 6px 0px #ffffff;
+  --border-radius-card: 0px; /* Zero rounded corners for retro look */
+  --text-primary: #ffffff;
+  --text-muted: #a3a3a3;
+  --bg-gradient: linear-gradient(180deg, #000000 0%, #0c0c0c 100%);
+}
+
 @theme {
-  --color-primary: #5B6CFF;
-  --color-secondary: #8B5CF6;
-  --color-background: #0b0c10; /* Dark granite base */
-  --color-surface: #1f2833;    /* Lighter granite surface */
-  --color-card: #161b22;       /* Intermediary card background */
-  --color-foreground: #c5c6c7;
-  --color-muted: #8b929a;
-
-  --color-success: #45a29e;    /* Chemical cyan hint */
-  --color-warning: #f59e0b;
-  --color-error: #EF4444;
-
-  --font-sans: var(--font-inter);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-card: var(--card-bg-color);
+  --color-card-border: var(--card-border-color);
+  
+  --font-sans: var(--font-body-family);
+  --font-display: var(--font-heading-family);
 }
 
 @layer base {
   :root {
-    --background: var(--color-background);
-    --foreground: var(--color-foreground);
+    --background: var(--bg-color);
+    --foreground: var(--text-primary);
   }
   
   body {
-    background: radial-gradient(circle at top left, rgba(69, 162, 158, 0.15), transparent 40%),
-                radial-gradient(circle at bottom right, rgba(91, 108, 255, 0.15), transparent 40%),
-                linear-gradient(135deg, #0b0c10 0%, #161b22 100%);
+    background: var(--bg-gradient);
     background-attachment: fixed;
-    color: var(--color-foreground);
+    color: var(--text-primary);
+    font-family: var(--font-body-family);
     min-height: 100vh;
+    transition: background 0.5s ease, color 0.5s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading-family);
+    letter-spacing: -0.02em;
   }
 }
+
+/* Glassmorphism utilities */
+.glass-blur-panel {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Theme sensitive buttons and cards */
+.theme-card {
+  background: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  box-shadow: var(--card-shadow-style);
+  border-radius: var(--border-radius-card);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Neomorphic card hover interactions */
+html.theme-neo .theme-card:hover {
+  box-shadow: 10px 10px 24px #121314, -10px -10px 24px #2a2d30;
+  transform: translateY(-2px);
+}
+
+/* Brutalist card hover interactions */
+html.theme-brutalist .theme-card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0px var(--primary);
+}
+
+/* Dynamic moving backgrounds for Glassmorphism */
+@keyframes drift {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.15); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-drift-slow {
+  animation: drift 20s infinite ease-in-out;
+}
+
+.animate-drift-mid {
+  animation: drift 15s infinite ease-in-out;
+}
+

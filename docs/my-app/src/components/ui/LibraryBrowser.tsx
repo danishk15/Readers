@@ -11,21 +11,25 @@ import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllC
 
 function getOnlineBookReadParams(book: any) {
   const title = book.volumeInfo?.title || 'Unknown Title';
+  const author = book.volumeInfo?.authors?.[0] || 'Unknown Author';
+  const description = book.volumeInfo?.description || 'No description available for this book.';
+  const id = book.id || book.title;
+
   if (book.isOpenLibrary) {
     if (book.accessInfo?.ia) {
-      return { url: `https://archive.org/stream/${book.accessInfo.ia}?ui=embed`, title, isInternetArchive: true };
+      return { url: '', title, author, description, id };
     } else {
-      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title };
+      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id };
     }
   } else if (book.source === 'Google Books') {
-    return { url: '', title, googleId: book.id, isGoogleBook: true };
+    return { url: '', title, author, description, id };
   } else if (book.accessInfo?.epub?.downloadLink) {
-    return { url: book.accessInfo.epub.downloadLink, title };
+    return { url: book.accessInfo.epub.downloadLink, title, author, description, id };
   } else if (book.id?.startsWith('gutendex-')) {
     const gutenId = book.id.replace('gutendex-', '');
-    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title };
+    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id };
   } else {
-    return { url: `https://www.gutenberg.org/ebooks/1342.epub.noimages`, title };
+    return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id };
   }
 }
 
@@ -489,12 +493,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
     const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
     const id = book.id || book.title;
+    const description = isLocal ? book.description : book.volumeInfo?.description || 'No description available.';
 
     try {
       const cached = await getCachedBook(id);
       if (cached) {
         const blobUrl = URL.createObjectURL(cached.fileData);
-        setActiveReadingBook({ url: blobUrl, title: cached.title });
+        setActiveReadingBook({ url: blobUrl, title: cached.title, author, description, id });
         return;
       }
     } catch (err) {
@@ -503,18 +508,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
     if (isLocal) {
       if (book.googleId) {
-        setActiveReadingBook({ url: '', title: book.title, googleId: book.googleId, isGoogleBook: true });
+        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.id });
       } else {
         if (book.file_url && !book.file_url.startsWith('blob:')) {
           saveBookOffline(id, title, author, cover, book.file_url)
             .then(() => setDownloadedBookIds(prev => [...prev, id]))
             .catch(err => console.warn('Background caching failed:', err));
         }
-        setActiveReadingBook({ url: book.file_url || '', title: book.title });
+        setActiveReadingBook({ url: book.file_url || '', title: book.title, author, description, id });
       }
     } else {
       const params = getOnlineBookReadParams(book);
-      if (params.url && !params.isGoogleBook && !params.isInternetArchive) {
+      if (params.url) {
         saveBookOffline(id, title, author, cover, params.url)
           .then(() => setDownloadedBookIds(prev => [...prev, id]))
           .catch(err => console.warn('Background caching failed:', err));
@@ -581,7 +586,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     checkPremiumAndStats();
   }, [userId, activeTab]);
   
-  const [activeReadingBook, setActiveReadingBook] = useState<{url: string, title: string, isGoogleBook?: boolean, googleId?: string, isInternetArchive?: boolean} | null>(null);
+  const [activeReadingBook, setActiveReadingBook] = useState<{
+    url: string;
+    title: string;
+    author?: string;
+    description?: string;
+    id?: string;
+  } | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
   const languages = [
@@ -864,23 +875,14 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             Exit Reader
           </Button>
         </div>
-        <div className="flex-1 relative bg-[#090b11] border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl">
-          {activeReadingBook.googleId ? (
-            <GoogleBookViewer bookId={activeReadingBook.googleId} />
-          ) : activeReadingBook.isGoogleBook || activeReadingBook.isInternetArchive ? (
-            <iframe src={activeReadingBook.url} className="w-full h-full border-0 bg-white" allowFullScreen title={activeReadingBook.title}></iframe>
-          ) : (
-            <>
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                <div className="text-center bg-slate-950/80 p-4 rounded-xl border border-slate-800 backdrop-blur-sm">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
-                  <p className="text-muted text-xs animate-pulse">CORS-verified fallback decoding... Loading pages.</p>
-                </div>
-              </div>
-              <Reader bookUrl={activeReadingBook.url} bookId="inline-book" userId={userId} title={activeReadingBook.title} />
-            </>
-          )}
-        </div>
+          <Reader 
+            bookUrl={activeReadingBook.url} 
+            bookId={activeReadingBook.id || "inline-book"} 
+            userId={userId} 
+            title={activeReadingBook.title}
+            author={activeReadingBook.author}
+            description={activeReadingBook.description}
+          />
       </div>
     );
   }

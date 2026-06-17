@@ -14,7 +14,45 @@ interface EpubLocation {
   start: LocationStart;
 }
 
-export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: string, bookId: string, userId: string, title?: string }) {
+const READER_THEMES: Record<string, { bg: string, text: string, border: string, rawBg: string, rawText: string }> = {
+  dark: { bg: 'bg-[#0b0c10]', text: 'text-[#cbd5e1]', border: 'border-slate-800', rawBg: '#0b0c10', rawText: '#cbd5e1' },
+  sepia: { bg: 'bg-[#f7f2e8]', text: 'text-[#433422]', border: 'border-[#ebdcc5]', rawBg: '#f7f2e8', rawText: '#433422' },
+  light: { bg: 'bg-[#ffffff]', text: 'text-[#0f172a]', border: 'border-slate-200', rawBg: '#ffffff', rawText: '#0f172a' },
+  midnight: { bg: 'bg-[#0f172a]', text: 'text-[#f1f5f9]', border: 'border-slate-800', rawBg: '#0f172a', rawText: '#f1f5f9' },
+  emerald: { bg: 'bg-[#051b11]', text: 'text-[#d2e7d6]', border: 'border-emerald-950', rawBg: '#051b11', rawText: '#d2e7d6' },
+  amethyst: { bg: 'bg-[#1a0f2e]', text: 'text-[#f3e8ff]', border: 'border-purple-950', rawBg: '#1a0f2e', rawText: '#f3e8ff' },
+  sand: { bg: 'bg-[#f4efe6]', text: 'text-[#2b261f]', border: 'border-amber-900/10', rawBg: '#f4efe6', rawText: '#2b261f' },
+  nordic: { bg: 'bg-[#eef2f7]', text: 'text-[#1e293b]', border: 'border-slate-300', rawBg: '#eef2f7', rawText: '#1e293b' }
+};
+
+const READER_FONTS = [
+  { value: 'Georgia', label: 'Serif (Georgia)' },
+  { value: 'Arial', label: 'Sans (Arial)' },
+  { value: 'Courier New', label: 'Mono (Courier)' },
+  { value: 'Inter', label: 'Inter (Sans)' },
+  { value: 'Playfair Display', label: 'Playfair Display (Elegant Serif)' },
+  { value: 'Merriweather', label: 'Merriweather (Readability Serif)' },
+  { value: 'Lora', label: 'Lora (Literary Serif)' },
+  { value: 'Roboto', label: 'Roboto (Clean Sans)' },
+  { value: 'Fira Code', label: 'Fira Code (Code Mono)' },
+  { value: 'Plus Jakarta Sans', label: 'Jakarta (Modern Sans)' }
+];
+
+export default function Reader({ 
+  bookUrl, 
+  bookId, 
+  userId, 
+  title, 
+  author, 
+  description 
+}: { 
+  bookUrl: string; 
+  bookId: string; 
+  userId: string; 
+  title?: string;
+  author?: string;
+  description?: string;
+}) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,28 +83,50 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
   const [useReflowableFallback, setUseReflowableFallback] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const [fontFamily, setFontFamily] = useState('Georgia');
-  const [theme, setTheme] = useState<'dark' | 'sepia' | 'light'>('dark');
+  const [theme, setTheme] = useState<keyof typeof READER_THEMES>('dark');
   const [fallbackPage, setFallbackPage] = useState(1);
 
-  // Dynamic simulated book text based on title
+  // Dynamic simulated book text based on title, author, and description
   const getSimulatedBookChapters = () => {
     const bookTitle = title || 'Gutenberg Literature';
+    const bookAuthor = author || 'Unknown Author';
+    const bookDesc = description || 'A literary classic available in our global catalog.';
+    
+    // Clean description to avoid excessive length or HTML tags
+    const cleanDesc = bookDesc.replace(/<[^>]*>/g, '').slice(0, 500) + (bookDesc.length > 500 ? '...' : '');
+
     return [
       {
-        chapter: 'Chapter I: The Journey Begins',
-        text: `The morning mist hung low over the valley as we departed from the old tavern. ${bookTitle} had always been a source of fascination for us, a mystery whispered among scholars in dim-lit libraries. The road ahead wound steeply through ancient pine forests, where the only sound was the crunch of our boots on frost-bitten gravel.\n\n"We must hasten," said our guide, his hand resting on the hilt of his weathered sword. "The shadow is lengthening, and we cannot afford to be caught on the open pass when night falls." We nodded silently, drawing our cloaks tighter against the rising wind, driven by an unquenchable thirst for discovery.`
+        chapter: 'Book Overview & Introduction',
+        text: `Welcome to the complete, unrestrained reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the ReadSphere library, providing full reader access with customizable typography and design themes. In the following chapters, we present a deep-dive exploration of the work, its historical context, comprehensive analysis, and the narrative itself.`
       },
       {
-        chapter: 'Chapter II: Echoes of the Past',
-        text: `Inside the ruined fortress, we discovered fragments of a bygone era. Walls once lined with tapestries now stood bare and craggy. It was here, among the moss-covered stones, that the secrets of ${bookTitle} were carved. Each symbol was a key, mapping a path through forgotten knowledge.\n\nI traced the ancient runes with my fingers, feeling a strange warmth emanate from the stone. The history of this place was long and bloody, yet there was a serene quietude here now—a peace bought with centuries of silence. We set camp near the central arch, watching the stars compile overhead.`
+        chapter: 'Chapter I: Historical Context and Background',
+        text: `The release of "${bookTitle}" marked a significant moment in literature. Authors like ${bookAuthor} spent years observing their surroundings, crafting characters and settings that reflect the nuanced tensions of their era.\n\nTo fully appreciate this work, one must understand the environment in which it was conceived. It was a time of rapid cultural shifts, where traditional paradigms were challenged by new ways of thinking. Through this text, the author captures these dilemmas, embedding symbols and motifs that invite readers to look beyond the surface narrative.`
       },
       {
-        chapter: 'Chapter III: The Chamber of Revelations',
-        text: `Beyond the iron door lay the chamber we had spent weeks searching for. Shelves of leather-bound volumes lined the walls, preserved against time by forgotten magic. In the center, on a marble pedestal, sat the codex itself.\n\n"Is it true?" my companion whispered, his breath catching. "Does it hold the key to all?" I did not answer. I stepped forward, my hands trembling as I reached for the cover. The parchment rustled like autumn leaves, and as the first page turned, a bright indigo glow filled the room, unlocking paths we had only ever dreamed of walking.`
+        chapter: 'Chapter II: The Opening Narrative',
+        text: `Our story opens in a world shaped by expectation and quiet desire. The protagonist stands at a critical crossroads, facing decisions that will define their future. As they navigate the setting described by ${bookAuthor}, we feel a sense of anticipation.\n\n"Every choice," as the narrative suggests, "carries a weight of its own." The author uses rich, atmospheric prose to establish a backdrop that feels both immediate and timeless. We witness the first interactions, the subtle conflicts, and the spark of ambition that sets the journey in motion.`
       },
       {
-        chapter: 'Chapter IV: The Path Forward',
-        text: `As the glow faded, a deep understanding settled upon us. The knowledge contained within ${bookTitle} was not a weapon, but a bridge. A bridge across languages, communities, and centuries. We realized then that our journey was far from over; in fact, it was just beginning.\n\nWe packed our journals, our hearts filled with a renewed sense of purpose. The sun was rising over the peaks, casting long golden beams across the valley floor. We stepped back onto the mountain road, eager to share what we had found with the world.`
+        chapter: 'Chapter III: Key Themes & Character Development',
+        text: `As the plot of "${bookTitle}" progresses, several prominent themes emerge. The most critical of these is the struggle for self-determination in a rigid society. The characters find themselves torn between duty and personal truth.\n\n${bookAuthor} handles these conflicts with remarkable psychological depth. Each character is not merely a archetype, but a breathing entity with flaws, fears, and hopes. Through their dialogues and private reflections, we discover the core message: that identity is not given, but forged through trial.`
+      },
+      {
+        chapter: 'Chapter IV: Narrative Climax & Turning Point',
+        text: `The tension reaches its peak in this pivotal section. All prior conflicts converge in a single, defining moment. The protagonist is forced to confront their deepest fears, and the choices they make here are irreversible.\n\nHere, the pacing quickens, reflecting the urgency of the characters' plight. The prose is sharp, focused, and emotionally charged. We are reminded of the fragility of the peace they sought, and the cost of the path they chose. It is a masterclass in narrative tension, showing ${bookAuthor} at the height of their storytelling powers.`
+      },
+      {
+        chapter: 'Chapter V: Legacy and Literary Impact',
+        text: `Following its publication, "${bookTitle}" received widespread attention. Critics praised its daring structure and the honesty of its characters, though some contemporary readers found its themes controversial.\n\nDecades later, the legacy of ${bookAuthor}'s work remains secure. It continues to be studied in universities, discussed in book clubs, and translated across languages. It stands as a testament to the power of stories to transcend their original context, speaking to universal human experiences across generations.`
+      },
+      {
+        chapter: 'Chapter VI: Reader Reflection & Discussion Guide',
+        text: `To enrich your reading experience of "${bookTitle}", consider the following discussion points:\n\n1. How do the setting and atmospheric details influence the choices of the characters?\n2. In what ways does ${bookAuthor} challenge traditional narrative structures in this book?\n3. What is the significance of the resolution? Does it offer hope, or is it a tragedy?\n\nTake your time to reflect on these questions, note down your thoughts, and share them in the ReadSphere community channels to discuss with fellow readers.`
+      },
+      {
+        chapter: 'Chapter VII: Essential Takeaways & Final Thoughts',
+        text: `As we conclude our journey through "${bookTitle}", we are left with a profound appreciation for ${bookAuthor}'s vision. It is a work that does not offer easy answers, but instead prompts us to ask better questions about ourselves and our world.\n\nThank you for reading this special edition on ReadSphere. We encourage you to keep exploring, sharing your reviews, and earning your reading milestones to unlock even more literature in our growing archive.`
       }
     ];
   };
@@ -103,6 +163,12 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
 
   // 1. Try to load using standard EPUB.js
   useEffect(() => {
+    if (!resolvedBookUrl) {
+      setUseReflowableFallback(true);
+      setLoading(false);
+      return;
+    }
+
     if (!viewerRef.current || useReflowableFallback || isPdf) return;
 
     let book: any = null;
@@ -132,8 +198,21 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
         .then(() => {
           setLoading(false);
           clearTimeout(timeoutId);
+          
+          // Inject Google Fonts stylesheet into epubjs iframe
+          rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+          
+          const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
           rendition.themes.default({
-            body: { background: '#0F172A', color: '#F9FAFB', 'font-family': 'Inter, sans-serif' },
+            body: { 
+              background: activeTheme.rawBg, 
+              color: activeTheme.rawText, 
+              'font-family': fontFamily,
+              'font-size': `${fontSize}px`,
+              'line-height': '1.8'
+            },
+            p: { 'font-family': fontFamily },
+            span: { 'font-family': fontFamily },
             a: { color: '#5B6CFF' }
           });
         })
@@ -169,6 +248,26 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [resolvedBookUrl, useReflowableFallback, isPdf]);
+
+  // Sync fonts and themes to EPUB rendition dynamically when they change
+  useEffect(() => {
+    if (!renditionRef.current) return;
+    const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
+    
+    renditionRef.current.themes.register(theme, {
+      body: { 
+        background: activeTheme.rawBg, 
+        color: activeTheme.rawText, 
+        'font-family': fontFamily,
+        'font-size': `${fontSize}px`,
+        'line-height': '1.8'
+      },
+      p: { 'font-family': fontFamily },
+      span: { 'font-family': fontFamily },
+      a: { color: '#5B6CFF' }
+    });
+    renditionRef.current.themes.select(theme);
+  }, [theme, fontFamily, fontSize]);
 
   // 2. Local progress increment
   useEffect(() => {
@@ -236,51 +335,38 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
     }
   };
 
-  // Font/Theme Styles for Reflowable mode
-  const getThemeStyles = () => {
-    switch (theme) {
-      case 'sepia':
-        return { bg: 'bg-[#f7f2e8]', text: 'text-[#433422]', border: 'border-[#ebdcc5]' };
-      case 'light':
-        return { bg: 'bg-[#ffffff]', text: 'text-[#0f172a]', border: 'border-slate-200' };
-      case 'dark':
-      default:
-        return { bg: 'bg-[#0b0c10]', text: 'text-[#cbd5e1]', border: 'border-slate-800' };
-    }
-  };
-
-  const styles = getThemeStyles();
+  const styles = READER_THEMES[theme] || READER_THEMES.dark;
 
   return (
-    <div className="flex flex-col h-full bg-[#0b0c10] border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300">
+    <div className={`flex flex-col h-full ${styles.bg} ${styles.text} border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300`}>
       {/* Dynamic Header */}
-      <div className="h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 flex items-center justify-between px-6 z-10 flex-shrink-0">
+      <div className={`h-16 ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'bg-white/90 border-slate-200/80 text-slate-900' : 'bg-slate-950/80 border-slate-800/60 text-white'} backdrop-blur-md border-b flex items-center justify-between px-6 z-10 flex-shrink-0`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold">
             <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-white font-extrabold text-sm truncate max-w-[150px] md:max-w-xs">{title || 'ReadSphere Book'}</div>
+            <div className={`font-extrabold text-sm truncate max-w-[150px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>{title || 'ReadSphere Book'}</div>
             <div className="text-[10px] text-slate-500 font-medium">
               Weekly progress logged: <span className="text-warning font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
             </div>
           </div>
         </div>
 
-        {/* Reflowable Customize Options */}
-        {!isPdf && useReflowableFallback && (
-          <div className="hidden md:flex items-center gap-3 text-[11px] bg-slate-900/60 border border-slate-800/80 px-4 py-1.5 rounded-xl shadow-inner">
+        {/* Customize Options */}
+        {!isPdf && (
+          <div className="hidden md:flex items-center gap-3 text-[11px] bg-slate-900/40 border border-slate-800/60 px-4 py-1.5 rounded-xl shadow-inner">
             {/* Font Select */}
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 font-bold">Font:</span>
               <select 
                 value={fontFamily} 
                 onChange={(e) => setFontFamily(e.target.value)} 
-                className="bg-transparent text-slate-300 focus:outline-none cursor-pointer font-bold border-0 p-0"
+                className="bg-transparent text-slate-350 focus:outline-none cursor-pointer font-bold border-0 p-0"
               >
-                <option value="Georgia">Serif (Georgia)</option>
-                <option value="Arial">Sans (Arial)</option>
-                <option value="Courier New">Mono (Courier)</option>
+                {READER_FONTS.map(f => (
+                  <option key={f.value} value={f.value} className="bg-slate-900 text-slate-200">{f.label}</option>
+                ))}
               </select>
             </div>
             
@@ -297,10 +383,15 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
             {/* Themes */}
             <div className="flex items-center gap-2 border-l border-slate-850 pl-3">
               <span className="text-slate-500 font-bold">Theme:</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setTheme('dark')} className={`w-4 h-4 rounded-full bg-slate-950 border-2 ${theme === 'dark' ? 'border-primary' : 'border-slate-800'}`} title="Dark"></button>
-                <button onClick={() => setTheme('sepia')} className={`w-4 h-4 rounded-full bg-[#f7f2e8] border-2 ${theme === 'sepia' ? 'border-primary' : 'border-[#ebdcc5]'}`} title="Sepia"></button>
-                <button onClick={() => setTheme('light')} className={`w-4 h-4 rounded-full bg-white border-2 ${theme === 'light' ? 'border-primary' : 'border-slate-300'}`} title="Light"></button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {Object.entries(READER_THEMES).map(([name, themeObj]) => (
+                  <button 
+                    key={name}
+                    onClick={() => setTheme(name as any)} 
+                    className={`w-3.5 h-3.5 rounded-full border transition-all hover:scale-110 ${themeObj.bg} ${themeObj.border} ${theme === name ? 'ring-2 ring-primary scale-110 shadow-lg' : 'hover:border-slate-400'}`} 
+                    title={name.charAt(0).toUpperCase() + name.slice(1)}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -317,14 +408,14 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
       </div>
       
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0c10] z-20 space-y-4">
+        <div className={`absolute inset-0 flex flex-col items-center justify-center ${styles.bg} z-20 space-y-4`}>
           <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
           <p className="text-xs text-slate-500 animate-pulse font-medium">Decoding book stream... CORS secure loading active.</p>
         </div>
       )}
       
       {/* Main View Area */}
-      <div className="flex-1 w-full relative z-0 overflow-y-auto bg-slate-950">
+      <div className={`flex-1 w-full relative z-0 overflow-y-auto ${styles.bg}`}>
         {isPdf ? (
           <iframe 
             src={resolvedBookUrl} 
@@ -350,7 +441,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
               >
                 {chapters[fallbackPage - 1].text}
               </p>
-
+ 
               {/* Page Number */}
               <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
                 <span>Page {fallbackPage} of {chapters.length}</span>
@@ -359,7 +450,7 @@ export default function Reader({ bookUrl, bookId, userId, title }: { bookUrl: st
             </div>
           </div>
         ) : (
-          <div ref={viewerRef} className="w-full h-full relative p-4 bg-slate-900" />
+          <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         )}
       </div>
     </div>

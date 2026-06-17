@@ -81,7 +81,14 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       <div className="h-[calc(100vh-8rem)] w-full relative">
-        <Reader bookUrl={book.file_url} bookId={book.id} userId={user.id} title={book.title} />
+        <Reader 
+          bookUrl={book.file_url} 
+          bookId={book.id} 
+          userId={user.id} 
+          title={book.title} 
+          author={book.author} 
+          description={book.description} 
+        />
       </div>
       <div className="max-w-4xl mx-auto w-full">
         <BookComments bookId={book.id} />

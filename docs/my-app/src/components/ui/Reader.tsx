@@ -173,71 +173,84 @@ export default function Reader({
 
     let book: any = null;
     let timeoutId: any = null;
+    let isDestroyed = false;
 
-    try {
-      const isExternal = resolvedBookUrl && 
-        (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
-        (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
-        
-      const resolvedUrl = isExternal 
-        ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
-        : resolvedBookUrl;
-
-      book = ePub(resolvedUrl);
-      const rendition = book.renderTo(viewerRef.current, {
-        width: '100%',
-        height: '100%',
-        spread: 'none',
-        manager: 'continuous',
-        flow: 'paginated',
-      });
-
-      renditionRef.current = rendition;
-
-      rendition.display()
-        .then(() => {
-          setLoading(false);
-          clearTimeout(timeoutId);
+    const loadBookData = async () => {
+      try {
+        const isExternal = resolvedBookUrl && 
+          (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
+          (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
           
-          // Inject Google Fonts stylesheet into epubjs iframe
-          rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
-          
-          const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
-          rendition.themes.default({
-            body: { 
-              background: activeTheme.rawBg, 
-              color: activeTheme.rawText, 
-              'font-family': fontFamily,
-              'font-size': `${fontSize}px`,
-              'line-height': '1.8'
-            },
-            p: { 'font-family': fontFamily },
-            span: { 'font-family': fontFamily },
-            a: { color: '#5B6CFF' }
-          });
-        })
-        .catch((err: any) => {
-          console.warn('EPUB display failed, fallback activated:', err);
-          setUseReflowableFallback(true);
-          setLoading(false);
+        const resolvedUrl = isExternal 
+          ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
+          : resolvedBookUrl;
+
+        const response = await fetch(resolvedUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch book content: ${response.statusText}`);
+        }
+        const buffer = await response.arrayBuffer();
+
+        if (isDestroyed || !viewerRef.current) return;
+
+        book = ePub(buffer);
+        const rendition = book.renderTo(viewerRef.current, {
+          width: '100%',
+          height: '100%',
+          spread: 'none',
+          manager: 'continuous',
+          flow: 'paginated',
         });
 
-      rendition.on('relocated', (location: EpubLocation) => {
-        setCurrentPage(location.start.index);
-      });
+        renditionRef.current = rendition;
 
-      // 15 seconds fallback trigger if loading is stalled (CORS or network issues)
-      timeoutId = setTimeout(() => {
-        console.warn('EPUB loading stalled, switching to Reflowable fallback');
+        await rendition.display();
+
+        if (isDestroyed) return;
+
+        setLoading(false);
+        clearTimeout(timeoutId);
+        
+        // Inject Google Fonts stylesheet into epubjs iframe
+        rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+        
+        const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
+        rendition.themes.default({
+          body: { 
+            background: activeTheme.rawBg, 
+            color: activeTheme.rawText, 
+            'font-family': fontFamily,
+            'font-size': `${fontSize}px`,
+            'line-height': '1.8'
+          },
+          p: { 'font-family': fontFamily },
+          span: { 'font-family': fontFamily },
+          a: { color: '#5B6CFF' }
+        });
+
+        rendition.on('relocated', (location: EpubLocation) => {
+          setCurrentPage(location.start.index);
+        });
+
+      } catch (err: any) {
+        console.warn('EPUB display failed, fallback activated:', err);
+        if (!isDestroyed) {
+          setUseReflowableFallback(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    loadBookData();
+
+    // 15 seconds fallback trigger if loading is stalled (CORS or network issues)
+    timeoutId = setTimeout(() => {
+      console.warn('EPUB loading stalled, switching to Reflowable fallback');
+      if (!isDestroyed) {
         setUseReflowableFallback(true);
         setLoading(false);
-      }, 15000);
-
-    } catch (e) {
-      console.warn('EPUB initialization crashed, fallback activated:', e);
-      setUseReflowableFallback(true);
-      setLoading(false);
-    }
+      }
+    }, 15000);
 
     return () => {
       if (book) {

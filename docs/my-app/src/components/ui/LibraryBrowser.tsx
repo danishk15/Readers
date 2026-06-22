@@ -17,19 +17,19 @@ function getOnlineBookReadParams(book: any) {
 
   if (book.isOpenLibrary) {
     if (book.accessInfo?.ia) {
-      return { url: '', title, author, description, id };
+      return { url: '', title, author, description, id, source: 'Open Library', iaId: book.accessInfo.ia };
     } else {
-      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id };
+      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id, source: 'Open Library' };
     }
   } else if (book.source === 'Google Books') {
-    return { url: '', title, author, description, id };
+    return { url: '', title, author, description, id, source: 'Google Books' };
   } else if (book.accessInfo?.epub?.downloadLink) {
-    return { url: book.accessInfo.epub.downloadLink, title, author, description, id };
+    return { url: book.accessInfo.epub.downloadLink, title, author, description, id, source: book.source };
   } else if (book.id?.startsWith('gutendex-')) {
     const gutenId = book.id.replace('gutendex-', '');
-    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id };
+    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id, source: 'Gutenberg' };
   } else {
-    return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id };
+    return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id, source: book.source };
   }
 }
 
@@ -324,6 +324,7 @@ function DomeGallery({
                 file_url: file_url,
                 is_premium: !!activeBook.isPremium,
                 googleId: activeBook.source === 'Google Books' ? activeBook.id : undefined,
+                iaId: activeBook.isOpenLibrary && activeBook.accessInfo?.ia ? activeBook.accessInfo.ia : undefined,
                 language: activeBook.volumeInfo?.language || 'en'
               };
               
@@ -508,7 +509,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
     if (isLocal) {
       if (book.googleId) {
-        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.id });
+        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.googleId, source: 'Google Books' });
+      } else if (book.iaId) {
+        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.id, source: 'Open Library', iaId: book.iaId });
       } else {
         if (book.file_url && !book.file_url.startsWith('blob:')) {
           saveBookOffline(id, title, author, cover, book.file_url)
@@ -592,6 +595,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     author?: string;
     description?: string;
     id?: string;
+    source?: string;
+    iaId?: string;
   } | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
@@ -875,14 +880,26 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             Exit Reader
           </Button>
         </div>
-          <Reader 
-            bookUrl={activeReadingBook.url} 
-            bookId={activeReadingBook.id || "inline-book"} 
-            userId={userId} 
-            title={activeReadingBook.title}
-            author={activeReadingBook.author}
-            description={activeReadingBook.description}
-          />
+        <div className="flex-1 w-full relative min-h-[500px]">
+          {activeReadingBook.source === 'Google Books' ? (
+            <GoogleBookViewer bookId={activeReadingBook.id || ''} />
+          ) : activeReadingBook.source === 'Open Library' && activeReadingBook.iaId ? (
+            <iframe 
+              src={`https://archive.org/embed/${activeReadingBook.iaId}?js=1`}
+              className="w-full h-full border-0 rounded-2xl bg-slate-900 min-h-[600px]" 
+              title={activeReadingBook.title || "Open Library Reader"} 
+            />
+          ) : (
+            <Reader 
+              bookUrl={activeReadingBook.url} 
+              bookId={activeReadingBook.id || "inline-book"} 
+              userId={userId} 
+              title={activeReadingBook.title}
+              author={activeReadingBook.author}
+              description={activeReadingBook.description}
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -1195,6 +1212,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                           file_url: file_url,
                           is_premium: !!book.isPremium,
                           googleId: book.source === 'Google Books' ? book.id : undefined,
+                          iaId: book.isOpenLibrary && book.accessInfo?.ia ? book.accessInfo.ia : undefined,
                           language: book.volumeInfo?.language || 'en'
                         };
                         
@@ -1428,6 +1446,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                        file_url: file_url,
                        is_premium: !!book.isPremium,
                        googleId: book.source === 'Google Books' ? book.id : undefined,
+                       iaId: book.isOpenLibrary && book.accessInfo?.ia ? book.accessInfo.ia : undefined,
                        language: book.volumeInfo?.language || 'en'
                      };
                      

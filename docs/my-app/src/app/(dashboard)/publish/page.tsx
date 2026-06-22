@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
 import { uploadFile } from '@/utils/supabase/upload';
+import { saveRawBookOffline } from '@/utils/offlineStorage';
 import { BookOpen } from 'lucide-react';
 
 export default function PublishPage() {
@@ -59,15 +60,13 @@ export default function PublishPage() {
     const saveLocallyFallback = () => {
       return new Promise<void>((resolve, reject) => {
         try {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Cover = coverFile ? (reader.result as string) : '';
-            // Create session Object URL for the uploaded EPUB/PDF
-            const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
-            
+          const bookId = 'local-pub-' + Math.random().toString(36).substring(2);
+          const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
+          
+          const saveBookData = async (base64Cover: string) => {
             const localPublishedList = JSON.parse(localStorage.getItem('local-published-books') || '[]');
             const newBook = {
-              id: 'local-pub-' + Math.random().toString(36).substring(2),
+              id: bookId,
               title,
               author,
               cover_url: base64Cover,
@@ -78,35 +77,31 @@ export default function PublishPage() {
               created_at: new Date().toISOString()
             };
             
+            // Save actual file blob persistently to IndexedDB
+            if (bookFile) {
+              try {
+                await saveRawBookOffline(bookId, title, author, base64Cover, localFileUrl, bookFile);
+              } catch (err) {
+                console.error('Failed to save book to IndexedDB:', err);
+              }
+            }
+
             const updatedList = [newBook, ...localPublishedList];
             localStorage.setItem('local-published-books', JSON.stringify(updatedList));
             syncBooksCookie(updatedList);
+          };
+
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Cover = coverFile ? (reader.result as string) : '';
+            await saveBookData(base64Cover);
             resolve();
           };
 
           if (coverFile) {
             reader.readAsDataURL(coverFile);
           } else {
-            // Immediately compile without cover
-            setTimeout(() => {
-              const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
-              const localPublishedList = JSON.parse(localStorage.getItem('local-published-books') || '[]');
-              const newBook = {
-                id: 'local-pub-' + Math.random().toString(36).substring(2),
-                title,
-                author,
-                cover_url: '',
-                file_url: localFileUrl,
-                file_type: bookFile ? bookFile.type : 'application/epub+zip',
-                is_premium: false,
-                language: language,
-                created_at: new Date().toISOString()
-              };
-              const updatedList = [newBook, ...localPublishedList];
-              localStorage.setItem('local-published-books', JSON.stringify(updatedList));
-              syncBooksCookie(updatedList);
-              resolve();
-            }, 0);
+            saveBookData('').then(() => resolve()).catch(reject);
           }
         } catch (err) {
           reject(err);

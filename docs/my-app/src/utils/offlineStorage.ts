@@ -193,3 +193,35 @@ export async function getAllCachedBooks(): Promise<Omit<OfflineBookRecord, 'file
     };
   });
 }
+
+/**
+ * Saves a local file blob directly to IndexedDB for persistent offline reading.
+ */
+export async function saveRawBookOffline(
+  id: string,
+  title: string,
+  author: string,
+  coverUrl: string,
+  fileUrl: string,
+  fileBlob: Blob
+): Promise<void> {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    const record: OfflineBookRecord = {
+      id,
+      title,
+      author,
+      coverUrl,
+      fileUrl,
+      fileData: fileBlob,
+      savedAt: Date.now(),
+    };
+
+    const request = store.put(record);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}

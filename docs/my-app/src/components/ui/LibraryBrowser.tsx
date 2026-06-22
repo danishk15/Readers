@@ -19,7 +19,7 @@ function getOnlineBookReadParams(book: any) {
     if (book.accessInfo?.ia) {
       return { url: '', title, author, description, id, source: 'Open Library', iaId: book.accessInfo.ia };
     } else {
-      return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id, source: 'Open Library' };
+      return { url: '', title, author, description, id, source: 'Open Library' };
     }
   } else if (book.source === 'Google Books') {
     return { url: '', title, author, description, id, source: 'Google Books' };
@@ -29,7 +29,7 @@ function getOnlineBookReadParams(book: any) {
     const gutenId = book.id.replace('gutendex-', '');
     return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id, source: 'Gutenberg' };
   } else {
-    return { url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', title, author, description, id, source: book.source };
+    return { url: '', title, author, description, id, source: book.source };
   }
 }
 
@@ -521,7 +521,35 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         setActiveReadingBook({ url: book.file_url || '', title: book.title, author, description, id });
       }
     } else {
-      const params = getOnlineBookReadParams(book);
+      let params = getOnlineBookReadParams(book);
+      
+      // If it is an Open Library book without an Internet Archive ID (iaId),
+      // let's try to dynamically search Project Gutenberg for a free EPUB!
+      if (book.isOpenLibrary && !params.iaId) {
+        try {
+          const searchTitle = title.split('(')[0].trim(); // Clean title
+          const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(searchTitle)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const match = data.results?.find((r: any) => 
+              r.title.toLowerCase().includes(searchTitle.toLowerCase()) || 
+              searchTitle.toLowerCase().includes(r.title.toLowerCase())
+            );
+            if (match && match.formats?.['application/epub+zip']) {
+              params.url = match.formats['application/epub+zip'];
+              params.source = 'Gutenberg';
+              params.id = `gutendex-${match.id}`;
+            } else {
+              params.url = '';
+            }
+          } else {
+            params.url = '';
+          }
+        } catch (e) {
+          params.url = '';
+        }
+      }
+
       if (params.url) {
         saveBookOffline(id, title, author, cover, params.url)
           .then(() => setDownloadedBookIds(prev => [...prev, id]))
@@ -861,8 +889,26 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const lang2 = selectedLangObj?.iso6392 || '';
       
       const bookLang = (b.language || 'en').toLowerCase();
-      return bookLang.startsWith(lang1.toLowerCase()) || bookLang.startsWith(lang2.toLowerCase());
+      if (!(bookLang.startsWith(lang1.toLowerCase()) || bookLang.startsWith(lang2.toLowerCase()))) {
+        return false;
+      }
     }
+
+    if (category) {
+      const classicGenres: Record<string, string> = {
+        'the great gatsby': 'fiction',
+        'pride and prejudice': 'romance',
+        'frankenstein': 'science fiction',
+        'moby dick': 'fiction',
+        'dracula': 'mystery'
+      };
+      const bookTitle = b.title.toLowerCase();
+      const bookGenre = b.genre || b.category || classicGenres[bookTitle] || '';
+      if (!bookGenre.toLowerCase().includes(category.toLowerCase())) {
+        return false;
+      }
+    }
+
     return true;
   });
 

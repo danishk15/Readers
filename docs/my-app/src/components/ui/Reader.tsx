@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ePub, { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, ShieldAlert } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 
 interface LocationStart {
@@ -435,6 +435,16 @@ export default function Reader({
             className="w-full h-full border-0 bg-slate-900" 
             title={title || "PDF Reader"} 
           />
+        ) : useReflowableFallback && (!bookUrl || bookUrl === '') ? (
+          <div className="max-w-md mx-auto p-8 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl space-y-4 my-16 backdrop-blur-md flex flex-col items-center justify-center">
+            <div className="mx-auto w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center text-warning mb-2">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold text-warning">Book Content Unavailable</h2>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              This title is currently not available as a free public domain EPUB. You can search for other Project Gutenberg/Open Library titles, or upload your own EPUB/PDF file on the **Publish** page to read it here!
+            </p>
+          </div>
         ) : useReflowableFallback ? (
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
             <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">

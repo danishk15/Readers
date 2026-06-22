@@ -6,7 +6,12 @@ export const CLASSIC_BOOKS = [
   { id: 'classic-2', title: 'Pride and Prejudice', author: 'Jane Austen', cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/1342.epub.noimages', is_premium: false, language: 'en' },
   { id: 'classic-3', title: 'Frankenstein', author: 'Mary Shelley', cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/84.epub.noimages', is_premium: true, language: 'en' },
   { id: 'classic-4', title: 'Moby Dick', author: 'Herman Melville', cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/2701.epub.noimages', is_premium: false, language: 'en' },
-  { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages', is_premium: true, language: 'en' }
+  { id: 'classic-5', title: 'Dracula', author: 'Bram Stoker', cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg', file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages', is_premium: true, language: 'en' },
+  { id: 'classic-6', title: 'Bagh-o-Bahar', author: 'Mir Amman', cover_url: 'https://www.gutenberg.org/cache/epub/70864/pg70864.cover.medium.jpg', file_url: 'https://www.gutenberg.org/ebooks/70864.epub.noimages', is_premium: false, language: 'ur' },
+  { id: 'classic-7', title: 'Dewan-e-Ghalib', author: 'Mirza Asadullah Khan Ghalib', cover_url: 'https://www.gutenberg.org/cache/epub/72237/pg72237.cover.medium.jpg', file_url: 'https://www.gutenberg.org/ebooks/72237.epub.noimages', is_premium: false, language: 'ur' },
+  { id: 'classic-8', title: 'Fasana-e-Azad', author: 'Ratan Nath Dhar Sarshar', cover_url: 'https://www.gutenberg.org/cache/epub/71708/pg71708.cover.medium.jpg', file_url: 'https://www.gutenberg.org/ebooks/71708.epub.noimages', is_premium: false, language: 'ur' },
+  { id: 'classic-9', title: 'Qissa Hatim Tai', author: 'Traditional', cover_url: 'https://www.gutenberg.org/cache/epub/71434/pg71434.cover.medium.jpg', file_url: 'https://www.gutenberg.org/ebooks/71434.epub.noimages', is_premium: false, language: 'ur' },
+  { id: 'classic-10', title: 'Intikhab-e-Kalam-e-Mir', author: 'Mir Taqi Mir', cover_url: 'https://www.gutenberg.org/cache/epub/72111/pg72111.cover.medium.jpg', file_url: 'https://www.gutenberg.org/ebooks/72111.epub.noimages', is_premium: false, language: 'ur' }
 ];
 
 export async function createClient() {
@@ -79,6 +84,20 @@ export async function createClient() {
           return chain
         },
         order: () => chain,
+        insert: (values: any) => {
+          if (isDemo) {
+            const insertResult = {
+              data: Array.isArray(values) ? values : [values],
+              error: null
+            };
+            const mockChain = {
+              select: () => mockChain,
+              then: (resolve: any) => resolve(insertResult)
+            };
+            return mockChain as any;
+          }
+          return originalFrom(relation).insert(values);
+        },
         single: async () => {
           const getCookieBooks = (name: string) => {
             const val = cookieStore.get(name)?.value

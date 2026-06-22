@@ -513,12 +513,45 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       } else if (book.iaId) {
         setActiveReadingBook({ url: '', title: book.title, author, description, id: book.id, source: 'Open Library', iaId: book.iaId });
       } else {
-        if (book.file_url && !book.file_url.startsWith('blob:')) {
-          saveBookOffline(id, title, author, cover, book.file_url)
-            .then(() => setDownloadedBookIds(prev => [...prev, id]))
+        let currentUrl = book.file_url || '';
+        let resolvedId = id;
+        let resolvedSource = book.source;
+
+        // If the URL points to the generic Pride and Prejudice fallback, attempt to search Gutenberg dynamically
+        if (currentUrl.includes('1342.epub.noimages') && !title.toLowerCase().includes('pride and prejudice')) {
+          try {
+            const searchTitle = title.split('(')[0].trim();
+            const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(searchTitle)}`);
+            if (res.ok) {
+              const data = await res.json();
+              const match = data.results?.find((r: any) => 
+                r.title.toLowerCase().includes(searchTitle.toLowerCase()) || 
+                searchTitle.toLowerCase().includes(r.title.toLowerCase())
+              );
+              if (match && match.formats?.['application/epub+zip']) {
+                currentUrl = match.formats['application/epub+zip'];
+                resolvedId = `gutendex-${match.id}`;
+                resolvedSource = 'Gutenberg';
+              } else {
+                currentUrl = ''; // Empty url triggers the unavailable screen instead of the wrong book
+              }
+            } else {
+              currentUrl = '';
+            }
+          } catch (e) {
+            currentUrl = '';
+          }
+        }
+
+        if (currentUrl && !currentUrl.startsWith('blob:')) {
+          saveBookOffline(resolvedId, title, author, cover, currentUrl)
+            .then(() => setDownloadedBookIds(prev => {
+              if (!prev.includes(String(resolvedId))) return [...prev, String(resolvedId)];
+              return prev;
+            }))
             .catch(err => console.warn('Background caching failed:', err));
         }
-        setActiveReadingBook({ url: book.file_url || '', title: book.title, author, description, id });
+        setActiveReadingBook({ url: currentUrl, title: book.title, author, description, id: resolvedId, source: resolvedSource });
       }
     } else {
       let params = getOnlineBookReadParams(book);
@@ -668,14 +701,62 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     
     try {
       let q = queryVal || '';
-      if (category) {
-        q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
-      }
-      if (!q) {
-        q = 'subject:fiction';
-      }
       
       const selectedLangObj = languages.find(l => l.code === language);
+      const langLabel = selectedLangObj ? selectedLangObj.label.split('(')[0].trim() : '';
+
+      if (language && language !== 'eng') {
+        // For non-English languages, structured LOC headings (like subject:romance) frequently return 0 results.
+        // We construct a query combining the language name and mapped keywords.
+        const genreQueries: Record<string, Record<string, string>> = {
+          'urd': {
+            'fiction': 'Urdu fiction OR "اردو ناول"',
+            'science fiction': 'Urdu "science fiction"',
+            'fantasy': 'Urdu fantasy OR "داستان"',
+            'history': 'Urdu history OR "تاریخ"',
+            'romance': 'Urdu romance OR "رومانوی ناول"',
+            'biography': 'Urdu biography OR "سوانح"',
+            'mystery': 'Urdu mystery OR "جاسوسی ناول"'
+          },
+          'ara': {
+            'fiction': 'Arabic fiction OR "رواية"',
+            'science fiction': 'Arabic "science fiction"',
+            'fantasy': 'Arabic fantasy OR "خيال"',
+            'history': 'Arabic history OR "تاريخ"',
+            'romance': 'Arabic romance OR "رواية رومانسية"',
+            'biography': 'Arabic biography OR "سيرة"',
+            'mystery': 'Arabic mystery OR "غموض"'
+          },
+          'per': {
+            'fiction': 'Persian fiction OR "رمان"',
+            'science fiction': 'Persian "science fiction"',
+            'fantasy': 'Persian fantasy OR "افسانه"',
+            'history': 'Persian history OR "تاریخ"',
+            'romance': 'Persian romance OR "رمان عاشقانه"',
+            'biography': 'Persian biography OR "زندگینامه"',
+            'mystery': 'Persian mystery OR "پلیسی"'
+          }
+        };
+
+        const langGenreMap = genreQueries[language];
+        const genreTerm = langGenreMap ? langGenreMap[category.toLowerCase()] : '';
+        
+        if (genreTerm) {
+          q = q ? `${q} (${genreTerm})` : genreTerm;
+        } else if (category) {
+          q = q ? `${q} ${langLabel} ${category}` : `${langLabel} ${category}`;
+        } else {
+          q = q ? `${q} ${langLabel}` : langLabel;
+        }
+      } else {
+        if (category) {
+          q = q ? `${q} subject:${category.toLowerCase()}` : `subject:${category.toLowerCase()}`;
+        }
+        if (!q) {
+          q = 'subject:fiction';
+        }
+      }
+      
       const lang1 = selectedLangObj?.iso6391 || '';
       const lang2 = selectedLangObj?.iso6392 || '';
 
@@ -900,7 +981,12 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         'pride and prejudice': 'romance',
         'frankenstein': 'science fiction',
         'moby dick': 'fiction',
-        'dracula': 'mystery'
+        'dracula': 'mystery',
+        'bagh-o-bahar': 'romance fiction fantasy',
+        'dewan-e-ghalib': 'romance poetry classic',
+        'fasana-e-azad': 'fiction romance adventure',
+        'qissa hatim tai': 'romance fantasy classic',
+        'intikhab-e-kalam-e-mir': 'poetry romance classic'
       };
       const bookTitle = b.title.toLowerCase();
       const bookGenre = b.genre || b.category || classicGenres[bookTitle] || '';

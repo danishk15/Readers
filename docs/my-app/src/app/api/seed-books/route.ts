@@ -82,6 +82,46 @@ export async function GET() {
         file_url: 'https://www.gutenberg.org/ebooks/2229.epub.noimages',
         is_premium: false,
         language: 'de'
+      },
+      {
+        title: 'Bagh-o-Bahar',
+        author: 'Mir Amman',
+        cover_url: 'https://www.gutenberg.org/cache/epub/70864/pg70864.cover.medium.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/70864.epub.noimages',
+        is_premium: false,
+        language: 'ur'
+      },
+      {
+        title: 'Dewan-e-Ghalib',
+        author: 'Mirza Asadullah Khan Ghalib',
+        cover_url: 'https://www.gutenberg.org/cache/epub/72237/pg72237.cover.medium.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/72237.epub.noimages',
+        is_premium: false,
+        language: 'ur'
+      },
+      {
+        title: 'Fasana-e-Azad',
+        author: 'Ratan Nath Dhar Sarshar',
+        cover_url: 'https://www.gutenberg.org/cache/epub/71708/pg71708.cover.medium.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/71708.epub.noimages',
+        is_premium: false,
+        language: 'ur'
+      },
+      {
+        title: 'Qissa Hatim Tai',
+        author: 'Traditional',
+        cover_url: 'https://www.gutenberg.org/cache/epub/71434/pg71434.cover.medium.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/71434.epub.noimages',
+        is_premium: false,
+        language: 'ur'
+      },
+      {
+        title: 'Intikhab-e-Kalam-e-Mir',
+        author: 'Mir Taqi Mir',
+        cover_url: 'https://www.gutenberg.org/cache/epub/72111/pg72111.cover.medium.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/72111.epub.noimages',
+        is_premium: false,
+        language: 'ur'
       }
     ];
 

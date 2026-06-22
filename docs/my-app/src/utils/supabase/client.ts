@@ -205,12 +205,17 @@ export function createClient() {
         let updatePayload: any = null
         const mockUserRegion = typeof window !== 'undefined' ? localStorage.getItem('demo-user-region') || 'South Asia' : 'South Asia'
         const mockUserPremium = typeof window !== 'undefined' ? localStorage.getItem('demo-premium_status') === 'true' : false
+        const mockUsername = typeof window !== 'undefined' ? localStorage.getItem('demo-username') || 'Guest Reader' : 'Guest Reader'
+        const mockUserBio = typeof window !== 'undefined' ? localStorage.getItem('demo-user-bio') || 'Passionate book reader and member of ReadSphere!' : 'Passionate book reader and member of ReadSphere!'
+        const mockUserAvatar = typeof window !== 'undefined' ? localStorage.getItem('demo-user-avatar-url') || null : null
 
         const mockResponse = {
           data: {
             id: 'demo-guest-id-12345',
             email: 'guest@readsphere.com',
-            username: 'Guest Reader',
+            username: mockUsername,
+            bio: mockUserBio,
+            avatar_url: mockUserAvatar,
             role: 'authenticated',
             region: mockUserRegion,
             premium_status: mockUserPremium,
@@ -234,6 +239,18 @@ export function createClient() {
                 localStorage.setItem('demo-premium_status', String(payload.premium_status))
                 document.cookie = "demo-premium_status=" + String(payload.premium_status) + "; path=/; max-age=31536000"
               }
+              if (payload.username !== undefined) {
+                localStorage.setItem('demo-username', payload.username)
+                document.cookie = "demo-username=" + encodeURIComponent(payload.username) + "; path=/; max-age=31536000"
+              }
+              if (payload.bio !== undefined) {
+                localStorage.setItem('demo-user-bio', payload.bio)
+                document.cookie = "demo-user-bio=" + encodeURIComponent(payload.bio) + "; path=/; max-age=31536000"
+              }
+              if (payload.avatar_url !== undefined) {
+                localStorage.setItem('demo-user-avatar-url', payload.avatar_url || '')
+                document.cookie = "demo-user-avatar-url=" + encodeURIComponent(payload.avatar_url || '') + "; path=/; max-age=31536000"
+              }
             }
             return chain
           },
@@ -241,6 +258,9 @@ export function createClient() {
             if (updatePayload && typeof window !== 'undefined') {
               if (updatePayload.region) mockResponse.data.region = updatePayload.region
               if (updatePayload.premium_status !== undefined) mockResponse.data.premium_status = updatePayload.premium_status
+              if (updatePayload.username !== undefined) mockResponse.data.username = updatePayload.username
+              if (updatePayload.bio !== undefined) mockResponse.data.bio = updatePayload.bio
+              if (updatePayload.avatar_url !== undefined) mockResponse.data.avatar_url = updatePayload.avatar_url
             }
             return Promise.resolve(mockResponse).then(resolve)
           }

@@ -13,13 +13,14 @@ export default async function DashboardLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
-  let isPremium = false;
+  let profile = null;
   if (user) {
     try {
-      const { data: profile } = await supabase.from('users').select('premium_status').eq('id', user.id).single();
-      isPremium = !!profile?.premium_status;
+      const { data } = await supabase.from('users').select('premium_status, username, avatar_url').eq('id', user.id).single();
+      profile = data;
     } catch {}
   }
+  const isPremium = !!profile?.premium_status;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground relative font-sans transition-colors duration-500">
@@ -82,12 +83,21 @@ export default async function DashboardLayout({
         {/* User Account / VIP details */}
         <div className="p-4 border-t border-card-border space-y-4">
           <Link href="/profile" className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-900/50 transition-colors group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-sm font-black text-white shadow shadow-primary/10">
-              {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-sm font-black text-white shadow shadow-primary/10 overflow-hidden">
+              {profile?.avatar_url ? (
+                ['📚', '🌌', '🕵️', '🧙', '💻', '🐉'].includes(profile.avatar_url) ? (
+                  <span className="text-xl select-none">{profile.avatar_url}</span>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                )
+              ) : (
+                user?.email ? user.email.charAt(0).toUpperCase() : 'U'
+              )}
             </div>
             <div className="text-left flex-1 min-w-0">
               <p className="font-extrabold text-xs text-slate-200 group-hover:text-white truncate transition-colors">
-                {user?.email?.split('@')[0] || 'User Profile'}
+                {profile?.username || user?.email?.split('@')[0] || 'User Profile'}
               </p>
               {isPremium ? (
                 <span className="text-[9px] font-black text-warning flex items-center gap-0.5 tracking-wider uppercase">

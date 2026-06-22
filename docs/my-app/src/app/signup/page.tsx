@@ -68,6 +68,8 @@ export default function SignUpPage() {
   const handleOAuthLogin = async (provider: 'google' | 'discord') => {
     setLoading(true);
     setError(null);
+    // Clear demo session cookie so we authenticate against the real DB
+    document.cookie = "demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {

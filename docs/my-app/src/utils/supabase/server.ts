@@ -181,12 +181,17 @@ export async function createClient() {
       if (relation === 'users') {
         const mockUserRegion = cookieStore.get('demo-user-region')?.value || 'South Asia'
         const mockUserPremium = cookieStore.get('demo-premium_status')?.value === 'true'
+        const mockUsername = cookieStore.get('demo-username')?.value ? decodeURIComponent(cookieStore.get('demo-username')!.value) : 'Guest Reader'
+        const mockUserBio = cookieStore.get('demo-user-bio')?.value ? decodeURIComponent(cookieStore.get('demo-user-bio')!.value) : 'Passionate book reader and member of ReadSphere!'
+        const mockUserAvatar = cookieStore.get('demo-user-avatar-url')?.value ? decodeURIComponent(cookieStore.get('demo-user-avatar-url')!.value) || null : null
 
         const mockResponse = {
           data: {
             id: 'demo-guest-id-12345',
             email: 'guest@readsphere.com',
-            username: 'Guest Reader',
+            username: mockUsername,
+            bio: mockUserBio,
+            avatar_url: mockUserAvatar,
             role: 'authenticated',
             region: mockUserRegion,
             premium_status: mockUserPremium,

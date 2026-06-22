@@ -13,8 +13,32 @@ export default function LogoutButton() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      // Clear client-side cookies including demo-session bypass cookie
-      document.cookie = "demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+      // Clear client-side cookies including demo-session bypass and profile cookies
+      const demoCookies = [
+        'demo-session',
+        'demo-user-region',
+        'demo-premium_status',
+        'demo-username',
+        'demo-user-bio',
+        'demo-user-avatar-url',
+        'demo-communities',
+        'demo-channels',
+        'demo-comments',
+        'demo-messages',
+        'demo-reading_logs',
+        'demo-competition_entries'
+      ];
+      
+      demoCookies.forEach(name => {
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+      });
+      
+      // Clear localStorage
+      if (typeof window !== 'undefined') {
+        demoCookies.forEach(name => {
+          localStorage.removeItem(name);
+        });
+      }
       
       // Perform Supabase logout
       await supabase.auth.signOut();

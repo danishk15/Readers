@@ -208,7 +208,7 @@ export async function createClient() {
         return chain as any
       }
 
-      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries'].includes(relation)) {
+      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries', 'community_members'].includes(relation)) {
         let selectArgs: any[] = []
         let eqFilters: { column: string; value: any }[] = []
         let orderCol: string = ''

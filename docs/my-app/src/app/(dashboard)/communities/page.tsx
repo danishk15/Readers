@@ -19,6 +19,8 @@ interface Community {
 
 export default function CommunitiesPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [joinedCommunityIds, setJoinedCommunityIds] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterRegion, setFilterRegion] = useState('');
   const [filterGenre, setFilterGenre] = useState('');
@@ -41,6 +43,23 @@ export default function CommunitiesPage() {
         router.push('/login');
         return;
       }
+
+      setUserId(user.id);
+
+      // Fetch joined communities
+      let joinedIds: string[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('community_members')
+          .select('community_id')
+          .eq('user_id', user.id);
+        if (data && !error) {
+          joinedIds = data.map((d: any) => d.community_id);
+        }
+      } catch (e) {
+        console.error('Error fetching memberships:', e);
+      }
+      setJoinedCommunityIds(joinedIds);
 
       let dbCommunities: Community[] = [];
       try {
@@ -66,6 +85,39 @@ export default function CommunitiesPage() {
 
     fetchCommunities();
   }, [supabase, router]);
+
+  const handleJoinLeave = async (communityId: string, isJoined: boolean) => {
+    if (!userId) return;
+    
+    if (isJoined) {
+      // Leave community
+      const { error } = await supabase
+        .from('community_members')
+        .delete()
+        .eq('community_id', communityId)
+        .eq('user_id', userId);
+      
+      if (!error) {
+        setJoinedCommunityIds(prev => prev.filter(id => id !== communityId));
+      } else {
+        alert('Failed to leave community: ' + error.message);
+      }
+    } else {
+      // Join community
+      const { error } = await supabase
+        .from('community_members')
+        .insert({
+          community_id: communityId,
+          user_id: userId
+        });
+      
+      if (!error) {
+        setJoinedCommunityIds(prev => [...prev, communityId]);
+      } else {
+        alert('Failed to join community: ' + error.message);
+      }
+    }
+  };
 
   const filteredCommunities = communities.filter(c => {
     const matchRegion = !filterRegion || c.region === filterRegion;
@@ -182,11 +234,33 @@ export default function CommunitiesPage() {
                     </span>
                   </div>
 
-                  <Link href={`/communities/${community.id}`} passHref legacyBehavior>
-                    <Button variant="secondary" className="w-full bg-[#161b22] border border-slate-800 hover:border-secondary hover:text-white" size="sm">
-                      Join Server Chat
-                    </Button>
-                  </Link>
+                  <div className="flex gap-2">
+                    {joinedCommunityIds.includes(community.id) ? (
+                      <>
+                        <Button 
+                          onClick={() => handleJoinLeave(community.id, true)}
+                          variant="ghost" 
+                          className="flex-1 text-xs text-rose-450 hover:text-rose-350 hover:bg-rose-500/5 border border-rose-500/10 hover:border-rose-500/20 py-2 h-9" 
+                          size="sm"
+                        >
+                          Leave
+                        </Button>
+                        <Link href={`/communities/${community.id}`} passHref legacyBehavior>
+                          <Button variant="secondary" className="flex-1 bg-secondary text-white border-transparent hover:bg-secondary/90 text-xs font-bold py-2 h-9" size="sm">
+                            Chat
+                          </Button>
+                        </Link>
+                      </>
+                    ) : (
+                      <Button 
+                        onClick={() => handleJoinLeave(community.id, false)}
+                        className="w-full bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-bold text-xs py-2 h-9" 
+                        size="sm"
+                      >
+                        Join Server
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

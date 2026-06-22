@@ -9,23 +9,37 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
     }
 
-    // Validate URL to prevent arbitrary SSRF, but allow gutenberg, google books, etc.
+    // Validate URL to prevent arbitrary SSRF to local/internal services, while allowing any public domain
     const parsedUrl = new URL(fileUrl);
-    const allowedHosts = [
-      'gutenberg.org',
-      'www.gutenberg.org',
-      'books.google.com',
-      'books.googleusercontent.com',
-      'archive.org',
-      'openlibrary.org'
-    ];
+    const hostname = parsedUrl.hostname.toLowerCase();
     
-    const isAllowed = allowedHosts.some(host => 
-      parsedUrl.hostname === host || parsedUrl.hostname.endsWith('.' + host)
-    );
+    const isLocalOrPrivate = 
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('172.16.') ||
+      hostname.startsWith('172.17.') ||
+      hostname.startsWith('172.18.') ||
+      hostname.startsWith('172.19.') ||
+      hostname.startsWith('172.20.') ||
+      hostname.startsWith('172.21.') ||
+      hostname.startsWith('172.22.') ||
+      hostname.startsWith('172.23.') ||
+      hostname.startsWith('172.24.') ||
+      hostname.startsWith('172.25.') ||
+      hostname.startsWith('172.26.') ||
+      hostname.startsWith('172.27.') ||
+      hostname.startsWith('172.28.') ||
+      hostname.startsWith('172.29.') ||
+      hostname.startsWith('172.30.') ||
+      hostname.startsWith('172.31.') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal');
 
-    if (!isAllowed) {
-      return NextResponse.json({ error: 'Forbidden domain' }, { status: 403 });
+    if (isLocalOrPrivate) {
+      return NextResponse.json({ error: 'Forbidden destination: private network address' }, { status: 403 });
     }
 
     const response = await fetch(fileUrl, {

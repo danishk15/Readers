@@ -62,20 +62,47 @@ export default function CompetitionPage() {
   const [simulateActiveWeek, setSimulateActiveWeek] = useState(true);
 
   const supabase = createClient();
-  const currentMonth = '2026-06'; // Target month matches metadata logs
-
-  // 1. Helper to determine if we are in the last week of the month
-  const checkIsLastWeek = () => {
-    if (simulateActiveWeek) return true;
+  
+  // Calculate current 3-month quarterly period dynamically (e.g. "2026-Q2 (Apr-Jun)")
+  const getCurrentQuarterPeriod = () => {
     const date = new Date();
-    const today = date.getDate();
     const year = date.getFullYear();
-    const month = date.getMonth();
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    return (lastDay - today) < 7; // Last 7 days
+    const month = date.getMonth(); // 0-11
+    if (month >= 0 && month <= 2) return `${year}-Q1 (Jan-Mar)`;
+    if (month >= 3 && month <= 5) return `${year}-Q2 (Apr-Jun)`;
+    if (month >= 6 && month <= 8) return `${year}-Q3 (Jul-Sep)`;
+    return `${year}-Q4 (Oct-Dec)`;
   };
 
-  const isCompetitionWeek = checkIsLastWeek();
+  const currentMonth = getCurrentQuarterPeriod();
+
+  // Helper to determine if we are in the last week of the 3-month quarter
+  const checkIsLastWeekOfQuarter = () => {
+    if (simulateActiveWeek) return true;
+    const date = new Date();
+    const month = date.getMonth(); // 0-11
+    
+    // Check if current month is the last month of the quarter (March, June, Sept, Dec)
+    const isQuarterEndMonth = (month + 1) % 3 === 0;
+    if (!isQuarterEndMonth) return false;
+    
+    const today = date.getDate();
+    const year = date.getFullYear();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return (lastDay - today) < 7; // Last 7 days of the quarter-end month
+  };
+
+  const isCompetitionWeek = checkIsLastWeekOfQuarter();
+
+  const getQuarterEndDate = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth(); // 0-11
+    if (month >= 0 && month <= 2) return `March 31, ${year}`;
+    if (month >= 3 && month <= 5) return `June 30, ${year}`;
+    if (month >= 6 && month <= 8) return `September 30, ${year}`;
+    return `December 31, ${year}`;
+  };
 
   // Load all user profile, library books, and reading logs
   const loadData = async () => {
@@ -199,7 +226,11 @@ export default function CompetitionPage() {
 
   // Submit books to competition
   const handleSubmitEntry = async () => {
-    if (!user || selectedBookIds.length === 0) return;
+    if (!user) return;
+    if (selectedBookIds.length === 0) {
+      alert('You must select at least 1 champion book to submit your entry!');
+      return;
+    }
     setSubmitting(true);
     
     // 1. Calculate score: Sum up minutes read for these books in the current month
@@ -317,10 +348,10 @@ export default function CompetitionPage() {
             <span>Regional Bookworm Showdown</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            Monthly Region <span className="text-transparent bg-clip-text bg-gradient-to-r from-warning via-amber-400 to-amber-500">Championship</span>
+            Quarterly Region <span className="text-transparent bg-clip-text bg-gradient-to-r from-warning via-amber-400 to-amber-500">Championship</span>
           </h1>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Organised automatically in the **last week of every month**. Select your 3 most-read books to submit. If you finish in the **Top 3 of your region**, win a **6-Month Free VIP Premium Subscription**!
+            Organised automatically **every 3 months** (in the final week of each quarter). Select your 3 most-read books to submit. If you finish in the **Top 3 of your region**, win a **6-Month Free VIP Premium Subscription**!
           </p>
         </div>
 
@@ -333,7 +364,7 @@ export default function CompetitionPage() {
               </div>
               <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Active Phase</span>
               <p className="text-[10px] text-slate-500 leading-normal">
-                Submissions open! Ends June 30, 2026.
+                Submissions open! Ends {getQuarterEndDate()}.
               </p>
             </>
           ) : (
@@ -343,7 +374,7 @@ export default function CompetitionPage() {
               </div>
               <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Sign-up Phase</span>
               <p className="text-[10px] text-slate-500 leading-normal">
-                Prepare your books. Competition opens in the last week.
+                Prepare your books. Competition opens in the last week of the quarter.
               </p>
             </>
           )}
@@ -458,7 +489,7 @@ export default function CompetitionPage() {
                 )}
 
                 {/* score display */}
-                {selectedBookIds.length > 0 && (
+                {selectedBookIds.length > 0 ? (
                   <div className="p-4 bg-slate-900/60 border border-slate-850 rounded-2xl flex items-center justify-between mt-4">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Submitted Score:</span>
                     <span className="text-lg font-black text-warning font-mono flex items-center gap-1">
@@ -471,6 +502,11 @@ export default function CompetitionPage() {
                       })()}{' '}
                       minutes
                     </span>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center gap-3 mt-4 text-xs font-medium">
+                    <AlertCircle className="w-4.5 h-4.5 text-rose-400 shrink-0" />
+                    <span>You must select at least 1 champion book to submit your entry to the quarterly competition.</span>
                   </div>
                 )}
               </CardContent>

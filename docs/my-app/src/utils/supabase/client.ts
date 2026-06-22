@@ -268,13 +268,18 @@ export function createClient() {
         return chain as any
       }
 
-      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries'].includes(relation)) {
+      if (['comments', 'reading_logs', 'messages', 'communities', 'channels', 'competition_entries', 'community_members'].includes(relation)) {
         let selectArgs: any[] = []
         let eqFilters: { column: string; value: any }[] = []
         let orderCol: string = ''
         let updatePayload: any = null
+        let isDelete = false
 
         const chain = {
+          delete: () => {
+            isDelete = true
+            return chain
+          },
           select: (...args: any[]) => {
             selectArgs = args
             return chain
@@ -410,6 +415,19 @@ export function createClient() {
                   }
                 }
               } catch {}
+
+              if (isDelete && typeof window !== 'undefined') {
+                localItems = localItems.filter((item: any) => {
+                  let match = true
+                  for (const filter of eqFilters) {
+                    if (item[filter.column] !== filter.value) match = false
+                  }
+                  return !match
+                })
+                localStorage.setItem(`demo-${relation}`, JSON.stringify(localItems))
+                document.cookie = `demo-${relation}=` + encodeURIComponent(JSON.stringify(localItems)) + "; path=/; max-age=31536000"
+                return resolve({ data: null, error: null })
+              }
 
               if (updatePayload && typeof window !== 'undefined') {
                 localItems = localItems.map((item: any) => {

@@ -25,10 +25,30 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
   const [channels, setChannels] = useState<{id: string, name: string}[]>([]);
   const [community, setCommunity] = useState<{name: string; region?: string; genre?: string} | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   const isDemo = params.id.startsWith('demo-comm-');
+
+  const handleJoinServer = async () => {
+    if (!userId) return;
+    try {
+      const { error } = await supabase
+        .from('community_members')
+        .insert({
+          community_id: params.id,
+          user_id: userId
+        });
+      if (!error) {
+        setIsMember(true);
+      } else {
+        alert('Failed to join server: ' + error.message);
+      }
+    } catch (err: any) {
+      alert('Error joining server: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -40,6 +60,20 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
         user = data.user;
       }
       if (user) setUserId(user.id);
+
+      // Check membership
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('community_members')
+            .select('*')
+            .eq('community_id', params.id)
+            .eq('user_id', user.id);
+          setIsMember(!!(data && data.length > 0 && !error));
+        } catch {
+          setIsMember(false);
+        }
+      }
 
       if (isDemo) {
         // Fetch community info from localStorage
@@ -217,23 +251,38 @@ export default function CommunityChatPage({ params }: { params: { id: string } }
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 pt-2 bg-background flex-shrink-0">
-          <form onSubmit={sendMessage} className="relative flex items-center">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              placeholder={`Message #${channels.find(c => c.id === channelId)?.name || 'general'}`}
-              className="w-full bg-surface border border-gray-700 rounded-lg py-3 px-4 pr-12 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted"
-            />
-            <button 
-              type="submit" 
-              disabled={!newMessage.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md bg-primary text-white disabled:opacity-50 disabled:bg-gray-700 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z" /></svg>
-            </button>
-          </form>
+        <div className="p-4 bg-background flex-shrink-0 border-t border-slate-900">
+          {isMember ? (
+            <form onSubmit={sendMessage} className="relative flex items-center">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                placeholder={`Message #${channels.find(c => c.id === channelId)?.name || 'general'}`}
+                className="w-full bg-surface border border-gray-700 rounded-lg py-3 px-4 pr-12 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted"
+              />
+              <button 
+                type="submit" 
+                disabled={!newMessage.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md bg-primary text-white disabled:opacity-50 disabled:bg-gray-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z" /></svg>
+              </button>
+            </form>
+          ) : (
+            <div className="bg-[#161b22] border border-slate-850 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-left">
+                <h4 className="text-sm font-extrabold text-slate-200">You are in preview mode</h4>
+                <p className="text-xs text-slate-500 mt-0.5">Join this community server to send messages and participate in channels.</p>
+              </div>
+              <button 
+                onClick={handleJoinServer}
+                className="w-full sm:w-auto bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-extrabold px-6 py-2 rounded-xl text-xs shadow-md shadow-primary/20 transition-transform active:scale-95 cursor-pointer"
+              >
+                Join Server Chat
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

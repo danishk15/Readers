@@ -76,48 +76,31 @@ export function ProfileEditModal({ isOpen, onClose, profile, onProfileUpdated }:
     setError(null);
 
     try {
-      const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-      
-      if (isDemo) {
-        // In local demo mode, read file as Base64 to avoid uploading to non-existent remote storage
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          setAvatarUrl(base64String);
-          setSelectedPreset(null);
-          setLoading(false);
-        };
-        reader.onerror = () => {
-          throw new Error('Failed to read file.');
-        };
-        reader.readAsDataURL(file);
-      } else {
-        // Real mode: Upload to Supabase avatars bucket
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not logged in.');
+      // Real mode: Upload to Supabase avatars bucket
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not logged in.');
 
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-        let publicUrl = '';
-        try {
-          publicUrl = await uploadFile('avatars', filePath, file);
-        } catch (uploadErr: any) {
-          console.warn("Storage upload failed, falling back to local base64 preview:", uploadErr);
-          // Fallback to local Data URL if bucket storage upload fails
-          const dataUrlPromise = new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          publicUrl = await dataUrlPromise;
-        }
-
-        setAvatarUrl(publicUrl);
-        setSelectedPreset(null);
-        setLoading(false);
+      let publicUrl = '';
+      try {
+        publicUrl = await uploadFile('avatars', filePath, file);
+      } catch (uploadErr: any) {
+        console.warn("Storage upload failed, falling back to local base64 preview:", uploadErr);
+        // Fallback to local Data URL if bucket storage upload fails
+        const dataUrlPromise = new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        publicUrl = await dataUrlPromise;
       }
+
+      setAvatarUrl(publicUrl);
+      setSelectedPreset(null);
+      setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Error uploading file.');
       setLoading(false);

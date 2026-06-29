@@ -613,36 +613,33 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     }
   }, [activeTab]);
 
-  // Check premium status and weekly reading time
   useEffect(() => {
     const checkPremiumAndStats = async () => {
-      const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
+      if (!userId) return;
       
-      // Load premium status - Always enable VIP/Premium for everyone
-      setIsPremiumUser(true);
-
-      // Calculate weekly reading minutes
+      let isPremium = false;
       let totalSeconds = 0;
-      if (isDemo) {
-        try {
-          const localLogs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
-          totalSeconds = localLogs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
-        } catch (e) {
-          console.error('Error loading local logs:', e);
+
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+        
+        // Load premium status
+        const { data: profile } = await supabase.from('users').select('premium_status').eq('id', userId).single();
+        if (profile?.premium_status) {
+          isPremium = true;
         }
-      } else if (userId) {
-        try {
-          const { createClient } = await import('@/utils/supabase/client');
-          const supabase = createClient();
-          const { data: logs } = await supabase.from('reading_logs').select('time_spent_seconds').eq('user_id', userId);
-          if (logs) {
-            totalSeconds = logs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
-          }
-        } catch (e) {
-          console.error('Error fetching reading minutes:', e);
+
+        // Calculate weekly reading minutes
+        const { data: logs } = await supabase.from('reading_logs').select('time_spent_seconds').eq('user_id', userId);
+        if (logs) {
+          totalSeconds = logs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
         }
+      } catch (e) {
+        console.error('Error fetching premium status and reading stats:', e);
       }
 
+      setIsPremiumUser(isPremium);
       const minutes = Math.floor(totalSeconds / 60) + 25; // Base offset to avoid showing zero
       setWeeklyMinutes(minutes);
     };

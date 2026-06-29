@@ -19,98 +19,62 @@ export default function CreateCommunityPage() {
     e.preventDefault();
     setLoading(true);
     
-    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
     const supabase = createClient();
 
-    let user = null;
-    if (isDemo) {
-      user = { id: 'demo-user-id', email: 'guest@readsphere.demo' };
-    } else {
-      const { data } = await supabase.auth.getUser();
-      user = data.user;
-    }
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
 
     if (!user) {
       router.push('/login');
       return;
     }
 
-    if (isDemo) {
-      // 1. Create local mock community
-      const newCommunity = {
-        id: `demo-comm-${Date.now()}`,
-        name,
-        description,
-        owner_id: user.id,
-        region,
-        genre,
-        created_at: new Date().toISOString()
-      };
-      
-      const demoCommunities = JSON.parse(localStorage.getItem('demo-communities') || '[]');
-      localStorage.setItem('demo-communities', JSON.stringify([newCommunity, ...demoCommunities]));
+    // Ensure user profile exists in public.users to satisfy the foreign key constraint
+    const { data: profile } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
 
-      // 2. Create local default channel
-      const defaultChannel = {
-        id: `demo-chan-${Date.now()}`,
-        community_id: newCommunity.id,
-        name: 'general',
-        type: 'text',
-        created_at: new Date().toISOString()
-      };
-      
-      const demoChannels = JSON.parse(localStorage.getItem('demo-channels') || '[]');
-      localStorage.setItem('demo-channels', JSON.stringify([defaultChannel, ...demoChannels]));
-
-      router.push(`/communities/${newCommunity.id}`);
-    } else {
-      // Ensure user profile exists in public.users to satisfy the foreign key constraint
-      const { data: profile } = await supabase
+    if (!profile) {
+      const { error: profileError } = await supabase
         .from('users')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
+        .insert({
+          id: user.id,
+          email: user.email || '',
+          username: user.email ? user.email.split('@')[0] : 'Reader',
+          role: 'user',
+          premium_status: false
+        });
 
-      if (!profile) {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email || '',
-            username: user.email ? user.email.split('@')[0] : 'Reader',
-            role: 'user',
-            premium_status: false
-          });
-
-        if (profileError) {
-          alert('Failed to initialize user profile in database: ' + profileError.message);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 1. Create Community
-      const { data: community, error: communityError } = await supabase
-        .from('communities')
-        .insert({ name, description, owner_id: user.id, region, genre })
-        .select()
-        .single();
-
-      if (communityError || !community) {
-        alert('Failed to create community: ' + communityError?.message);
+      if (profileError) {
+        alert('Failed to initialize user profile in database: ' + profileError.message);
         setLoading(false);
         return;
       }
-
-      // 2. Create default #general channel
-      await supabase.from('channels').insert({
-        community_id: community.id,
-        name: 'general',
-        type: 'text'
-      });
-
-      router.push(`/communities/${community.id}`);
     }
+
+    // 1. Create Community
+    const { data: community, error: communityError } = await supabase
+      .from('communities')
+      .insert({ name, description, owner_id: user.id, region, genre })
+      .select()
+      .single();
+
+    if (communityError || !community) {
+      alert('Failed to create community: ' + communityError?.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Create default #general channel
+    await supabase.from('channels').insert({
+      community_id: community.id,
+      name: 'general',
+      type: 'text'
+    });
+
+    router.push(`/communities/${community.id}`);
   };
 
   return (

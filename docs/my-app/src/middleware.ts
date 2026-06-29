@@ -31,12 +31,6 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/communities')
 
   if (isProtectedRoute) {
-    // Check if there is a quick developer/guest bypass cookie active
-    const isDemoSession = request.cookies.get('demo-session')?.value === 'true'
-    if (isDemoSession) {
-      return supabaseResponse
-    }
-
     const {
       data: { user },
     } = await supabase.auth.getUser()

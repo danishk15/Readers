@@ -35,48 +35,33 @@ export default function PremiumPage() {
   
   // Load progression stats
   const loadStats = async () => {
-    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-    
     // Load current premium status
-    if (isDemo) {
-      setIsPremium(true);
-    } else {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase.from('users').select('premium_status').eq('id', user.id).single();
-          if (profile?.premium_status) {
-            setIsPremium(true);
-          }
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('users').select('premium_status').eq('id', user.id).single();
+        if (profile?.premium_status) {
+          setIsPremium(true);
         }
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error(e);
     }
 
     // Compute total minutes read
     let totalSeconds = 0;
-    if (isDemo) {
-      try {
-        const localLogs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
-        totalSeconds = localLogs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: logs } = await supabase.from('reading_logs').select('time_spent_seconds').eq('user_id', user.id);
-          if (logs) {
-            totalSeconds = logs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
-          }
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: logs } = await supabase.from('reading_logs').select('time_spent_seconds').eq('user_id', user.id);
+        if (logs) {
+          totalSeconds = logs.reduce((acc: number, log: any) => acc + (log.time_spent_seconds || 0), 0);
         }
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error(e);
     }
     
     const minutes = Math.floor(totalSeconds / 60) + 25; // Base offset to avoid showing zero
@@ -91,34 +76,7 @@ export default function PremiumPage() {
     setLoading(true);
     setMessage('');
 
-    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-    if (isDemo) {
-      setTimeout(() => {
-        if (planName === '500 Reading Minutes') {
-          try {
-            const localLogs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
-            const mockLogs = Array.from({ length: 1000 }).map((_, i) => ({
-              id: 'local-log-simulated-' + i + '-' + Date.now(),
-              created_at: new Date().toISOString(),
-              user_id: 'demo-guest-id-12345',
-              book_id: 'classic-1',
-              time_spent_seconds: 30,
-              pages_read: 10
-            }));
-            localStorage.setItem('demo-reading_logs', JSON.stringify([...mockLogs, ...localLogs]));
-            setWeeklyMinutes(500);
-            setMessage('Success! Simulated 500 minutes of reading in guest cache! Click "Claim Free VIP Premium" below to unlock!');
-          } catch (e) {
-            console.error(e);
-          }
-        } else {
-          setIsPremium(true);
-          setMessage(`Success! [Demo Mode] Upgraded to ${planName} VIP membership! 👑`);
-        }
-        setLoading(false);
-      }, 1000);
-      return;
-    }
+    // Standard Razorpay payment flow
 
     try {
       // 1. Create order on backend
@@ -364,17 +322,12 @@ export default function PremiumPage() {
                 onClick={async () => {
                   setClaiming(true);
                   try {
-                    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-                    if (isDemo) {
-                      setIsPremium(true);
-                    } else {
-                      const supabase = createClient();
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (user) {
-                        await supabase.from('users').update({ premium_status: true }).eq('id', user.id);
-                      }
-                      setIsPremium(true);
+                    const supabase = createClient();
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                      await supabase.from('users').update({ premium_status: true }).eq('id', user.id);
                     }
+                    setIsPremium(true);
                     setMessage('Success! You claimed your Free Weekly Premium! 👑 Enjoy unrestricted offline downloads and exclusive books!');
                   } catch (e) {
                     console.error(e);

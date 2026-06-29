@@ -46,121 +46,45 @@ export default function PublishPage() {
     setLoading(true);
     setMessage('');
 
-    const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-
-    const syncBooksCookie = (books: any[]) => {
-      const cleanList = books.map(({ cover_url, ...rest }) => ({
-        ...rest,
-        cover_url: cover_url?.startsWith('data:') ? '' : (cover_url || '')
-      }));
-      document.cookie = "local-published-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
-    };
-
-    // Helper to save locally using Base64 cover and session Object URL
-    const saveLocallyFallback = () => {
-      return new Promise<void>((resolve, reject) => {
-        try {
-          const bookId = 'local-pub-' + Math.random().toString(36).substring(2);
-          const localFileUrl = bookFile ? URL.createObjectURL(bookFile) : 'https://www.gutenberg.org/ebooks/1342.epub.noimages';
-          
-          const saveBookData = async (base64Cover: string) => {
-            const localPublishedList = JSON.parse(localStorage.getItem('local-published-books') || '[]');
-            const newBook = {
-              id: bookId,
-              title,
-              author,
-              cover_url: base64Cover,
-              file_url: localFileUrl,
-              file_type: bookFile ? bookFile.type : 'application/epub+zip',
-              is_premium: false,
-              language: language,
-              created_at: new Date().toISOString()
-            };
-            
-            // Save actual file blob persistently to IndexedDB
-            if (bookFile) {
-              try {
-                await saveRawBookOffline(bookId, title, author, base64Cover, localFileUrl, bookFile);
-              } catch (err) {
-                console.error('Failed to save book to IndexedDB:', err);
-              }
-            }
-
-            const updatedList = [newBook, ...localPublishedList];
-            localStorage.setItem('local-published-books', JSON.stringify(updatedList));
-            syncBooksCookie(updatedList);
-          };
-
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const base64Cover = coverFile ? (reader.result as string) : '';
-            await saveBookData(base64Cover);
-            resolve();
-          };
-
-          if (coverFile) {
-            reader.readAsDataURL(coverFile);
-          } else {
-            saveBookData('').then(() => resolve()).catch(reject);
-          }
-        } catch (err) {
-          reject(err);
-        }
-      });
-    };
-
     try {
-      if (isDemo) {
-        // Bypass Supabase completely in Demo mode
-        await saveLocallyFallback();
-        setMessage('Book published successfully to your local ReadSphere Library! Others can read it when you share your session.');
-      } else {
-        // Try real Supabase upload
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) throw new Error('You must be logged in to publish a book');
+      // Try real Supabase upload
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('You must be logged in to publish a book');
 
-        try {
-          // 1. Upload Cover (if exists)
-          let coverUrl = '';
-          if (coverFile) {
-            const coverPath = `covers/${Date.now()}_${coverFile.name}`;
-            coverUrl = await uploadFile('books_media', coverPath, coverFile);
-          }
-
-          // 2. Upload Book File
-          const bookPath = `files/${Date.now()}_${bookFile.name}`;
-          const fileUrl = await uploadFile('books_media', bookPath, bookFile);
-
-          // 3. Insert into Database
-          let insertData: any = {
-            title,
-            author,
-            cover_url: coverUrl,
-            file_url: fileUrl,
-            is_premium: false,
-            language: language,
-          };
-
-          let { error } = await supabase.from('books').insert(insertData);
-
-          if (error && error.message?.includes('column "language" of relation "books" does not exist')) {
-            console.warn('Language column does not exist on Supabase, retrying without language...');
-            delete insertData.language;
-            const retry = await supabase.from('books').insert(insertData);
-            error = retry.error;
-          }
-
-          if (error) throw error;
-          setMessage('Book published successfully to ReadSphere cloud database!');
-        } catch (dbError) {
-          console.warn('Supabase DB/Storage failed, falling back to local publishing:', dbError);
-          // Fallback locally
-          await saveLocallyFallback();
-          setMessage('Book published successfully! (Saved locally in fallback mode due to database sync limits)');
-        }
+      // 1. Upload Cover (if exists)
+      let coverUrl = '';
+      if (coverFile) {
+        const coverPath = `covers/${Date.now()}_${coverFile.name}`;
+        coverUrl = await uploadFile('books_media', coverPath, coverFile);
       }
+
+      // 2. Upload Book File
+      const bookPath = `files/${Date.now()}_${bookFile.name}`;
+      const fileUrl = await uploadFile('books_media', bookPath, bookFile);
+
+      // 3. Insert into Database
+      let insertData: any = {
+        title,
+        author,
+        cover_url: coverUrl,
+        file_url: fileUrl,
+        is_premium: false,
+        language: language,
+      };
+
+      let { error } = await supabase.from('books').insert(insertData);
+
+      if (error && error.message?.includes('column "language" of relation "books" does not exist')) {
+        console.warn('Language column does not exist on Supabase, retrying without language...');
+        delete insertData.language;
+        const retry = await supabase.from('books').insert(insertData);
+        error = retry.error;
+      }
+
+      if (error) throw error;
+      setMessage('Book published successfully to ReadSphere cloud database!');
 
       // Reset fields on success
       setTitle('');
@@ -168,12 +92,9 @@ export default function PublishPage() {
       setCoverFile(null);
       setBookFile(null);
       setLanguage('en');
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        setMessage(`Error: ${error.message}`);
-      } else {
-        setMessage('Error: An unknown error occurred.');
-      }
+    } catch (error: any) {
+      console.error('Publishing failed:', error);
+      setMessage(`Publishing failed: ${error?.message || error || 'An unknown error occurred.'}`);
     } finally {
       setLoading(false);
     }

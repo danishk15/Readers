@@ -12,6 +12,8 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
@@ -21,15 +23,7 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Auto guest bypass for testing
-    if (email.toLowerCase().startsWith('guest') || email.toLowerCase() === 'guest@readsphere.com') {
-      document.cookie = "demo-session=true; path=/; max-age=86400; SameSite=Lax";
-      router.push('/dashboard');
-      router.refresh();
-      setLoading(false);
-      return;
-    }
+    setResendMessage(null);
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -38,46 +32,44 @@ function LoginForm() {
       });
 
       if (signInError) {
-        // Fallback to guest mode if database is offline or not configured
-        const isDbOffline = signInError.message.toLowerCase().includes('fetch') || 
-                            signInError.message.toLowerCase().includes('connect') || 
-                            signInError.message.toLowerCase().includes('api key') ||
-                            signInError.status === 400 || 
-                            signInError.status === 0;
-
-        if (isDbOffline) {
-          console.warn("Supabase database connection failed, falling back to local guest mode.");
-          document.cookie = "demo-session=true; path=/; max-age=86400; SameSite=Lax";
-          router.push('/dashboard');
-          router.refresh();
-          return;
-        }
-
         if (signInError.message.toLowerCase().includes('confirm') || signInError.message.toLowerCase().includes('verify')) {
-          setError(`${signInError.message}. Feel free to use the "Quick Guest Sign-In" button below to bypass this and start exploring immediately!`);
+          setError('email-not-verified');
         } else {
           setError(signInError.message);
         }
       } else {
-        // Clear demo session if standard login works
-        document.cookie = "demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
         router.push('/dashboard');
         router.refresh();
       }
     } catch (err: any) {
-      console.warn("Connection crash, falling back to local guest mode:", err);
-      document.cookie = "demo-session=true; path=/; max-age=86400; SameSite=Lax";
-      router.push('/dashboard');
-      router.refresh();
+      setError(err?.message || "An unexpected error occurred during login.");
     }
     setLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) return;
+    setResending(true);
+    setResendMessage(null);
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      if (resendError) {
+        setResendMessage(`Error: ${resendError.message}`);
+      } else {
+        setResendMessage("Verification email sent! Check your inbox.");
+      }
+    } catch (err: any) {
+      setResendMessage("Failed to resend verification email.");
+    }
+    setResending(false);
   };
 
   const handleOAuthLogin = async (provider: 'google' | 'discord') => {
     setLoading(true);
     setError(null);
-    // Clear demo session cookie so we authenticate against the real DB
-    document.cookie = "demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -89,14 +81,6 @@ function LoginForm() {
       setError(error.message);
       setLoading(false);
     }
-  };
-
-  const handleGuestBypass = () => {
-    setLoading(true);
-    // Set a client cookie to bypass the middleware check for local development
-    document.cookie = "demo-session=true; path=/; max-age=86400; SameSite=Lax";
-    router.push('/dashboard');
-    router.refresh();
   };
 
   return (
@@ -116,20 +100,50 @@ function LoginForm() {
           required
           className="border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/50 transition-all duration-300"
         />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/50 transition-all duration-300"
-        />
-        
-        {error && (
-          <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-xs leading-relaxed">
-            {error}
+        <div className="space-y-1">
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/50 transition-all duration-300"
+          />
+          <div className="flex justify-between items-center text-[11px] mt-2.5 px-0.5">
+            <div className="flex items-center gap-1.5 cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="remember-me" 
+                className="rounded bg-slate-950 border-slate-800 text-primary focus:ring-primary/50 cursor-pointer w-3.5 h-3.5" 
+              />
+              <label htmlFor="remember-me" className="text-slate-400 select-none cursor-pointer">Remember Me</label>
+            </div>
+            <a href="/forgot-password" className="text-primary hover:underline hover:text-primary/95 transition-colors font-medium">Forgot Password?</a>
           </div>
+        </div>
+        
+        {error === 'email-not-verified' ? (
+          <div className="text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-lg text-xs leading-relaxed flex flex-col gap-2">
+            <div>Your email is not verified yet. Please check your inbox for a verification link.</div>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="text-left font-bold text-amber-300 hover:text-amber-200 underline disabled:opacity-50 text-[10px] uppercase tracking-wider w-max"
+            >
+              {resending ? 'Sending...' : '✉ Resend verification link'}
+            </button>
+            {resendMessage && (
+              <div className="text-[10px] text-emerald-400 font-bold">{resendMessage}</div>
+            )}
+          </div>
+        ) : (
+          error && (
+            <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-xs leading-relaxed">
+              {error}
+            </div>
+          )
         )}
         
         <Button type="submit" disabled={loading} className="mt-2 w-full bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 font-semibold py-2">
@@ -140,17 +154,6 @@ function LoginForm() {
             </span>
           ) : 'Log In'}
         </Button>
-
-        {/* Guest Bypass Button - High Premium Accent */}
-        <div className="relative my-1">
-          <Button 
-            onClick={handleGuestBypass} 
-            type="button" 
-            className="w-full bg-slate-800/80 hover:bg-slate-700/80 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 shadow-md shadow-emerald-950/20 transition-all duration-300 font-semibold py-2"
-          >
-            🚀 Quick Guest Sign-In (Skip Verification)
-          </Button>
-        </div>
 
         <div className="relative my-2">
           <div className="absolute inset-0 flex items-center">

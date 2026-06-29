@@ -295,26 +295,10 @@ export default function Reader({
   useEffect(() => {
     if (timeSpent > 0 && timeSpent % 30 === 0) {
       const syncProgress = async () => {
-        const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
         const activePage = useReflowableFallback ? fallbackPage : currentPage;
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId);
         
-        if (isDemo || !isUuid) {
-          try {
-            const logs = JSON.parse(localStorage.getItem('demo-reading_logs') || '[]');
-            const newLog = {
-              id: 'local-log-' + Math.random().toString(36).substring(2),
-              created_at: new Date().toISOString(),
-              user_id: userId || 'demo-guest-id-12345',
-              book_id: bookId,
-              time_spent_seconds: 30,
-              pages_read: activePage
-            };
-            localStorage.setItem('demo-reading_logs', JSON.stringify([newLog, ...logs]));
-          } catch (e) {
-            console.error('Error saving local log:', e);
-          }
-        } else {
+        if (isUuid && userId) {
           try {
             const supabase = createClient();
             await supabase.from('reading_logs').insert({
@@ -324,7 +308,7 @@ export default function Reader({
               pages_read: activePage,
             });
           } catch (e) {
-            console.error('Error syncing remote log:', e);
+            console.error('Error saving reading log:', e);
           }
         }
       };

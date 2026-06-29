@@ -29,15 +29,8 @@ export default function CommunitiesPage() {
 
   useEffect(() => {
     const fetchCommunities = async () => {
-      const isDemo = typeof document !== 'undefined' && document.cookie.includes('demo-session=true');
-      let user = null;
-      
-      if (isDemo) {
-        user = { id: 'demo-user-id', email: 'guest@readsphere.demo' };
-      } else {
-        const { data } = await supabase.auth.getUser();
-        user = data.user;
-      }
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
 
       if (!user) {
         router.push('/login');
@@ -74,12 +67,7 @@ export default function CommunitiesPage() {
         console.error('Supabase fetch communities error:', e);
       }
 
-      let demoCommunities: Community[] = [];
-      try {
-        demoCommunities = JSON.parse(localStorage.getItem('demo-communities') || '[]');
-      } catch (e) {}
-
-      setCommunities([...demoCommunities, ...dbCommunities]);
+      setCommunities(dbCommunities);
       setLoading(false);
     };
 

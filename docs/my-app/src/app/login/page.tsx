@@ -38,8 +38,8 @@ function LoginForm() {
           setError(signInError.message);
         }
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        // Use window.location.href to force a full reload and cookie sync, avoiding Next.js/Supabase redirect race conditions
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       setError(err?.message || "An unexpected error occurred during login.");

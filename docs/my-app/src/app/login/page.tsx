@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -8,6 +8,110 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { createClient, getURL } from '@/utils/supabase/client';
 import { Mail, ArrowLeft } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+
+// 3D Hover & Cursor-Tracking Spotlight Glow Card
+function InteractiveCard({ 
+  children, 
+  onClick, 
+  glowColor = 'rgba(91,108,255,0.15)', 
+  borderColor = 'rgba(91,108,255,0.3)',
+  className = '',
+  theme
+}: { 
+  children: React.ReactNode; 
+  onClick?: () => void; 
+  glowColor?: string; 
+  borderColor?: string;
+  className?: string;
+  theme: string;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const card = cardRef.current;
+    const rect = card.getBoundingClientRect();
+    
+    // Mouse coords relative to card boundaries
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setCoords({ x, y });
+
+    // 3D tilt calculations
+    const width = rect.width;
+    const height = rect.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // Max tilt angle (no tilt for Brutalism to keep it flat and blocky)
+    const maxTilt = theme === 'brutalist' ? 0 : 8;
+    const tiltX = -((y - centerY) / centerY) * maxTilt;
+    const tiltY = ((x - centerX) / centerX) * maxTilt;
+    setTilt({ x: tiltX, y: tiltY });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
+
+  // Card themes adaptation
+  let themeCardClass = 'bg-[#0b0f19]/80 border border-slate-800/80 rounded-2xl shadow-lg';
+  if (theme === 'glass') {
+    themeCardClass = 'bg-slate-900/35 backdrop-blur-2xl border border-white/5 shadow-2xl rounded-[20px]';
+  } else if (theme === 'neo') {
+    themeCardClass = 'bg-[#1e2022] shadow-[6px_6px_16px_#121314,_-6px_-6px_16px_#2a2d30] border border-slate-800/30 rounded-[24px]';
+  } else if (theme === 'brutalist') {
+    themeCardClass = 'bg-[#141414] border-3 border-white shadow-[6px_6px_0px_#000000] rounded-none';
+  }
+
+  const shadowGlow = isHovered && theme !== 'brutalist' && theme !== 'neo'
+    ? { boxShadow: `0 0 35px -5px ${borderColor}` }
+    : {};
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={onClick}
+      style={{
+        transform: isHovered 
+          ? `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(1.03, 1.03, 1.03)` 
+          : 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+        transition: isHovered ? 'none' : 'all 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+        ...shadowGlow
+      }}
+      className={`relative overflow-hidden cursor-pointer select-none ${themeCardClass} ${className}`}
+    >
+      {/* Dynamic Hover Spotlight following mouse cursor inside card */}
+      {isHovered && theme !== 'brutalist' && (
+        <div
+          className="absolute pointer-events-none rounded-full blur-[65px]"
+          style={{
+            width: '180px',
+            height: '180px',
+            background: glowColor,
+            left: `${coords.x - 90}px`,
+            top: `${coords.y - 90}px`,
+            mixBlendMode: 'screen',
+          }}
+        />
+      )}
+      <div className="relative z-10 w-full h-full">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 // Custom Swaying Lamp Fixture with Pull Cord
 function LampFixture({ 
@@ -143,9 +247,8 @@ function SpotlightCone({ isLightOn, theme }: { isLightOn: boolean; theme: string
   );
 }
 
-// Inner LoginForm with state transitions
-function LoginForm({ theme }: { theme: string }) {
-  const [loginMethod, setLoginMethod] = useState<'none' | 'email'>('none');
+// Inner LoginForm
+function LoginForm({ theme, onBack }: { theme: string; onBack: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -205,224 +308,119 @@ function LoginForm({ theme }: { theme: string }) {
     setResending(false);
   };
 
-  const handleOAuthLogin = async (provider: 'google' | 'discord') => {
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${getURL()}auth/callback`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    }
-  };
-
-  // Styled button helper
-  const getButtonStyles = (type: 'google' | 'discord' | 'email') => {
-    if (theme === 'brutalist') {
-      const base = 'w-full flex items-center justify-center gap-2 border-2 border-black font-black py-2.5 rounded-none transition-all active:translate-x-0 active:translate-y-0 text-sm shadow-[4px_4px_0px_#000000]';
-      switch (type) {
-        case 'google':
-          return `${base} bg-white text-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000]`;
-        case 'discord':
-          return `${base} bg-[#5865F2] text-white hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000]`;
-        case 'email':
-          return `${base} bg-[#facc15] text-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000]`;
-      }
-    } else if (theme === 'neo') {
-      const base = 'w-full flex items-center justify-center gap-2 bg-[#1e2022] shadow-[3px_3px_6px_#121314,_-3px_-3px_6px_#2a2d30] hover:shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] active:scale-98 transition-all py-2.5 rounded-2xl font-semibold text-sm';
-      switch (type) {
-        case 'google':
-          return `${base} text-slate-300 hover:text-white`;
-        case 'discord':
-          return `${base} text-[#5865F2]`;
-        case 'email':
-          return `${base} text-[#5B6CFF]`;
-      }
-    } else {
-      // Default & Glass
-      switch (type) {
-        case 'google':
-          return 'w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-slate-200 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-300 py-2.5 rounded-xl font-semibold text-sm';
-        case 'discord':
-          return 'w-full flex items-center justify-center gap-2 bg-[#5865F2]/10 hover:bg-[#5865F2]/20 text-[#5865F2] border border-[#5865F2]/20 hover:border-[#5865F2]/40 transition-all duration-300 py-2.5 rounded-xl font-semibold text-sm';
-        case 'email':
-          return 'w-full flex items-center justify-center gap-2 bg-[#5B6CFF]/10 hover:bg-[#5B6CFF]/20 text-[#5B6CFF] border border-[#5B6CFF]/20 hover:border-[#5B6CFF]/40 transition-all duration-300 py-2.5 rounded-xl font-semibold text-sm';
-      }
-    }
-  };
-
   // Submit button style
   const getSubmitButtonStyles = () => {
     if (theme === 'brutalist') {
-      return 'w-full py-2.5 border-2 border-black bg-[#ec4899] text-white font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none transition-all text-sm uppercase tracking-wider';
+      return 'w-full py-2.5 border-2 border-black bg-[#ec4899] text-white font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none transition-all text-sm uppercase tracking-wider cursor-pointer';
     } else if (theme === 'neo') {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-[#8B5CF6] text-white font-bold rounded-2xl shadow-[inset_1px_1px_2px_rgba(255,255,255,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all text-sm';
+      return 'w-full py-2.5 bg-gradient-to-r from-primary to-[#8B5CF6] text-white font-bold rounded-2xl shadow-[inset_1px_1px_2px_rgba(255,255,255,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all text-sm cursor-pointer';
     } else {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 text-sm';
+      return 'w-full py-2.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 text-sm cursor-pointer';
     }
   };
 
   return (
-    <div className="relative min-h-[300px] overflow-hidden">
-      {message && (
-        <div className="mb-4 text-xs font-semibold text-emerald-400 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-pulse">
-          {message}
+    <form onSubmit={handleLogin} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      <div className="flex items-center justify-between border-b border-slate-800/40 pb-2.5">
+        <button 
+          type="button" 
+          onClick={onBack} 
+          className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors focus:outline-none cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to options
+        </button>
+        <span className="text-[10px] uppercase font-black tracking-widest text-slate-500">Email Login</span>
+      </div>
+
+      <Input
+        label="Email Address"
+        type="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className={`${
+          theme === 'brutalist' 
+            ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
+            : theme === 'neo'
+              ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
+              : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
+        } transition-all duration-300`}
+      />
+
+      <div className="space-y-1">
+        <Input
+          label="Password"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className={`${
+            theme === 'brutalist' 
+              ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
+              : theme === 'neo'
+                ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
+                : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
+          } transition-all duration-300`}
+        />
+
+        <div className="flex justify-between items-center text-[11px] mt-2.5 px-0.5">
+          <div className="flex items-center gap-1.5 cursor-pointer">
+            <input 
+              type="checkbox" 
+              id="remember-me" 
+              className={`rounded cursor-pointer w-3.5 h-3.5 ${
+                theme === 'brutalist'
+                  ? 'bg-white border-2 border-black rounded-none text-black focus:ring-0'
+                  : theme === 'neo'
+                    ? 'bg-[#1e2022] border-slate-800 text-[#5B6CFF] focus:ring-0'
+                    : 'bg-slate-950 border-slate-800 text-primary focus:ring-primary/40'
+              }`} 
+            />
+            <label htmlFor="remember-me" className="text-slate-400 select-none cursor-pointer">Remember Me</label>
+          </div>
+          <a href="/forgot-password" className="text-primary hover:underline transition-colors font-semibold">Forgot Password?</a>
         </div>
-      )}
-
-      {/* Login Options Selector screen */}
-      {loginMethod === 'none' ? (
-        <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          <div className="text-center pb-2">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Sign In Options</h2>
-            <p className="text-[11px] text-slate-500 mt-1">Choose your preferred login pathway</p>
-          </div>
-
-          <button 
-            onClick={() => handleOAuthLogin('google')} 
-            type="button" 
-            className={getButtonStyles('google')}
+      </div>
+      
+      {error === 'email-not-verified' ? (
+        <div className="text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs leading-relaxed flex flex-col gap-2">
+          <div>Your email is not verified yet. Please check your inbox for a verification link.</div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resending}
+            className="text-left font-bold text-amber-300 hover:text-amber-200 underline disabled:opacity-50 text-[10px] uppercase tracking-wider w-max cursor-pointer"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-            </svg>
-            Continue with Google
+            {resending ? 'Sending...' : '✉ Resend verification link'}
           </button>
-
-          <button 
-            onClick={() => handleOAuthLogin('discord')} 
-            type="button" 
-            className={getButtonStyles('discord')}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
-            </svg>
-            Continue with Discord
-          </button>
-
-          <button 
-            onClick={() => setLoginMethod('email')} 
-            type="button" 
-            className={getButtonStyles('email')}
-          >
-            <Mail className="w-4 h-4" />
-            Continue with Email
-          </button>
-
-          <div className="text-center text-xs text-slate-500 mt-4 border-t border-slate-800/40 pt-4">
-            Don&apos;t have an account? <a href="/signup" className="text-primary hover:underline transition-colors font-semibold">Sign up</a>
-          </div>
+          {resendMessage && (
+            <div className="text-[10px] text-emerald-400 font-bold">{resendMessage}</div>
+          )}
         </div>
       ) : (
-        /* Email Login Form */
-        <form onSubmit={handleLogin} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          <div className="flex items-center justify-between border-b border-slate-800/40 pb-2.5">
-            <button 
-              type="button" 
-              onClick={() => setLoginMethod('none')} 
-              className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors focus:outline-none"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Back to options
-            </button>
-            <span className="text-[10px] uppercase font-black tracking-widest text-slate-500">Email Login</span>
+        error && (
+          <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs leading-relaxed">
+            {error}
           </div>
-
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className={`${
-              theme === 'brutalist' 
-                ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-                : theme === 'neo'
-                  ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-                  : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-            } transition-all duration-300`}
-          />
-
-          <div className="space-y-1">
-            <Input
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className={`${
-                theme === 'brutalist' 
-                  ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-                  : theme === 'neo'
-                    ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-                    : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-              } transition-all duration-300`}
-            />
-
-            <div className="flex justify-between items-center text-[11px] mt-2.5 px-0.5">
-              <div className="flex items-center gap-1.5 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  id="remember-me" 
-                  className={`rounded cursor-pointer w-3.5 h-3.5 ${
-                    theme === 'brutalist'
-                      ? 'bg-white border-2 border-black rounded-none text-black focus:ring-0'
-                      : theme === 'neo'
-                        ? 'bg-[#1e2022] border-slate-800 text-[#5B6CFF] focus:ring-0'
-                        : 'bg-slate-950 border-slate-800 text-primary focus:ring-primary/40'
-                  }`} 
-                />
-                <label htmlFor="remember-me" className="text-slate-400 select-none cursor-pointer">Remember Me</label>
-              </div>
-              <a href="/forgot-password" className="text-primary hover:underline transition-colors font-semibold">Forgot Password?</a>
-            </div>
-          </div>
-          
-          {error === 'email-not-verified' ? (
-            <div className="text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs leading-relaxed flex flex-col gap-2">
-              <div>Your email is not verified yet. Please check your inbox for a verification link.</div>
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                disabled={resending}
-                className="text-left font-bold text-amber-300 hover:text-amber-200 underline disabled:opacity-50 text-[10px] uppercase tracking-wider w-max"
-              >
-                {resending ? 'Sending...' : '✉ Resend verification link'}
-              </button>
-              {resendMessage && (
-                <div className="text-[10px] text-emerald-400 font-bold">{resendMessage}</div>
-              )}
-            </div>
-          ) : (
-            error && (
-              <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs leading-relaxed">
-                {error}
-              </div>
-            )
-          )}
-          
-          <Button 
-            type="submit" 
-            disabled={loading} 
-            className={getSubmitButtonStyles()}
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Logging in...
-              </span>
-            ) : 'Log In'}
-          </Button>
-        </form>
+        )
       )}
-    </div>
+      
+      <Button 
+        type="submit" 
+        disabled={loading} 
+        className={getSubmitButtonStyles()}
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Logging in...
+          </span>
+        ) : 'Log In'}
+      </Button>
+    </form>
   );
 }
 
@@ -430,6 +428,11 @@ function LoginForm({ theme }: { theme: string }) {
 export default function LoginPage() {
   const [isLightOn, setIsLightOn] = useState(false);
   const [theme, setTheme] = useState<'default' | 'glass' | 'neo' | 'brutalist'>('default');
+  const [activeCard, setActiveCard] = useState<'none' | 'email'>('none');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createClient();
 
   // Sync with global UI Switcher theme
   useEffect(() => {
@@ -452,7 +455,6 @@ export default function LoginPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
-      // Skip toggle if user is typing in form inputs
       if (
         activeElement && 
         (activeElement.tagName === 'INPUT' || 
@@ -471,30 +473,32 @@ export default function LoginPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleOAuthLogin = async (provider: 'google' | 'discord') => {
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${getURL()}auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
   // Dynamic Background classes depending on lamp state
   const bgStyles = isLightOn 
     ? 'bg-[#060814] bg-[radial-gradient(circle_at_top,_rgba(91,108,255,0.06),_transparent_60%)]' 
     : 'bg-[#020306]';
 
-  // Dynamic Card class utility
-  const getCardClasses = () => {
-    switch (theme) {
-      case 'glass':
-        return 'bg-slate-900/30 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(91,108,255,0.15)] rounded-[24px]';
-      case 'neo':
-        return 'bg-[#1e2022] shadow-[8px_8px_20px_#121314,_-8px_-8px_20px_#2a2d30] border border-slate-800/30 rounded-[28px]';
-      case 'brutalist':
-        return 'bg-[#141414] border-4 border-white shadow-[8px_8px_0px_#facc15] rounded-none';
-      default:
-        return 'bg-[#0b0f19]/70 backdrop-blur-xl border border-slate-800/80 shadow-[0_0_50px_-12px_rgba(91,108,255,0.15)] rounded-2xl';
-    }
-  };
-
-  // Header alignment classes for Neomorphism & Brutalism
+  // Header style variables
   const headerTextClass = theme === 'brutalist' ? 'text-white' : 'bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent';
 
   return (
-    <div className={`flex flex-col min-h-screen items-center justify-start p-4 transition-colors duration-500 overflow-hidden relative ${bgStyles}`}>
+    <div className={`flex flex-col min-h-screen items-center justify-start p-4 transition-colors duration-500 overflow-x-hidden relative ${bgStyles}`}>
       
       {/* Dynamic Sway & Drift Keyframes */}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -535,46 +539,135 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Animated Card Container */}
+      {/* Animated Cards Container */}
       <div 
-        className={`w-full max-w-md mt-12 z-20 transition-all duration-700 ease-out transform ${
+        className={`w-full transition-all duration-700 ease-out transform mt-12 z-20 ${
           isLightOn 
             ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
             : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
-        }`}
+        } ${activeCard === 'email' ? 'max-w-md' : 'max-w-5xl'}`}
       >
-        <Card className={`overflow-hidden p-2 ${getCardClasses()}`}>
-          <CardHeader className="text-center pb-2 pt-6">
-            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
-              theme === 'brutalist'
-                ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]'
-                : theme === 'neo'
-                  ? 'bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-[#5B6CFF]'
-                  : 'bg-gradient-to-tr from-primary/20 to-violet-500/20 border border-primary/30 text-primary'
-            }`}>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h1 className={`text-2xl font-bold tracking-tight ${headerTextClass}`}>Welcome Back</h1>
-            <p className="text-xs text-slate-500 mt-1">Log in to your ReadSphere account</p>
-          </CardHeader>
-          <CardContent className="px-6 pb-6 pt-2">
-            <Suspense fallback={
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2" />
-                <div className="text-xs text-slate-500">Loading form...</div>
+        {activeCard === 'none' ? (
+          /* Grid of 3 Cards */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+            
+            {/* Google Card */}
+            <InteractiveCard 
+              theme={theme}
+              onClick={() => handleOAuthLogin('google')}
+              glowColor="rgba(234, 67, 53, 0.12)"
+              borderColor="rgba(234, 67, 53, 0.35)"
+            >
+              <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
+                  theme === 'brutalist' ? 'bg-white text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-white/5 border border-white/10'
+                }`}>
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100">Google</h2>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Authenticate quickly using your Google Account credentials.
+                  </p>
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4">
+                  Click to Connect →
+                </div>
               </div>
-            }>
-              <LoginForm theme={theme} />
-            </Suspense>
-          </CardContent>
-        </Card>
+            </InteractiveCard>
+
+            {/* Discord Card */}
+            <InteractiveCard 
+              theme={theme}
+              onClick={() => handleOAuthLogin('discord')}
+              glowColor="rgba(88, 101, 242, 0.15)"
+              borderColor="rgba(88, 101, 242, 0.35)"
+            >
+              <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
+                  theme === 'brutalist' ? 'bg-[#5865F2] text-white border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5865F2]/10 border border-[#5865F2]/20 text-[#5865F2]'
+                }`}>
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100">Discord</h2>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Log in and connect with your Discord community account.
+                  </p>
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-[#5865F2] mt-4">
+                  Click to Connect →
+                </div>
+              </div>
+            </InteractiveCard>
+
+            {/* Email Card */}
+            <InteractiveCard 
+              theme={theme}
+              onClick={() => setActiveCard('email')}
+              glowColor="rgba(91, 108, 255, 0.15)"
+              borderColor="rgba(91, 108, 255, 0.35)"
+            >
+              <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
+                  theme === 'brutalist' ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5B6CFF]/10 border border-[#5B6CFF]/20 text-[#5B6CFF]'
+                }`}>
+                  <Mail className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100">Email & Password</h2>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Log in securely using your classic email and password credentials.
+                  </p>
+                </div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-[#5B6CFF] mt-4">
+                  Click to Expand →
+                </div>
+              </div>
+            </InteractiveCard>
+          </div>
+        ) : (
+          /* Expanded Email Form Card */
+          <InteractiveCard 
+            theme={theme}
+            glowColor="rgba(91, 108, 255, 0.1)"
+            borderColor="rgba(91, 108, 255, 0.3)"
+            className="w-full"
+          >
+            <div className="p-8">
+              <CardHeader className="text-center pb-2 pt-0 border-b-0 px-0">
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
+                  theme === 'brutalist'
+                    ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]'
+                    : theme === 'neo'
+                      ? 'bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-[#5B6CFF]'
+                      : 'bg-gradient-to-tr from-primary/20 to-violet-500/20 border border-primary/30 text-primary'
+                }`}>
+                  <Mail className="w-6 h-6" />
+                </div>
+                <h1 className={`text-xl font-bold tracking-tight ${headerTextClass}`}>Email & Password</h1>
+                <p className="text-xs text-slate-500 mt-1">Sign in with your email credentials</p>
+              </CardHeader>
+              <CardContent className="p-0 pt-4">
+                <LoginForm theme={theme} onBack={() => setActiveCard('none')} />
+              </CardContent>
+            </div>
+          </InteractiveCard>
+        )}
+        
+        {error && (
+          <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs leading-relaxed mt-4">
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Style selector for immediate verification */}
+      {/* Style selector */}
       <ThemeToggle />
     </div>
   );
 }
-

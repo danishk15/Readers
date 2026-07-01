@@ -85,6 +85,16 @@ export default function Reader({
   const [fontFamily, setFontFamily] = useState('Georgia');
   const [theme, setTheme] = useState<keyof typeof READER_THEMES>('dark');
   const [fallbackPage, setFallbackPage] = useState(1);
+  const [extractedChapters, setExtractedChapters] = useState<{ chapter: string; text: string }[]>([]);
+
+  // Reset reader states on book change
+  useEffect(() => {
+    setExtractedChapters([]);
+    setUseReflowableFallback(false);
+    setFallbackPage(1);
+    setCurrentPage(0);
+    setLoading(true);
+  }, [bookId, bookUrl]);
 
   // Dynamic simulated book text based on title, author, and description
   const getSimulatedBookChapters = () => {
@@ -194,6 +204,87 @@ export default function Reader({
         if (isDestroyed || !viewerRef.current) return;
 
         book = ePub(buffer);
+
+        // --- BACKGROUND SPINE EXTRACTION FOR OFFLINE READING ---
+        book.opened.then(async () => {
+          if (isDestroyed) return;
+          try {
+            const toc: any[] = [];
+            try {
+              const nav = await book.loaded.navigation;
+              if (nav && nav.toc) {
+                const flatten = (items: any[]): any[] => {
+                  let res: any[] = [];
+                  for (const item of items) {
+                    res.push(item);
+                    if (item.subitems && item.subitems.length > 0) {
+                      res = res.concat(flatten(item.subitems));
+                    }
+                  }
+                  return res;
+                };
+                toc.push(...flatten(nav.toc));
+              }
+            } catch (e) {
+              console.warn("Failed to load navigation/TOC", e);
+            }
+
+            const spine = await book.loaded.spine;
+            const tempChapters: { chapter: string; text: string }[] = [];
+            const maxItems = Math.min(spine.spineItems.length, 150);
+
+            for (let i = 0; i < maxItems; i++) {
+              if (isDestroyed) return;
+              const item = spine.spineItems[i];
+              try {
+                const doc = await item.load(book.load.bind(book));
+                if (!doc) continue;
+
+                let text = "";
+                if (doc.body) {
+                  text = doc.body.textContent || doc.body.innerText || "";
+                } else {
+                  text = doc.textContent || "";
+                }
+
+                text = text.replace(/\s+/g, ' ').trim();
+                if (!text || text.length < 30) continue;
+
+                let chapterTitle = "";
+                const heading = doc.querySelector('h1, h2, h3, h4, h5, [class*="title"], [class*="chapter"]');
+                if (heading) {
+                  chapterTitle = heading.textContent?.trim() || "";
+                }
+
+                if (!chapterTitle) {
+                  const href = item.href;
+                  const match = toc.find((t: any) => t.href && href && (href.endsWith(t.href) || t.href.endsWith(href) || href.includes(t.href) || t.href.includes(href)));
+                  if (match) {
+                    chapterTitle = match.label?.trim() || "";
+                  }
+                }
+
+                if (!chapterTitle) {
+                  chapterTitle = `Chapter ${tempChapters.length + 1}`;
+                }
+
+                tempChapters.push({
+                  chapter: chapterTitle,
+                  text: text
+                });
+              } catch (err) {
+                console.warn(`Error extracting text for spine item ${i}:`, err);
+              }
+            }
+
+            if (tempChapters.length > 0 && !isDestroyed) {
+              setExtractedChapters(tempChapters);
+            }
+          } catch (err) {
+            console.error("Background text extraction failed:", err);
+          }
+        });
+
         const rendition = book.renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
@@ -211,8 +302,10 @@ export default function Reader({
         setLoading(false);
         clearTimeout(timeoutId);
         
-        // Inject Google Fonts stylesheet into epubjs iframe
-        rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+        // Inject Google Fonts stylesheet into epubjs iframe only if online
+        if (typeof window !== 'undefined' && navigator.onLine) {
+          rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+        }
         
         const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
         rendition.themes.default({
@@ -253,6 +346,7 @@ export default function Reader({
     }, 15000);
 
     return () => {
+      isDestroyed = true;
       if (book) {
         try {
           book.destroy();
@@ -316,6 +410,8 @@ export default function Reader({
     }
   }, [timeSpent, bookId, userId, currentPage, fallbackPage, useReflowableFallback]);
 
+  const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
+
   const prevPage = () => {
     if (useReflowableFallback) {
       setFallbackPage(prev => Math.max(1, prev - 1));
@@ -326,7 +422,7 @@ export default function Reader({
 
   const nextPage = () => {
     if (useReflowableFallback) {
-      setFallbackPage(prev => Math.min(chapters.length, prev + 1));
+      setFallbackPage(prev => Math.min(activeChapters.length, prev + 1));
     } else {
       renditionRef.current?.next();
     }
@@ -398,7 +494,7 @@ export default function Reader({
           {!isPdf && (
             <>
               <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold">Prev</Button>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === chapters.length} className="font-bold">Next</Button>
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === activeChapters.length} className="font-bold">Next</Button>
             </>
           )}
         </div>
@@ -430,32 +526,37 @@ export default function Reader({
             </p>
           </div>
         ) : useReflowableFallback ? (
-          <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
-            <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
-              {/* Chapter Title */}
-              <h2 className="text-2xl font-black border-b border-slate-800/30 pb-3 tracking-tight" style={{ fontFamily }}>
-                {chapters[fallbackPage - 1].chapter}
-              </h2>
-              
-              {/* Chapter Content */}
-              <p 
-                className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify"
-                style={{ 
-                  fontSize: `${fontSize}px`, 
-                  fontFamily: fontFamily,
-                  lineHeight: 1.8 
-                }}
-              >
-                {chapters[fallbackPage - 1].text}
-              </p>
- 
-              {/* Page Number */}
-              <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
-                <span>Page {fallbackPage} of {chapters.length}</span>
-                <span>{Math.round((fallbackPage / chapters.length) * 100)}% read</span>
+          (() => {
+            const safeFallbackPage = Math.min(fallbackPage, activeChapters.length);
+            return (
+              <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
+                <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
+                  {/* Chapter Title */}
+                  <h2 className="text-2xl font-black border-b border-slate-800/30 pb-3 tracking-tight" style={{ fontFamily }}>
+                    {activeChapters[safeFallbackPage - 1]?.chapter || "Chapter"}
+                  </h2>
+                  
+                  {/* Chapter Content */}
+                  <p 
+                    className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify"
+                    style={{ 
+                      fontSize: `${fontSize}px`, 
+                      fontFamily: fontFamily,
+                      lineHeight: 1.8 
+                    }}
+                  >
+                    {activeChapters[safeFallbackPage - 1]?.text || "No content found in this section."}
+                  </p>
+     
+                  {/* Page Number */}
+                  <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
+                    <span>Page {safeFallbackPage} of {activeChapters.length}</span>
+                    <span>{Math.round((safeFallbackPage / activeChapters.length) * 100)}% read</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()
         ) : (
           <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         )}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { BookOpen, Users, Sparkles, TrendingUp, BookMarked, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import InteractiveCard from "@/components/ui/InteractiveCard";
+import HomeThemeSelector from "@/components/ui/HomeThemeSelector";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -100,12 +102,19 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Dynamic Vibe Switcher Showcase */}
+        <HomeThemeSelector />
+
         {/* Floating Mockups / Interactive Cards */}
         <section id="features" className="relative w-full max-w-6xl mx-auto px-6 pb-32 z-10" style={{ perspective: '1000px' }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 transform md:-rotate-1 hover:rotate-0 transition-transform duration-700 ease-out">
             
             {/* Card 1 */}
-            <div className="group theme-card p-8 hover:-translate-y-2 cursor-pointer">
+            <InteractiveCard 
+              className="p-8 group"
+              glowColor="rgba(91, 108, 255, 0.18)"
+              borderColor="rgba(91, 108, 255, 0.35)"
+            >
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary/20 transition-all">
                 <BookMarked className="w-7 h-7 text-primary" />
               </div>
@@ -113,10 +122,14 @@ export default async function Home() {
               <p className="text-slate-400 leading-relaxed group-hover:text-slate-350 transition-colors text-sm">
                 Experience books like never before with our distraction-free, customizable reading interface.
               </p>
-            </div>
+            </InteractiveCard>
 
             {/* Card 2 */}
-            <div className="group theme-card p-8 hover:-translate-y-4 shadow-lg relative md:-top-8 cursor-pointer">
+            <InteractiveCard 
+              className="p-8 group relative md:-top-8"
+              glowColor="rgba(139, 92, 246, 0.18)"
+              borderColor="rgba(139, 92, 246, 0.35)"
+            >
               <div className="w-14 h-14 rounded-2xl bg-secondary/15 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-secondary/25 transition-all">
                 <TrendingUp className="w-7 h-7 text-secondary" />
               </div>
@@ -124,10 +137,14 @@ export default async function Home() {
               <p className="text-slate-400 leading-relaxed group-hover:text-slate-350 transition-colors text-sm">
                 Log your reading time, track pages read, and earn badges as you hit your personal reading goals.
               </p>
-            </div>
+            </InteractiveCard>
 
             {/* Card 3 */}
-            <div className="group theme-card p-8 hover:-translate-y-2 cursor-pointer">
+            <InteractiveCard 
+              className="p-8 group"
+              glowColor="rgba(99, 102, 241, 0.18)"
+              borderColor="rgba(99, 102, 241, 0.35)"
+            >
               <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all">
                 <Users className="w-7 h-7 text-indigo-400" />
               </div>
@@ -135,7 +152,7 @@ export default async function Home() {
               <p className="text-slate-400 leading-relaxed group-hover:text-slate-350 transition-colors text-sm">
                 Connect with fellow readers. Join discussion channels, share reviews, and debate plot twists.
               </p>
-            </div>
+            </InteractiveCard>
 
           </div>
         </section>

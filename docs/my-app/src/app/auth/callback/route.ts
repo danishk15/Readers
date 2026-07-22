@@ -11,11 +11,11 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(new URL(next, request.url));
     }
     console.error('Supabase OAuth code exchange error:', error);
   }
 
   // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/login?message=Could not login with provider`);
+  return NextResponse.redirect(new URL('/login?message=Could not login with provider', request.url));
 }

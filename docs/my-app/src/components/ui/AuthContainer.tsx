@@ -544,7 +544,7 @@ interface AuthContainerProps {
 }
 
 export default function AuthContainer({ defaultMode }: AuthContainerProps) {
-  const [isLightOn, setIsLightOn] = useState(false);
+  const [isLightOn, setIsLightOn] = useState(true);
   const [theme, setTheme] = useState<'default' | 'glass' | 'neo' | 'brutalist'>('default');
   
   // 'login' or 'signup' mode state
@@ -991,11 +991,17 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
             <button className="px-6 py-2 rounded-lg text-xs font-bold">Sign In</button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full opacity-0">
-          <div className="min-h-[250px]" />
-          <div className="min-h-[250px]" />
-          <div className="min-h-[250px]" />
-        </div>
+        {mode === 'login' && loginActiveCard === 'email' ? (
+          <div className="h-[450px] w-full" />
+        ) : mode === 'signup' && signupActiveCard === 'email' ? (
+          <div className="h-[680px] w-full" />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full opacity-0">
+            <div className="min-h-[250px]" />
+            <div className="min-h-[250px]" />
+            <div className="min-h-[250px]" />
+          </div>
+        )}
       </div>
 
       <ThemeToggle />

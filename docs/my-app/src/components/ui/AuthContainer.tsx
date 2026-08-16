@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, ArrowLeft, Moon, Layers, Cpu, ShieldAlert, Check, Sparkles } from 'lucide-react';
+import { Mail, BookOpen, Sparkles, Check, AlertCircle, ArrowRight, Lock, User, RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { createClient, getURL } from '@/utils/supabase/client';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import InteractiveCard from '@/components/ui/InteractiveCard';
 
 // Custom Swaying Lamp Fixture with Pull Cord
 function LampFixture({ 
@@ -49,28 +47,29 @@ function LampFixture({
 
   return (
     <div className="relative flex flex-col items-center select-none z-30 animate-sway">
-      <div className="w-[1.5px] h-32 bg-slate-700/60 transition-colors duration-300" />
-      <div className="w-10 h-3.5 bg-slate-800 border border-slate-900 rounded-t-sm" />
-      <div className="w-6 h-3 bg-slate-750 border-x border-slate-800" />
+      <div className="w-[1.5px] h-24 bg-slate-700/60 transition-colors duration-300" />
+      <div className="w-10 h-3 bg-slate-800 border border-slate-900 rounded-t-sm" />
+      <div className="w-6 h-2.5 bg-slate-750 border-x border-slate-800" />
       
       <div 
         onClick={handlePull}
-        className={`w-12 h-12 rounded-full cursor-pointer transition-all duration-500 relative flex items-center justify-center ${bulbGlowClass} border-2 hover:scale-105 active:scale-95`}
+        className={`w-11 h-11 rounded-full cursor-pointer transition-all duration-500 relative flex items-center justify-center ${bulbGlowClass} border-2 hover:scale-105 active:scale-95`}
+        title="Toggle Ambient Lighting (Key: L)"
       >
-        <div className={`w-3.5 h-5 border-t border-x rounded-t transition-all duration-500 ${filamentColor}`} />
-        <div className="absolute top-1.5 left-3 w-2.5 h-1 bg-white/20 rounded-full rotate-[-15deg]" />
+        <div className={`w-3 h-4 border-t border-x rounded-t transition-all duration-500 ${filamentColor}`} />
+        <div className="absolute top-1.5 left-2.5 w-2 h-1 bg-white/20 rounded-full rotate-[-15deg]" />
       </div>
 
       <div 
         onClick={handlePull}
         style={{
-          transform: isPulling ? 'translateY(12px)' : 'translateY(0px)',
+          transform: isPulling ? 'translateY(10px)' : 'translateY(0px)',
           transition: 'transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
         }}
-        className="absolute top-[170px] -right-3.5 flex flex-col items-center cursor-pointer group"
+        className="absolute top-[140px] -right-3 flex flex-col items-center cursor-pointer group"
       >
-        <div className="w-[1px] h-20 bg-slate-500/80 group-hover:bg-slate-350 transition-colors" />
-        <div className="w-2.5 h-3.5 bg-gradient-to-b from-amber-600 to-amber-800 rounded-b-sm border border-amber-900 shadow-md group-hover:from-amber-500 group-hover:to-amber-700" />
+        <div className="w-[1px] h-16 bg-slate-500/80 group-hover:bg-slate-350 transition-colors" />
+        <div className="w-2.5 h-3 bg-gradient-to-b from-amber-600 to-amber-800 rounded-b-sm border border-amber-900 shadow-md group-hover:from-amber-500 group-hover:to-amber-700" />
       </div>
     </div>
   );
@@ -124,418 +123,12 @@ function SpotlightCone({ isLightOn, theme }: { isLightOn: boolean; theme: string
     <div 
       className="absolute top-0 left-1/2 -translate-x-1/2 w-[160vw] max-w-[1250px] h-screen pointer-events-none z-10 transition-opacity duration-500"
       style={{
-        clipPath: 'polygon(50% 180px, 0% 100%, 100% 100%)',
+        clipPath: 'polygon(50% 140px, 0% 100%, 100% 100%)',
       }}
     >
       <div className={`w-full h-full bg-gradient-to-b ${gradientClass}`} />
       <DustParticles count={25} />
     </div>
-  );
-}
-
-// Inner LoginForm Component
-function LoginForm({ theme, onBack }: { theme: string; onBack: () => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
-  
-  const router = useRouter();
-  const supabase = createClient();
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setResendMessage(null);
-
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        if (signInError.message.toLowerCase().includes('confirm') || signInError.message.toLowerCase().includes('verify')) {
-          setError('email-not-verified');
-        } else {
-          setError(signInError.message);
-        }
-      } else {
-        window.location.href = '/dashboard';
-      }
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred during login.");
-    }
-    setLoading(false);
-  };
-
-  const handleResendVerification = async () => {
-    if (!email) return;
-    setResending(true);
-    setResendMessage(null);
-    try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-      if (resendError) {
-        setResendMessage(`Error: ${resendError.message}`);
-      } else {
-        setResendMessage("Verification email sent! Check your inbox.");
-      }
-    } catch (err: any) {
-      setResendMessage("Failed to resend verification email.");
-    }
-    setResending(false);
-  };
-
-  const getSubmitButtonStyles = () => {
-    if (theme === 'brutalist') {
-      return 'w-full py-2.5 border-2 border-black bg-[#ec4899] text-white font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none transition-all text-sm uppercase tracking-wider cursor-pointer';
-    } else if (theme === 'neo') {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-[#8B5CF6] text-white font-bold rounded-2xl shadow-[inset_1px_1px_2px_rgba(255,255,255,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all text-sm cursor-pointer';
-    } else {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 text-sm cursor-pointer';
-    }
-  };
-
-  return (
-    <form onSubmit={handleLogin} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-      <div className="flex items-center justify-between border-b border-slate-800/40 pb-2.5">
-        <button 
-          type="button" 
-          onClick={onBack} 
-          className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors focus:outline-none cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to options
-        </button>
-        <span className="text-[10px] uppercase font-black tracking-widest text-slate-500">Email Login</span>
-      </div>
-
-      <Input
-        label="Email Address"
-        type="email"
-        placeholder="you@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className={`${
-          theme === 'brutalist' 
-            ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-            : theme === 'neo'
-              ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-              : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-        } transition-all duration-300`}
-      />
-
-      <div className="space-y-1">
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className={`${
-            theme === 'brutalist' 
-              ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-              : theme === 'neo'
-                ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-                : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-          } transition-all duration-300`}
-        />
-
-        <div className="flex justify-between items-center text-[11px] mt-2.5 px-0.5">
-          <div className="flex items-center gap-1.5 cursor-pointer">
-            <input 
-              type="checkbox" 
-              id="remember-me" 
-              className={`rounded cursor-pointer w-3.5 h-3.5 ${
-                theme === 'brutalist'
-                  ? 'bg-white border-2 border-black rounded-none text-black focus:ring-0'
-                  : theme === 'neo'
-                    ? 'bg-[#1e2022] border-slate-800 text-[#5B6CFF] focus:ring-0'
-                    : 'bg-slate-950 border-slate-800 text-primary focus:ring-primary/40'
-              }`} 
-            />
-            <label htmlFor="remember-me" className="text-slate-400 select-none cursor-pointer">Remember Me</label>
-          </div>
-          <a href="/forgot-password" className="text-primary hover:underline transition-colors font-semibold">Forgot Password?</a>
-        </div>
-      </div>
-      
-      {error === 'email-not-verified' ? (
-        <div className="text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs leading-relaxed flex flex-col gap-2">
-          <div>Your email is not verified yet. Please check your inbox for a verification link.</div>
-          <button
-            type="button"
-            onClick={handleResendVerification}
-            disabled={resending}
-            className="text-left font-bold text-amber-300 hover:text-amber-200 underline disabled:opacity-50 text-[10px] uppercase tracking-wider w-max cursor-pointer"
-          >
-            {resending ? 'Sending...' : '✉ Resend verification link'}
-          </button>
-          {resendMessage && (
-            <div className="text-[10px] text-emerald-400 font-bold">{resendMessage}</div>
-          )}
-        </div>
-      ) : (
-        error && (
-          <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs leading-relaxed">
-            {error}
-          </div>
-        )
-      )}
-      
-      <Button 
-        type="submit" 
-        disabled={loading} 
-        className={getSubmitButtonStyles()}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Logging in...
-          </span>
-        ) : 'Log In'}
-      </Button>
-    </form>
-  );
-}
-
-// Inner SignUpForm Component
-function SignUpForm({ theme, onBack }: { theme: string; onBack: () => void }) {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
-
-  const hasMinLength = password.length >= 8;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
-  const isPasswordValid = hasMinLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
-  
-  const passwordsMatch = password === confirmPassword;
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!fullName.trim()) {
-      setError("Full Name is required.");
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setError("Password does not meet all strength requirements.");
-      return;
-    }
-
-    if (!passwordsMatch) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getURL()}auth/callback`,
-          data: {
-            full_name: fullName,
-            username: fullName,
-          }
-        },
-      });
-
-      if (signUpError) {
-        setError(signUpError.message);
-      } else {
-        router.push('/login?message=Check your email to confirm your account.');
-      }
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred during signup.");
-    }
-    setLoading(false);
-  };
-
-  const getSubmitButtonStyles = () => {
-    if (theme === 'brutalist') {
-      return 'w-full py-2.5 border-2 border-black bg-[#ec4899] text-white font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none transition-all text-sm uppercase tracking-wider cursor-pointer';
-    } else if (theme === 'neo') {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-[#8B5CF6] text-white font-bold rounded-2xl shadow-[inset_1px_1px_2px_rgba(255,255,255,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all text-sm cursor-pointer';
-    } else {
-      return 'w-full py-2.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white font-semibold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-300 text-sm cursor-pointer';
-    }
-  };
-
-  return (
-    <form onSubmit={handleSignUp} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-      <div className="flex items-center justify-between border-b border-slate-800/40 pb-2.5">
-        <button 
-          type="button" 
-          onClick={onBack} 
-          className="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors focus:outline-none cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to options
-        </button>
-        <span className="text-[10px] uppercase font-black tracking-widest text-slate-500">Email Registration</span>
-      </div>
-
-      <Input
-        label="Full Name"
-        type="text"
-        placeholder="Your Name"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        required
-        className={`${
-          theme === 'brutalist' 
-            ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-            : theme === 'neo'
-              ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-              : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-        } transition-all duration-300`}
-      />
-
-      <Input
-        label="Email Address"
-        type="email"
-        placeholder="you@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className={`${
-          theme === 'brutalist' 
-            ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-            : theme === 'neo'
-              ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-              : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-        } transition-all duration-300`}
-      />
-
-      <div>
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className={`${
-            theme === 'brutalist' 
-              ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-              : theme === 'neo'
-                ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-                : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-          } transition-all duration-300`}
-        />
-        {password.length > 0 && (
-          <div className={`text-[11px] space-y-1 p-3 rounded-lg border mt-2 ${
-            theme === 'brutalist' 
-              ? 'bg-[#141414] border-2 border-black text-white' 
-              : theme === 'neo'
-                ? 'bg-[#1e2022] border-slate-850 shadow-[inset_2px_2px_5px_#121314] text-slate-300'
-                : 'bg-slate-950/60 border-slate-850 text-slate-400'
-          }`}>
-            <div className="font-semibold text-slate-400 mb-1">Password Requirements:</div>
-            <div className="flex items-center gap-1.5">
-              <span className={hasMinLength ? "text-emerald-400 font-bold" : "text-slate-600 font-bold"}>
-                {hasMinLength ? "✓" : "○"}
-              </span>
-              <span className={hasMinLength ? "text-emerald-400/90" : "text-slate-500"}>8–12+ characters</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={hasUpperCase ? "text-emerald-400 font-bold" : "text-slate-600 font-bold"}>
-                {hasUpperCase ? "✓" : "○"}
-              </span>
-              <span className={hasUpperCase ? "text-emerald-400/90" : "text-slate-500"}>One uppercase letter (A-Z)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={hasLowerCase ? "text-emerald-400 font-bold" : "text-slate-600 font-bold"}>
-                {hasLowerCase ? "✓" : "○"}
-              </span>
-              <span className={hasLowerCase ? "text-emerald-400/90" : "text-slate-500"}>One lowercase letter (a-z)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={hasNumber ? "text-emerald-400 font-bold" : "text-slate-600 font-bold"}>
-                {hasNumber ? "✓" : "○"}
-              </span>
-              <span className={hasNumber ? "text-emerald-400/90" : "text-slate-500"}>One number (0-9)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={hasSpecialChar ? "text-emerald-400 font-bold" : "text-slate-600 font-bold"}>
-                {hasSpecialChar ? "✓" : "○"}
-              </span>
-              <span className={hasSpecialChar ? "text-emerald-400/90" : "text-slate-500"}>One special character (@, #, $, etc.)</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <Input
-        label="Confirm Password"
-        type="password"
-        placeholder="••••••••"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        required
-        className={`${
-          theme === 'brutalist' 
-            ? 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black' 
-            : theme === 'neo'
-              ? 'border-transparent bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-slate-200 focus:ring-0'
-              : 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700'
-        } transition-all duration-300`}
-      />
-      {confirmPassword.length > 0 && (
-        <div className="text-[11px] px-1">
-          {passwordsMatch ? (
-            <span className="text-emerald-400 font-semibold">✓ Passwords match</span>
-          ) : (
-            <span className="text-rose-400 font-semibold">✗ Passwords do not match</span>
-          )}
-        </div>
-      )}
-
-      {error && (
-        <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-xs leading-relaxed">
-          {error}
-        </div>
-      )}
-
-      <Button 
-        type="submit" 
-        disabled={loading} 
-        className={getSubmitButtonStyles()}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Creating account...
-          </span>
-        ) : 'Sign Up'}
-      </Button>
-    </form>
   );
 }
 
@@ -546,29 +139,41 @@ interface AuthContainerProps {
 export default function AuthContainer({ defaultMode }: AuthContainerProps) {
   const [isLightOn, setIsLightOn] = useState(true);
   const [theme, setTheme] = useState<'default' | 'glass' | 'neo' | 'brutalist'>('default');
-  
-  // 'login' or 'signup' mode state
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
   
-  // Inner form options state: 'none' or 'email'
-  const [loginActiveCard, setLoginActiveCard] = useState<'none' | 'email'>('none');
-  const [signupActiveCard, setSignupActiveCard] = useState<'none' | 'email'>('none');
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Login Form States
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
+  // Signup Form States
+  const [signUpFullName, setSignUpFullName] = useState('');
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
+  const [signUpLoading, setSignUpLoading] = useState(false);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
+  const [signUpSuccessMessage, setSignUpSuccessMessage] = useState<string | null>(null);
+
+  // Social / Demo Auth States
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'discord' | 'demo' | null>(null);
+
+  const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
   const redirectMessage = searchParams.get('message');
 
-  // Handle errors from callback redirect
+  // Sync redirect error/message if present
   useEffect(() => {
     if (redirectMessage) {
-      setError(redirectMessage);
+      setLoginError(redirectMessage);
     }
   }, [redirectMessage]);
 
-  // Sync with global UI Switcher theme
+  // Sync global theme
   useEffect(() => {
     const updateTheme = () => {
       try {
@@ -585,7 +190,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
     return () => window.removeEventListener('theme-style-change', updateTheme);
   }, []);
 
-  // Listen for the "L" key keyboard toggle shortcut
+  // Keyboard shortcut 'L' to toggle lighting
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
@@ -607,41 +212,244 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleOAuthLogin = async (provider: 'google' | 'discord') => {
-    setLoading(true);
-    setError(null);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${getURL()}auth/callback`,
-      },
-    });
+  // Handle Login
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+    setResendMessage(null);
 
-    if (oauthError) {
-      setError(oauthError.message);
-      setLoading(false);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes('confirm') || error.message.toLowerCase().includes('verify')) {
+          setLoginError('email-not-verified');
+        } else {
+          setLoginError(error.message);
+        }
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (err: any) {
+      setLoginError(err?.message || "An unexpected error occurred during login.");
+    }
+    setLoginLoading(false);
+  };
+
+  // Resend verification
+  const handleResendVerification = async () => {
+    if (!loginEmail) return;
+    setResending(true);
+    setResendMessage(null);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: loginEmail,
+      });
+      if (error) {
+        setResendMessage(`Error: ${error.message}`);
+      } else {
+        setResendMessage("Verification email sent! Please check your inbox.");
+      }
+    } catch (err: any) {
+      setResendMessage("Failed to resend verification email.");
+    }
+    setResending(false);
+  };
+
+  // Password Policy Calculation for Signup
+  const isMinLength = signUpPassword.length >= 6;
+  const hasNumber = /[0-9]/.test(signUpPassword);
+  const hasUpper = /[A-Z]/.test(signUpPassword);
+  const passwordsMatch = signUpPassword.length > 0 && signUpPassword === signUpConfirmPassword;
+
+  const getPasswordStrength = () => {
+    if (signUpPassword.length === 0) return null;
+    if (signUpPassword.length < 6) return { label: 'Too short', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' };
+    let score = 1;
+    if (hasNumber) score++;
+    if (hasUpper) score++;
+    if (signUpPassword.length >= 8) score++;
+
+    if (score <= 2) return { label: 'Weak', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+    if (score === 3) return { label: 'Good', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' };
+    return { label: 'Strong', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
+  };
+
+  // Handle Signup
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignUpError(null);
+    setSignUpSuccessMessage(null);
+
+    if (!signUpFullName.trim()) {
+      setSignUpError("Please enter your full name.");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(signUpEmail)) {
+      setSignUpError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!isMinLength) {
+      setSignUpError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!passwordsMatch) {
+      setSignUpError("Passwords do not match.");
+      return;
+    }
+
+    setSignUpLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: signUpEmail,
+        password: signUpPassword,
+        options: {
+          emailRedirectTo: `${getURL()}auth/callback`,
+          data: {
+            full_name: signUpFullName,
+            username: signUpFullName,
+          }
+        },
+      });
+
+      if (error) {
+        setSignUpError(error.message);
+      } else if (data?.session) {
+        // Auto-confirmed or session active
+        window.location.href = '/dashboard';
+      } else {
+        setSignUpSuccessMessage("Account created successfully! Please check your email inbox to verify your account before logging in.");
+      }
+    } catch (err: any) {
+      setSignUpError(err?.message || "An unexpected error occurred during signup.");
+    }
+    setSignUpLoading(false);
+  };
+
+  // OAuth Login (Google / Discord)
+  const handleOAuthLogin = async (provider: 'google' | 'discord') => {
+    setOauthLoading(provider);
+    setLoginError(null);
+    setSignUpError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${getURL()}auth/callback`,
+        },
+      });
+      if (error) {
+        setLoginError(error.message);
+        setOauthLoading(null);
+      }
+    } catch (err: any) {
+      setLoginError(err?.message || `Failed to authenticate with ${provider}.`);
+      setOauthLoading(null);
     }
   };
 
-  const bgStyles = isLightOn 
-    ? 'bg-[#060814] bg-[radial-gradient(circle_at_top,_rgba(91,108,255,0.06),_transparent_60%)]' 
-    : 'bg-[#020306]';
+  // 1-Click Demo Reader Login
+  const handleDemoLogin = async () => {
+    setOauthLoading('demo');
+    setLoginError(null);
+    setSignUpError(null);
 
-  const headerTextClass = theme === 'brutalist' ? 'text-white' : 'bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent';
+    const demoEmail = 'reader.demo@readsphere.app';
+    const demoPassword = 'DemoReaderPass123!';
 
-  const toggleMode = (newMode: 'login' | 'signup') => {
-    setMode(newMode);
-    setError(null);
+    try {
+      // 1. Try signing in with existing demo account
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      if (!signInErr && signInData?.session) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('readsphere-demo-mode', 'true');
+        }
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // 2. If demo account doesn't exist, create it on the fly
+      const { data: signUpData } = await supabase.auth.signUp({
+        email: demoEmail,
+        password: demoPassword,
+        options: {
+          data: {
+            full_name: 'Demo Reader',
+            username: 'demoreader',
+          }
+        }
+      });
+
+      if (signUpData?.session) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('readsphere-demo-mode', 'true');
+        }
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // 3. Fallback: store demo session locally so reader can explore dashboard seamlessly
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('readsphere-demo-mode', 'true');
+        localStorage.setItem('readsphere-demo-user', JSON.stringify({
+          id: 'demo-reader-id-101',
+          email: demoEmail,
+          user_metadata: { full_name: 'Demo Reader', username: 'demoreader' }
+        }));
+      }
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      // Direct fallback to dashboard in demo mode
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('readsphere-demo-mode', 'true');
+      }
+      window.location.href = '/dashboard';
+    }
   };
+
+  // Card theme styling rules
+  let cardBoxClass = 'bg-[#0b0f19]/90 border border-slate-800/80 shadow-[0_0_50px_-10px_rgba(91,108,255,0.2)] rounded-3xl';
+  let buttonPrimaryClass = 'bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 text-white shadow-lg shadow-primary/25 rounded-xl';
+  let inputClass = 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700';
+
+  if (theme === 'glass') {
+    cardBoxClass = 'bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-[0_0_60px_-5px_rgba(6,182,212,0.2)] rounded-[28px]';
+    buttonPrimaryClass = 'bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-lg shadow-cyan-500/20 rounded-2xl';
+  } else if (theme === 'neo') {
+    cardBoxClass = 'bg-[#1e2022] border border-slate-800/40 shadow-[10px_10px_25px_#121314,-10px_-10px_25px_#2a2d30] rounded-[28px]';
+    buttonPrimaryClass = 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-[inset_1px_1px_2px_rgba(255,255,255,0.3)] rounded-2xl';
+    inputClass = 'border-transparent bg-[#17191b] shadow-[inset_3px_3px_6px_#0f1011,_inset_-3px_-3px_6px_#232629] text-slate-100 focus:ring-0';
+  } else if (theme === 'brutalist') {
+    cardBoxClass = 'bg-[#141414] border-4 border-white shadow-[8px_8px_0px_#000000] rounded-none';
+    buttonPrimaryClass = 'bg-[#ec4899] text-white border-2 border-black font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none uppercase tracking-wider';
+    inputClass = 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black';
+  }
+
+  const bgStyles = isLightOn 
+    ? 'bg-[#060814] bg-[radial-gradient(circle_at_top,_rgba(91,108,255,0.08),_transparent_60%)]' 
+    : 'bg-[#020306]';
 
   return (
     <div className={`flex flex-col min-h-screen items-center justify-start p-4 transition-colors duration-500 overflow-x-hidden relative ${bgStyles}`}>
       
-      {/* 3D Flip Styles */}
+      {/* Dynamic Keyframe Animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes sway {
           0%, 100% { transform: rotate(0deg); transform-origin: top center; }
-          50% { transform: rotate(1deg); transform-origin: top center; }
+          50% { transform: rotate(1.2deg); transform-origin: top center; }
         }
         .animate-sway {
           animation: sway 6s ease-in-out infinite;
@@ -652,35 +460,9 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
           90% { opacity: 0.35; }
           100% { transform: translateY(-380px) translateX(25px); opacity: 0; }
         }
-        .perspective-container {
-          perspective: 1500px;
-        }
-        .flip-card-inner {
-          position: relative;
-          width: 100%;
-          transform-style: preserve-3d;
-          transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .flip-card-inner.flipped {
-          transform: rotateY(180deg);
-        }
-        .flip-card-front, .flip-card-back {
-          position: absolute;
-          width: 100%;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-          top: 0;
-          left: 0;
-        }
-        .flip-card-back {
-          transform: rotateY(180deg);
-        }
-        .ghost-spacer {
-          visibility: hidden;
-          pointer-events: none;
-        }
       ` }} />
 
+      {/* Decorative Atmospheric Lighting */}
       <LampFixture 
         isLightOn={isLightOn} 
         onToggle={() => setIsLightOn(!isLightOn)} 
@@ -689,319 +471,367 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
 
       <SpotlightCone isLightOn={isLightOn} theme={theme} />
 
-      {!isLightOn && (
-        <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none select-none z-20 animate-pulse transition-opacity duration-300 px-6">
-          <p className="text-slate-400 text-sm font-semibold tracking-wider uppercase">
-            The room is dark
-          </p>
-          <p className="text-slate-500 text-xs mt-1.5 max-w-sm leading-relaxed">
-            Pull the switch knob or press <kbd className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-mono shadow">L</kbd> to illuminate the authentication options
+      {/* Main Authentication Card */}
+      <div className="w-full max-w-md mx-auto mt-6 mb-12 z-20 transition-all duration-300">
+        
+        {/* Header Branding */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-violet-500 flex items-center justify-center shadow-lg shadow-primary/30">
+              <BookOpen className="text-white w-5 h-5" />
+            </div>
+            <span className="text-2xl font-bold tracking-wide font-display text-white">ReadSphere</span>
+          </div>
+          <p className="text-xs text-slate-400 max-w-xs">
+            {mode === 'login' ? 'Welcome back! Sign in to access your digital library.' : 'Create your reader account to start tracking & reading books.'}
           </p>
         </div>
-      )}
 
-      {/* 3D Flipping Card Container */}
-      <div 
-        className={`w-full max-w-5xl transition-all duration-700 ease-out transform mt-12 z-20 perspective-container ${
-          isLightOn 
-            ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' 
-            : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
-        }`}
-      >
-        <div className="mb-6 flex justify-center">
-          <div className="inline-flex rounded-xl p-1 bg-slate-950/80 border border-slate-800/60 backdrop-blur-xl">
+        <div className={`p-6 sm:p-8 ${cardBoxClass}`}>
+          
+          {/* Mode Navigation Tabs */}
+          <div className="grid grid-cols-2 gap-1 p-1 mb-6 rounded-xl bg-slate-950/80 border border-slate-800/80">
             <button
-              onClick={() => toggleMode('login')}
-              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${
-                mode === 'login' 
-                  ? 'bg-primary text-white shadow-md' 
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setLoginError(null);
+              }}
+              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-primary text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Sign In
             </button>
             <button
-              onClick={() => toggleMode('signup')}
-              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${
-                mode === 'signup' 
-                  ? 'bg-primary text-white shadow-md' 
+              type="button"
+              onClick={() => {
+                setMode('signup');
+                setSignUpError(null);
+              }}
+              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                mode === 'signup'
+                  ? 'bg-primary text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Join Now
+              Create Account
             </button>
           </div>
-        </div>
 
-        {error && (
-          <div className="max-w-md mx-auto text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs leading-relaxed mb-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {error}
+          {/* Instant Quick Auth Methods (Socials & Demo Reader) */}
+          <div className="space-y-2.5 mb-6">
+            
+            {/* 1-Click Demo Reader Login */}
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={oauthLoading !== null}
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/40 hover:border-amber-400 text-amber-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] group shadow-sm cursor-pointer"
+            >
+              {oauthLoading === 'demo' ? (
+                <span className="w-4 h-4 border-2 border-amber-300 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              )}
+              <span>⚡ Instant Demo Reader Login</span>
+            </button>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Google Auth */}
+              <button
+                type="button"
+                onClick={() => handleOAuthLogin('google')}
+                disabled={oauthLoading !== null}
+                className="py-2.5 px-3 bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:bg-slate-850 cursor-pointer"
+              >
+                {oauthLoading === 'google' ? (
+                  <span className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                  </svg>
+                )}
+                <span>Google</span>
+              </button>
+
+              {/* Discord Auth */}
+              <button
+                type="button"
+                onClick={() => handleOAuthLogin('discord')}
+                disabled={oauthLoading !== null}
+                className="py-2.5 px-3 bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:bg-slate-850 cursor-pointer"
+              >
+                {oauthLoading === 'discord' ? (
+                  <span className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                  </svg>
+                )}
+                <span>Discord</span>
+              </button>
+            </div>
+
           </div>
-        )}
 
-        <div className={`flip-card-inner ${mode === 'signup' ? 'flipped' : ''}`}>
-          
-          {/* FRONT FACE: LOG IN */}
-          <div className="flip-card-front">
-            <div className={`mx-auto ${loginActiveCard === 'email' ? 'max-w-md' : 'max-w-5xl'}`}>
-              {loginActiveCard === 'none' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => handleOAuthLogin('google')}
-                    glowColor="rgba(234, 67, 53, 0.12)"
-                    borderColor="rgba(234, 67, 53, 0.35)"
-                  >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-white text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-white/5 border border-white/10'
-                      }`}>
-                        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Google Login</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Authenticate quickly using your Google Account credentials.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4">
-                        Click to Connect →
-                      </div>
-                    </div>
-                  </InteractiveCard>
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-6">
+            <div className="border-t border-slate-800 w-full" />
+            <span className="bg-[#0b0f19] px-3 text-[11px] font-medium text-slate-500 uppercase tracking-widest absolute">
+              or with email
+            </span>
+          </div>
 
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => handleOAuthLogin('discord')}
-                    glowColor="rgba(88, 101, 242, 0.15)"
-                    borderColor="rgba(88, 101, 242, 0.35)"
-                  >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-[#5865F2] text-white border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5865F2]/10 border border-[#5865F2]/20 text-[#5865F2]'
-                      }`}>
-                        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Discord Login</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Log in and connect with your Discord community account.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-[#5865F2] mt-4">
-                        Click to Connect →
-                      </div>
-                    </div>
-                  </InteractiveCard>
+          {/* LOGIN FORM */}
+          {mode === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in duration-300">
+              
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="reader@example.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                required
+                className={inputClass}
+              />
 
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => setLoginActiveCard('email')}
-                    glowColor="rgba(91, 108, 255, 0.15)"
-                    borderColor="rgba(91, 108, 255, 0.35)"
+              <div className="space-y-1.5">
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                  className={inputClass}
+                />
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-300">
+                    <input 
+                      type="checkbox" 
+                      id="remember-me" 
+                      className="rounded border-slate-800 bg-slate-950 text-primary focus:ring-0 cursor-pointer w-3.5 h-3.5" 
+                    />
+                    <span>Remember me</span>
+                  </label>
+                  <a 
+                    href="/forgot-password" 
+                    className="text-primary hover:underline font-medium transition-colors"
                   >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5B6CFF]/10 border border-[#5B6CFF]/20 text-[#5B6CFF]'
-                      }`}>
-                        <Mail className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Email Login</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Log in securely using your classic email and password credentials.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-[#5B6CFF] mt-4">
-                        Click to Expand →
-                      </div>
-                    </div>
-                  </InteractiveCard>
+                    Forgot Password?
+                  </a>
+                </div>
+              </div>
+
+              {/* Login Error handling */}
+              {loginError === 'email-not-verified' ? (
+                <div className="text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs flex flex-col gap-2">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>Your email address is not verified yet. Please check your inbox for the verification link.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="text-left font-bold text-amber-300 hover:text-amber-200 underline disabled:opacity-50 text-[11px] tracking-wide cursor-pointer"
+                  >
+                    {resending ? 'Sending link...' : '✉ Resend verification link'}
+                  </button>
+                  {resendMessage && (
+                    <div className="text-[11px] text-emerald-400 font-bold">{resendMessage}</div>
+                  )}
                 </div>
               ) : (
-                <InteractiveCard 
-                  theme={theme}
-                  glowColor="rgba(91, 108, 255, 0.1)"
-                  borderColor="rgba(91, 108, 255, 0.3)"
-                  className="w-full"
-                >
-                  <div className="p-8">
-                    <CardHeader className="text-center pb-2 pt-0 border-b-0 px-0">
-                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
-                        theme === 'brutalist'
-                          ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]'
-                          : theme === 'neo'
-                            ? 'bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-[#5B6CFF]'
-                            : 'bg-gradient-to-tr from-primary/20 to-violet-500/20 border border-primary/30 text-primary'
-                      }`}>
-                        <Mail className="w-6 h-6" />
-                      </div>
-                      <h1 className={`text-xl font-bold tracking-tight ${headerTextClass}`}>Email & Password</h1>
-                      <p className="text-xs text-slate-500 mt-1">Sign in with your email credentials</p>
-                    </CardHeader>
-                    <CardContent className="p-0 pt-4">
-                      <LoginForm theme={theme} onBack={() => setLoginActiveCard('none')} />
-                    </CardContent>
+                loginError && (
+                  <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{loginError}</span>
                   </div>
-                </InteractiveCard>
+                )
               )}
-              
-              <div className="mt-8 text-center">
-                <button 
-                  onClick={() => toggleMode('signup')}
-                  className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  Don't have an account? <span className="text-primary font-bold hover:underline">Join ReadSphere Now</span>
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* BACK FACE: SIGN UP */}
-          <div className="flip-card-back">
-            <div className={`mx-auto ${signupActiveCard === 'email' ? 'max-w-md' : 'max-w-5xl'}`}>
-              {signupActiveCard === 'none' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => handleOAuthLogin('google')}
-                    glowColor="rgba(234, 67, 53, 0.12)"
-                    borderColor="rgba(234, 67, 53, 0.35)"
-                  >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-white text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-white/5 border border-white/10'
-                      }`}>
-                        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Google</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Register quickly using your Google Account profile.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-4">
-                        Click to Register →
-                      </div>
-                    </div>
-                  </InteractiveCard>
+              <Button
+                type="submit"
+                disabled={loginLoading}
+                className={`w-full py-3 text-xs font-bold ${buttonPrimaryClass}`}
+              >
+                {loginLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Signing in...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-1.5">
+                    Sign In to ReadSphere
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </Button>
 
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => handleOAuthLogin('discord')}
-                    glowColor="rgba(88, 101, 242, 0.15)"
-                    borderColor="rgba(88, 101, 242, 0.35)"
-                  >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-[#5865F2] text-white border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5865F2]/10 border border-[#5865F2]/20 text-[#5865F2]'
-                      }`}>
-                        <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Discord</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Create an account and sync instantly with your Discord credentials.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-[#5865F2] mt-4">
-                        Click to Register →
-                      </div>
-                    </div>
-                  </InteractiveCard>
+            </form>
+          )}
 
-                  <InteractiveCard 
-                    theme={theme}
-                    onClick={() => setSignupActiveCard('email')}
-                    glowColor="rgba(91, 108, 255, 0.15)"
-                    borderColor="rgba(91, 108, 255, 0.35)"
-                  >
-                    <div className="p-8 flex flex-col items-center text-center h-full justify-between min-h-[250px]">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
-                        theme === 'brutalist' ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]' : 'bg-[#5B6CFF]/10 border border-[#5B6CFF]/20 text-[#5B6CFF]'
-                      }`}>
-                        <Mail className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-100">Email & Password</h2>
-                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                          Sign up with your custom name, email address and standard password.
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-[#5B6CFF] mt-4">
-                        Click to Expand →
-                      </div>
+          {/* SIGNUP FORM */}
+          {mode === 'signup' && (
+            <div>
+              {signUpSuccessMessage ? (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 space-y-2 leading-relaxed">
+                    <div className="flex items-center gap-2 font-bold text-sm text-emerald-400">
+                      <Check className="w-5 h-5" /> Account Created!
                     </div>
-                  </InteractiveCard>
+                    <p>{signUpSuccessMessage}</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignUpSuccessMessage(null);
+                      setMode('login');
+                    }}
+                    className={`w-full py-3 text-xs font-bold ${buttonPrimaryClass}`}
+                  >
+                    Proceed to Sign In
+                  </button>
                 </div>
               ) : (
-                <InteractiveCard 
-                  theme={theme}
-                  glowColor="rgba(91, 108, 255, 0.1)"
-                  borderColor="rgba(91, 108, 255, 0.3)"
-                  className="w-full"
-                >
-                  <div className="p-8">
-                    <CardHeader className="text-center pb-2 pt-0 border-b-0 px-0">
-                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
-                        theme === 'brutalist'
-                          ? 'bg-[#facc15] text-black border-2 border-black shadow-[3px_3px_0px_#000000]'
-                          : theme === 'neo'
-                            ? 'bg-[#1e2022] shadow-[inset_2px_2px_5px_#121314,_inset_-2px_-2px_5px_#2a2d30] text-[#5B6CFF]'
-                            : 'bg-gradient-to-tr from-primary/20 to-violet-500/20 border border-primary/30 text-primary'
-                      }`}>
-                        <Mail className="w-6 h-6" />
+                <form onSubmit={handleSignUpSubmit} className="space-y-4 animate-in fade-in duration-300">
+                  
+                  <Input
+                    label="Full Name"
+                    type="text"
+                    placeholder="Jane Doe"
+                    value={signUpFullName}
+                    onChange={(e) => setSignUpFullName(e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={signUpEmail}
+                    onChange={(e) => setSignUpEmail(e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+
+                  <div className="space-y-1.5">
+                    <Input
+                      label="Password"
+                      type="password"
+                      placeholder="At least 6 characters"
+                      value={signUpPassword}
+                      onChange={(e) => setSignUpPassword(e.target.value)}
+                      required
+                      className={inputClass}
+                    />
+
+                    {/* Password Strength meter */}
+                    {signUpPassword.length > 0 && (
+                      <div className="flex items-center justify-between text-[11px] pt-1 px-0.5">
+                        <span className="text-slate-400">Password strength:</span>
+                        {(() => {
+                          const str = getPasswordStrength();
+                          return str ? (
+                            <span className={`px-2 py-0.5 rounded border font-semibold ${str.color}`}>
+                              {str.label}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
-                      <h1 className={`text-xl font-bold tracking-tight ${headerTextClass}`}>Join ReadSphere</h1>
-                      <p className="text-xs text-slate-500 mt-1">Create an account to start your reading journey</p>
-                    </CardHeader>
-                    <CardContent className="p-0 pt-4">
-                      <SignUpForm theme={theme} onBack={() => setSignupActiveCard('none')} />
-                    </CardContent>
+                    )}
                   </div>
-                </InteractiveCard>
+
+                  <div className="space-y-1.5">
+                    <Input
+                      label="Confirm Password"
+                      type="password"
+                      placeholder="Re-enter password"
+                      value={signUpConfirmPassword}
+                      onChange={(e) => setSignUpConfirmPassword(e.target.value)}
+                      required
+                      className={inputClass}
+                    />
+
+                    {signUpConfirmPassword.length > 0 && (
+                      <div className="text-[11px] px-0.5 pt-0.5">
+                        {passwordsMatch ? (
+                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" /> Passwords match
+                          </span>
+                        ) : (
+                          <span className="text-rose-400 font-semibold">✗ Passwords do not match</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {signUpError && (
+                    <div className="text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3.5 rounded-xl text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{signUpError}</span>
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={signUpLoading}
+                    className={`w-full py-3 text-xs font-bold ${buttonPrimaryClass}`}
+                  >
+                    {signUpLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Creating your account...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-1.5">
+                        Create Reader Account
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+
+                </form>
               )}
-              
-              <div className="mt-8 text-center">
-                <button 
-                  onClick={() => toggleMode('login')}
-                  className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  Already have an account? <span className="text-primary font-bold hover:underline">Sign In</span>
-                </button>
-              </div>
             </div>
+          )}
+
+          {/* Footer note */}
+          <div className="mt-6 text-center text-xs text-slate-400">
+            {mode === 'login' ? (
+              <span>
+                New to ReadSphere?{' '}
+                <button 
+                  type="button"
+                  onClick={() => { setMode('signup'); setSignUpError(null); }}
+                  className="text-primary font-bold hover:underline cursor-pointer"
+                >
+                  Create an account
+                </button>
+              </span>
+            ) : (
+              <span>
+                Already have an account?{' '}
+                <button 
+                  type="button"
+                  onClick={() => { setMode('login'); setLoginError(null); }}
+                  className="text-primary font-bold hover:underline cursor-pointer"
+                >
+                  Sign in instead
+                </button>
+              </span>
+            )}
           </div>
 
         </div>
-      </div>
-
-      {/* Ghost spacer to reserve dynamic height for absolute elements */}
-      <div className="w-full max-w-5xl ghost-spacer pointer-events-none mt-12">
-        <div className="mb-6 flex justify-center opacity-0">
-          <div className="inline-flex rounded-xl p-1 bg-slate-950">
-            <button className="px-6 py-2 rounded-lg text-xs font-bold">Sign In</button>
-          </div>
-        </div>
-        {mode === 'login' && loginActiveCard === 'email' ? (
-          <div className="h-[450px] w-full" />
-        ) : mode === 'signup' && signupActiveCard === 'email' ? (
-          <div className="h-[680px] w-full" />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full opacity-0">
-            <div className="min-h-[250px]" />
-            <div className="min-h-[250px]" />
-            <div className="min-h-[250px]" />
-          </div>
-        )}
       </div>
 
       <ThemeToggle />

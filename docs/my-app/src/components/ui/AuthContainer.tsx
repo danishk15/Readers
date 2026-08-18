@@ -75,33 +75,43 @@ function LampFixture({
   );
 }
 
-// Floating dust particles inside the light spotlight
-function DustParticles({ count = 15 }: { count?: number }) {
+// Stable precomputed dust particles inside the light spotlight
+const STATIC_PARTICLES = [
+  { left: 15, size: 2, duration: 16, delay: -2, opacity: 0.25 },
+  { left: 32, size: 1.5, duration: 18, delay: -7, opacity: 0.3 },
+  { left: 48, size: 2.5, duration: 14, delay: -12, opacity: 0.2 },
+  { left: 65, size: 1.8, duration: 20, delay: -5, opacity: 0.35 },
+  { left: 78, size: 2.2, duration: 15, delay: -15, opacity: 0.22 },
+  { left: 24, size: 1.2, duration: 22, delay: -9, opacity: 0.18 },
+  { left: 58, size: 2.8, duration: 17, delay: -3, opacity: 0.28 },
+  { left: 82, size: 1.6, duration: 19, delay: -11, opacity: 0.32 },
+  { left: 40, size: 2.1, duration: 21, delay: -8, opacity: 0.24 },
+  { left: 70, size: 1.4, duration: 16, delay: -14, opacity: 0.26 },
+  { left: 20, size: 2.4, duration: 18, delay: -6, opacity: 0.2 },
+  { left: 85, size: 1.9, duration: 23, delay: -1, opacity: 0.3 },
+  { left: 52, size: 1.7, duration: 15, delay: -10, opacity: 0.27 },
+  { left: 35, size: 2.3, duration: 19, delay: -4, opacity: 0.22 },
+  { left: 62, size: 1.5, duration: 17, delay: -13, opacity: 0.31 }
+];
+
+function DustParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: count }).map((_, i) => {
-        const left = Math.random() * 80 + 10;
-        const size = Math.random() * 2 + 1;
-        const duration = Math.random() * 10 + 12;
-        const delay = Math.random() * -20;
-        const opacity = Math.random() * 0.35 + 0.1;
-        
-        return (
-          <div
-            key={i}
-            className="absolute bg-white/70 rounded-full"
-            style={{
-              left: `${left}%`,
-              bottom: `-20px`,
-              width: `${size}px`,
-              height: `${size}px`,
-              opacity,
-              animation: `float ${duration}s linear infinite`,
-              animationDelay: `${delay}s`,
-            }}
-          />
-        );
-      })}
+      {STATIC_PARTICLES.map((p, i) => (
+        <div
+          key={i}
+          className="absolute bg-white/70 rounded-full"
+          style={{
+            left: `${p.left}%`,
+            bottom: `-20px`,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            opacity: p.opacity,
+            animation: `float ${p.duration}s linear infinite`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -121,13 +131,13 @@ function SpotlightCone({ isLightOn, theme }: { isLightOn: boolean; theme: string
 
   return (
     <div 
-      className="absolute top-0 left-1/2 -translate-x-1/2 w-[160vw] max-w-[1250px] h-screen pointer-events-none z-10 transition-opacity duration-500"
+      className="absolute top-0 left-1/2 -translate-x-1/2 w-[160vw] max-w-[1250px] h-screen pointer-events-none z-10 transition-opacity duration-500 will-change-transform"
       style={{
         clipPath: 'polygon(50% 140px, 0% 100%, 100% 100%)',
       }}
     >
       <div className={`w-full h-full bg-gradient-to-b ${gradientClass}`} />
-      <DustParticles count={25} />
+      <DustParticles />
     </div>
   );
 }
@@ -421,20 +431,20 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
   };
 
   // Card theme styling rules
-  let cardBoxClass = 'bg-[#0b0f19]/90 border border-slate-800/80 shadow-[0_0_50px_-10px_rgba(91,108,255,0.2)] rounded-3xl';
-  let buttonPrimaryClass = 'bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 text-white shadow-lg shadow-primary/25 rounded-xl';
+  let cardBoxClass = 'bg-[#0b0f19]/95 border border-slate-800/80 shadow-2xl rounded-3xl backdrop-blur-xl';
+  let buttonPrimaryClass = 'bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 text-white shadow-md shadow-primary/20 rounded-xl transition-colors duration-150';
   let inputClass = 'border-slate-800 bg-slate-950/80 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700';
 
   if (theme === 'glass') {
-    cardBoxClass = 'bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-[0_0_60px_-5px_rgba(6,182,212,0.2)] rounded-[28px]';
-    buttonPrimaryClass = 'bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-lg shadow-cyan-500/20 rounded-2xl';
+    cardBoxClass = 'bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-[28px]';
+    buttonPrimaryClass = 'bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-md shadow-cyan-500/20 rounded-2xl transition-colors duration-150';
   } else if (theme === 'neo') {
-    cardBoxClass = 'bg-[#1e2022] border border-slate-800/40 shadow-[10px_10px_25px_#121314,-10px_-10px_25px_#2a2d30] rounded-[28px]';
-    buttonPrimaryClass = 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-[inset_1px_1px_2px_rgba(255,255,255,0.3)] rounded-2xl';
-    inputClass = 'border-transparent bg-[#17191b] shadow-[inset_3px_3px_6px_#0f1011,_inset_-3px_-3px_6px_#232629] text-slate-100 focus:ring-0';
+    cardBoxClass = 'bg-[#1e2022] border border-slate-800/40 shadow-2xl rounded-[28px]';
+    buttonPrimaryClass = 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md rounded-2xl transition-colors duration-150';
+    inputClass = 'border-transparent bg-[#17191b] shadow-inner text-slate-100 focus:ring-0';
   } else if (theme === 'brutalist') {
     cardBoxClass = 'bg-[#141414] border-4 border-white shadow-[8px_8px_0px_#000000] rounded-none';
-    buttonPrimaryClass = 'bg-[#ec4899] text-white border-2 border-black font-black hover:-translate-x-[2px] hover:-translate-y-[2px] hover:shadow-[6px_6px_0px_#000000] active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_#000000] rounded-none uppercase tracking-wider';
+    buttonPrimaryClass = 'bg-[#ec4899] text-white border-2 border-black font-black hover:bg-[#db2777] active:bg-[#be185d] rounded-none uppercase tracking-wider transition-colors duration-150';
     inputClass = 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black';
   }
 
@@ -453,6 +463,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
         }
         .animate-sway {
           animation: sway 6s ease-in-out infinite;
+          will-change: transform;
         }
         @keyframes float {
           0% { transform: translateY(0) translateX(0); opacity: 0; }
@@ -472,7 +483,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
       <SpotlightCone isLightOn={isLightOn} theme={theme} />
 
       {/* Main Authentication Card */}
-      <div className="w-full max-w-md mx-auto mt-6 mb-12 z-20 transition-all duration-300">
+      <div className="w-full max-w-md mx-auto mt-6 mb-12 z-20">
         
         {/* Header Branding */}
         <div className="flex flex-col items-center text-center mb-6">
@@ -497,7 +508,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                 setMode('login');
                 setLoginError(null);
               }}
-              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`py-2.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 mode === 'login'
                   ? 'bg-primary text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
@@ -511,7 +522,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                 setMode('signup');
                 setSignUpError(null);
               }}
-              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`py-2.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 mode === 'signup'
                   ? 'bg-primary text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
@@ -529,12 +540,12 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
               type="button"
               onClick={handleDemoLogin}
               disabled={oauthLoading !== null}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/40 hover:border-amber-400 text-amber-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] group shadow-sm cursor-pointer"
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/40 hover:border-amber-400/90 hover:bg-amber-500/25 text-amber-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors duration-150 group shadow-sm cursor-pointer"
             >
               {oauthLoading === 'demo' ? (
                 <span className="w-4 h-4 border-2 border-amber-300 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                <Zap className="w-4 h-4 text-amber-400 group-hover:scale-105 transition-transform" />
               )}
               <span>⚡ Instant Demo Reader Login</span>
             </button>

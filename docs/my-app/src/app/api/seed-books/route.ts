@@ -40,7 +40,7 @@ export async function GET() {
         author: 'Mary Shelley',
         cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/84.epub.noimages',
-        is_premium: true,
+        is_premium: false,
         language: 'en'
       },
       {
@@ -56,7 +56,7 @@ export async function GET() {
         author: 'Bram Stoker',
         cover_url: 'https://covers.openlibrary.org/b/id/8261341-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/345.epub.noimages',
-        is_premium: true,
+        is_premium: false,
         language: 'en'
       },
       {

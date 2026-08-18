@@ -91,15 +91,9 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
         <div className="flex-1 flex flex-col justify-between space-y-6 z-10">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              {book.is_premium ? (
-                <span className="inline-flex items-center gap-1 px-3 py-1 text-[10px] font-black bg-gradient-to-r from-warning to-amber-500 text-slate-950 rounded-full uppercase tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.25)]">
-                  👑 Premium VIP
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-3 py-1 text-[10px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full uppercase tracking-wider">
-                  📖 Standard Access
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1 px-3 py-1 text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full uppercase tracking-wider">
+                📖 Unrestricted Access (Free for All)
+              </span>
             </div>
             
             <div>
@@ -108,7 +102,7 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
 
             <p className="text-slate-400 text-sm leading-relaxed max-w-2xl pt-2">
-              Embark on an epic literary journey with Danish Khan's curated classic edition of "{book.title}". Dive into customizable typographic layouts, track reading achievements, and discuss characters in global server chat groups.
+              Embark on an epic literary journey with ReadSphere's curated classic edition of "{book.title}". Dive into customizable typographic layouts, track reading achievements, and discuss characters in global server chat groups.
             </p>
           </div>
 
@@ -142,13 +136,9 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
                 Start Immersive Reading
               </Button>
             </Link>
-            <p className="text-[11px] text-slate-500 flex items-center gap-1.5 justify-center md:justify-start">
-              <Award className="w-3.5 h-3.5 text-warning" />
-              <span>
-                {book.is_premium 
-                  ? 'Requires active Premium Membership or 500 Reading Minutes to unlock offline reading.' 
-                  : 'This book is fully free to read online.'}
-              </span>
+            <p className="text-[11px] text-emerald-400 flex items-center gap-1.5 justify-center md:justify-start font-medium">
+              <Award className="w-3.5 h-3.5 text-emerald-400" />
+              <span>This book is 100% free and open for everyone to read online.</span>
             </p>
           </div>
         </div>

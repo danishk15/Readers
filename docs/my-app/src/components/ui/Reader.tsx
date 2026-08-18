@@ -336,14 +336,14 @@ export default function Reader({
 
     loadBookData();
 
-    // 15 seconds fallback trigger if loading is stalled (CORS or network issues)
+    // 4 seconds fallback trigger if loading is stalled (CORS or network issues)
     timeoutId = setTimeout(() => {
       console.warn('EPUB loading stalled, switching to Reflowable fallback');
       if (!isDestroyed) {
         setUseReflowableFallback(true);
         setLoading(false);
       }
-    }, 15000);
+    }, 4000);
 
     return () => {
       isDestroyed = true;
@@ -515,43 +515,63 @@ export default function Reader({
             className="w-full h-full border-0 bg-slate-900" 
             title={title || "PDF Reader"} 
           />
-        ) : useReflowableFallback && (!bookUrl || bookUrl === '') ? (
-          <div className="max-w-md mx-auto p-8 text-center bg-slate-900/40 border border-slate-800/80 rounded-2xl space-y-4 my-16 backdrop-blur-md flex flex-col items-center justify-center">
-            <div className="mx-auto w-12 h-12 bg-warning/20 rounded-full flex items-center justify-center text-warning mb-2">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-bold text-warning">Book Content Unavailable</h2>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              This title is currently not available as a free public domain EPUB. You can search for other Project Gutenberg/Open Library titles, or upload your own EPUB/PDF file on the **Publish** page to read it here!
-            </p>
-          </div>
         ) : useReflowableFallback ? (
           (() => {
             const safeFallbackPage = Math.min(fallbackPage, activeChapters.length);
             return (
               <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
                 <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
-                  {/* Chapter Title */}
-                  <h2 className="text-2xl font-black border-b border-slate-800/30 pb-3 tracking-tight" style={{ fontFamily }}>
-                    {activeChapters[safeFallbackPage - 1]?.chapter || "Chapter"}
-                  </h2>
+                  {/* Chapter Header & Navigation */}
+                  <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
+                    <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ fontFamily }}>
+                      {activeChapters[safeFallbackPage - 1]?.chapter || `Section ${safeFallbackPage}`}
+                    </h2>
+                    <select
+                      value={safeFallbackPage}
+                      onChange={(e) => setFallbackPage(Number(e.target.value))}
+                      className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate"
+                    >
+                      {activeChapters.map((ch, idx) => (
+                        <option key={`opt-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                          {ch.chapter || `Chapter ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   
                   {/* Chapter Content */}
-                  <p 
-                    className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify"
+                  <div 
+                    className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify space-y-4"
                     style={{ 
                       fontSize: `${fontSize}px`, 
                       fontFamily: fontFamily,
-                      lineHeight: 1.8 
+                      lineHeight: 1.85 
                     }}
                   >
                     {activeChapters[safeFallbackPage - 1]?.text || "No content found in this section."}
-                  </p>
+                  </div>
      
-                  {/* Page Number */}
+                  {/* Page Navigation Footer */}
                   <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
-                    <span>Page {safeFallbackPage} of {activeChapters.length}</span>
-                    <span>{Math.round((safeFallbackPage / activeChapters.length) * 100)}% read</span>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      onClick={prevPage} 
+                      disabled={safeFallbackPage === 1}
+                      className="font-bold text-xs"
+                    >
+                      ← Previous Section
+                    </Button>
+                    <span>Page {safeFallbackPage} of {activeChapters.length} ({Math.round((safeFallbackPage / activeChapters.length) * 100)}%)</span>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      onClick={nextPage} 
+                      disabled={safeFallbackPage === activeChapters.length}
+                      className="font-bold text-xs"
+                    >
+                      Next Section →
+                    </Button>
                   </div>
                 </div>
               </div>

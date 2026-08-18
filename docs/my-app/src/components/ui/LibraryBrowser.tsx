@@ -10,26 +10,26 @@ import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen,
 import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllCachedBooks } from '@/utils/offlineStorage';
 
 function getOnlineBookReadParams(book: any) {
-  const title = book.volumeInfo?.title || 'Unknown Title';
-  const author = book.volumeInfo?.authors?.[0] || 'Unknown Author';
-  const description = book.volumeInfo?.description || 'No description available for this book.';
+  const title = book.volumeInfo?.title || book.title || 'Unknown Title';
+  const author = book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author';
+  const description = book.volumeInfo?.description || book.description || 'A curated literary work available in the ReadSphere catalog.';
   const id = book.id || book.title;
 
   if (book.isOpenLibrary) {
     if (book.accessInfo?.ia) {
-      return { url: '', title, author, description, id, source: 'Open Library', iaId: book.accessInfo.ia };
+      return { url: book.file_url || '', title, author, description, id, source: 'Open Library', iaId: book.accessInfo.ia };
     } else {
-      return { url: '', title, author, description, id, source: 'Open Library' };
+      return { url: book.file_url || '', title, author, description, id, source: 'Open Library' };
     }
   } else if (book.source === 'Google Books') {
-    return { url: '', title, author, description, id, source: 'Google Books' };
+    return { url: book.file_url || '', title, author, description, id, source: 'Google Books' };
   } else if (book.accessInfo?.epub?.downloadLink) {
-    return { url: book.accessInfo.epub.downloadLink, title, author, description, id, source: book.source };
+    return { url: book.accessInfo.epub.downloadLink, title, author, description, id, source: book.source || 'Catalog' };
   } else if (book.id?.startsWith('gutendex-')) {
     const gutenId = book.id.replace('gutendex-', '');
     return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id, source: 'Gutenberg' };
   } else {
-    return { url: '', title, author, description, id, source: book.source };
+    return { url: book.file_url || '', title, author, description, id, source: book.source || 'ReadSphere' };
   }
 }
 
@@ -266,7 +266,7 @@ function DomeGallery({
                   {isCenter && (
                     <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center animate-in fade-in duration-300">
                       <span className="bg-primary hover:bg-primary/90 text-white text-[9px] font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1">
-                        <span>{isPremium && !isLocal ? '🔒 BUY' : '📖 READ'}</span>
+                        <span>📖 READ NOW</span>
                       </span>
                     </div>
                   )}
@@ -508,82 +508,23 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     }
 
     if (isLocal) {
-      if (book.googleId) {
-        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.googleId, source: 'Google Books' });
-      } else if (book.iaId) {
-        setActiveReadingBook({ url: '', title: book.title, author, description, id: book.id, source: 'Open Library', iaId: book.iaId });
-      } else {
-        let currentUrl = book.file_url || '';
-        let resolvedId = id;
-        let resolvedSource = book.source;
+      let currentUrl = book.file_url || '';
+      let resolvedId = id;
+      let resolvedSource = book.source;
 
-        // If the URL points to the generic Pride and Prejudice fallback, attempt to search Gutenberg dynamically
-        if (currentUrl.includes('1342.epub.noimages') && !title.toLowerCase().includes('pride and prejudice')) {
-          try {
-            const searchTitle = title.split('(')[0].trim();
-            const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(searchTitle)}`);
-            if (res.ok) {
-              const data = await res.json();
-              const match = data.results?.find((r: any) => 
-                r.title.toLowerCase().includes(searchTitle.toLowerCase()) || 
-                searchTitle.toLowerCase().includes(r.title.toLowerCase())
-              );
-              if (match && match.formats?.['application/epub+zip']) {
-                currentUrl = match.formats['application/epub+zip'];
-                resolvedId = `gutendex-${match.id}`;
-                resolvedSource = 'Gutenberg';
-              } else {
-                currentUrl = ''; // Empty url triggers the unavailable screen instead of the wrong book
-              }
-            } else {
-              currentUrl = '';
-            }
-          } catch (e) {
-            currentUrl = '';
-          }
-        }
-
-        if (currentUrl && !currentUrl.startsWith('blob:')) {
-          saveBookOffline(resolvedId, title, author, cover, currentUrl)
-            .then(() => setDownloadedBookIds(prev => {
-              if (!prev.includes(String(resolvedId))) return [...prev, String(resolvedId)];
-              return prev;
-            }))
-            .catch(err => console.warn('Background caching failed:', err));
-        }
-        setActiveReadingBook({ url: currentUrl, title: book.title, author, description, id: resolvedId, source: resolvedSource });
+      if (currentUrl && !currentUrl.startsWith('blob:')) {
+        saveBookOffline(resolvedId, title, author, cover, currentUrl)
+          .then(() => setDownloadedBookIds(prev => {
+            if (!prev.includes(String(resolvedId))) return [...prev, String(resolvedId)];
+            return prev;
+          }))
+          .catch(err => console.warn('Background caching failed:', err));
       }
+      setActiveReadingBook({ url: currentUrl, title: book.title, author, description, id: resolvedId, source: resolvedSource });
     } else {
       let params = getOnlineBookReadParams(book);
       
-      // If it is an Open Library book without an Internet Archive ID (iaId),
-      // let's try to dynamically search Project Gutenberg for a free EPUB!
-      if (book.isOpenLibrary && !params.iaId) {
-        try {
-          const searchTitle = title.split('(')[0].trim(); // Clean title
-          const res = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(searchTitle)}`);
-          if (res.ok) {
-            const data = await res.json();
-            const match = data.results?.find((r: any) => 
-              r.title.toLowerCase().includes(searchTitle.toLowerCase()) || 
-              searchTitle.toLowerCase().includes(r.title.toLowerCase())
-            );
-            if (match && match.formats?.['application/epub+zip']) {
-              params.url = match.formats['application/epub+zip'];
-              params.source = 'Gutenberg';
-              params.id = `gutendex-${match.id}`;
-            } else {
-              params.url = '';
-            }
-          } else {
-            params.url = '';
-          }
-        } catch (e) {
-          params.url = '';
-        }
-      }
-
-      if (params.url) {
+      if (params.url && !params.url.startsWith('blob:')) {
         saveBookOffline(id, title, author, cover, params.url)
           .then(() => setDownloadedBookIds(prev => [...prev, id]))
           .catch(err => console.warn('Background caching failed:', err));
@@ -1010,9 +951,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           </Button>
         </div>
         <div className="flex-1 w-full relative min-h-[500px]">
-          {activeReadingBook.source === 'Google Books' ? (
-            <GoogleBookViewer bookId={activeReadingBook.id || ''} />
-          ) : activeReadingBook.source === 'Open Library' && activeReadingBook.iaId ? (
+          {activeReadingBook.source === 'Open Library' && activeReadingBook.iaId ? (
             <iframe 
               src={`https://archive.org/embed/${activeReadingBook.iaId}?js=1`}
               className="w-full h-full border-0 rounded-2xl bg-slate-900 min-h-[600px]" 
@@ -1238,24 +1177,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         <div className="bg-gradient-to-r from-amber-500/15 via-yellow-600/5 to-amber-500/15 p-6 md:p-8 rounded-3xl border border-warning/20 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_0_40px_rgba(245,158,11,0.02)] animate-in slide-in-from-top-2 duration-300">
           <div className="space-y-2 text-center md:text-left">
             <div className="inline-flex items-center gap-1 bg-warning text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow">
-              ✨ Premium Lounge
+              ✨ Free & Unrestricted Access
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Unlock Immersive Best-Sellers</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Curated Masterpiece Collection</h2>
             <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-              Get immediate, unrestricted cloud access to premium titles, deep milestones logs, customizable reader theme packages, and offline claimable VIP perks.
+              Every book in the ReadSphere library is completely free and available to everyone. Enjoy uninterrupted immersive reading, rich typographic layouts, and offline book saving!
             </p>
           </div>
-          {!isPremiumUser && (
-            <Button 
-              className="bg-gradient-to-r from-warning to-amber-500 hover:from-warning/90 hover:to-amber-500/90 text-slate-950 font-black px-8 py-3.5 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.3)] text-sm shrink-0"
-              onClick={() => {
-                setLockedBookToUnlock({ title: 'ReadSphere Premium Membership', author: 'All Access Upgrade' });
-                setIsUpgradeModalOpen(true);
-              }}
-            >
-              🚀 Upgrade for ₹49/wk
-            </Button>
-          )}
         </div>
       )}
 
@@ -1409,7 +1337,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                           {/* Read now Hover overlay */}
                           <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <span className="bg-primary/95 text-white text-[8px] font-black px-2 py-1 rounded shadow tracking-widest uppercase scale-75 group-hover:scale-100 transition-transform">
-                              {isPremium && !isLocal ? 'BUY' : 'READ'}
+                              READ NOW
                             </span>
                           </div>
                         </div>
@@ -1632,16 +1560,12 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                       )}
 
                       {/* Pricing lock tag */}
-                      <div className={`absolute top-2 right-2 text-[8px] font-black px-2 py-0.5 rounded shadow z-10 uppercase tracking-widest ${
-                        book.isPremium 
-                          ? 'bg-gradient-to-r from-warning to-amber-500 text-slate-950' 
-                          : 'bg-green-500/10 text-green-400 border border-green-500/25'
-                      }`}>
-                        {book.isPremium ? (book.price || 'VIP') : 'FREE'}
+                      <div className="absolute top-2 right-2 text-[8px] font-black px-2 py-0.5 rounded shadow z-10 uppercase tracking-widest bg-green-500/10 text-green-400 border border-green-500/25">
+                        FREE
                       </div>
 
                       <div className="absolute bottom-2.5 right-2.5 bg-primary text-white text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
-                        {book.isPremium ? 'STORE DEAL' : 'READ NOW'}
+                        READ NOW
                       </div>
                     </div>
                     <CardContent className="p-4 flex-1 flex flex-col justify-between gap-3 bg-slate-950/10">
@@ -1679,22 +1603,12 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           {/* Render Premium Lounge Exclusive Titles */}
           {activeTab === 'premium' && (
             premiumBooks.map((book) => {
-              const isClassic = book.id.startsWith('classic');
               return (
                 <Card 
                   key={book.id} 
                   className="group cursor-pointer theme-card flex flex-col justify-between overflow-hidden relative"
                   onClick={() => {
-                    if (isPremiumUser) {
-                      if (isClassic) {
-                        setActiveReadingBook({ url: (book as any).file_url, title: book.title });
-                      } else {
-                        window.open(`/reader/${book.id}`, '_blank');
-                      }
-                    } else {
-                      setLockedBookToUnlock({ title: book.title, author: book.author, cover_url: book.cover_url });
-                      setIsUpgradeModalOpen(true);
-                    }
+                    handleStartReading(book);
                   }}
                 >
                   <div className="aspect-[2/3] w-full bg-slate-900 relative rounded-t-lg overflow-hidden flex items-center justify-center">
@@ -1711,21 +1625,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                       VIP
                     </div>
 
-                    {/* Lock Screen Overlay if user lacks premium */}
-                    {!isPremiumUser && (
-                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 group-hover:bg-slate-950/70 transition-all duration-300">
-                        <div className="w-10 h-10 rounded-2xl bg-warning/15 flex items-center justify-center border border-warning/20 text-warning group-hover:scale-110 transition-transform">
-                          <Lock className="w-5 h-5" />
-                        </div>
-                        <span className="text-[10px] font-extrabold text-warning tracking-widest uppercase bg-warning/10 px-2 py-0.5 rounded border border-warning/20">LOCKED</span>
-                      </div>
-                    )}
-
-                    {isPremiumUser && (
-                      <div className="absolute bottom-2.5 right-2.5 bg-warning text-black text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
-                        READ NOW
-                      </div>
-                    )}
+                    <div className="absolute bottom-2.5 right-2.5 bg-warning text-black text-[9px] font-black px-3 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider z-10">
+                      READ NOW
+                    </div>
                   </div>
                   <CardContent className="p-4 bg-slate-950/10">
                     <h3 className="font-bold text-sm truncate group-hover:text-warning transition-colors text-slate-100">{book.title}</h3>

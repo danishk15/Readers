@@ -14,23 +14,33 @@ function getOnlineBookReadParams(book: any) {
   const author = book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author';
   const description = book.volumeInfo?.description || book.description || 'A curated literary work available in the QuillHawk catalog.';
   const id = book.id || book.title;
+  const iaId = book.accessInfo?.ia || (String(book.id || '').startsWith('ia-') ? String(book.id).replace('ia-', '') : undefined);
+  const previewLink = book.volumeInfo?.previewLink || book.previewLink;
+  const infoLink = book.volumeInfo?.infoLink || book.infoLink;
+  const readMode = book.readMode || (book.file_url ? 'epub' : (iaId ? 'archive' : (book.source === 'Google Books' ? 'google' : 'interactive')));
 
-  if (book.isOpenLibrary) {
-    if (book.accessInfo?.ia) {
-      return { url: book.file_url || '', title, author, description, id, source: 'Open Library', iaId: book.accessInfo.ia };
-    } else {
-      return { url: book.file_url || '', title, author, description, id, source: 'Open Library' };
-    }
-  } else if (book.source === 'Google Books') {
-    return { url: book.file_url || '', title, author, description, id, source: 'Google Books' };
-  } else if (book.accessInfo?.epub?.downloadLink) {
-    return { url: book.accessInfo.epub.downloadLink, title, author, description, id, source: book.source || 'Catalog' };
-  } else if (book.id?.startsWith('gutendex-')) {
-    const gutenId = book.id.replace('gutendex-', '');
-    return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id, source: 'Gutenberg' };
-  } else {
-    return { url: book.file_url || '', title, author, description, id, source: book.source || 'QuillHawk' };
+  let fileUrl = book.file_url || '';
+  if (!fileUrl && book.accessInfo?.epub?.downloadLink) {
+    fileUrl = book.accessInfo.epub.downloadLink;
+  } else if (!fileUrl && String(book.id || '').startsWith('gutendex-')) {
+    const gutenId = String(book.id).replace('gutendex-', '');
+    fileUrl = `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`;
+  } else if (!fileUrl && iaId) {
+    fileUrl = `https://archive.org/download/${iaId}/${iaId}.epub`;
   }
+
+  return {
+    url: fileUrl,
+    title,
+    author,
+    description,
+    id,
+    source: book.source || 'QuillHawk',
+    readMode,
+    iaId,
+    previewLink,
+    infoLink
+  };
 }
 
 
@@ -597,6 +607,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     id?: string;
     source?: string;
     iaId?: string;
+    previewLink?: string;
+    infoLink?: string;
+    readMode?: 'epub' | 'archive' | 'google' | 'interactive';
   } | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
@@ -639,50 +652,40 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     setOnlineBooks([]); // Clear current results to give immediate feedback
     
     try {
+      // 1. First attempt: Query our unified high-performance multi-engine backend API
+      try {
+        const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}`;
+        const apiRes = await fetch(apiUrl);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData.success && Array.isArray(apiData.books) && apiData.books.length > 0) {
+            const sanitizedBooks = apiData.books.map((b: any) => ({
+              ...b,
+              isPremium: false,
+              price: undefined
+            }));
+
+            setOnlineBooks(sanitizedBooks);
+            searchCache.current[cacheKey] = sanitizedBooks;
+            try {
+              sessionStorage.setItem('quillhawk-search-cache', JSON.stringify(searchCache.current));
+            } catch (e) {}
+            setIsLoadingOnline(false);
+            setIsBgLoading(false);
+            return;
+          }
+        }
+      } catch (backendErr) {
+        console.warn('Backend search API failed, trying direct client fallback:', backendErr);
+      }
+
+      // 2. Client-side Fallback fetchers across Google, Open Library, and Gutenberg
       let q = queryVal || '';
-      
       const selectedLangObj = languages.find(l => l.code === language);
       const langLabel = selectedLangObj ? selectedLangObj.label.split('(')[0].trim() : '';
 
       if (language && language !== 'eng') {
-        // For non-English languages, structured LOC headings (like subject:romance) frequently return 0 results.
-        // We construct a query combining the language name and mapped keywords.
-        const genreQueries: Record<string, Record<string, string>> = {
-          'urd': {
-            'fiction': 'Urdu fiction OR "اردو ناول"',
-            'science fiction': 'Urdu "science fiction"',
-            'fantasy': 'Urdu fantasy OR "داستان"',
-            'history': 'Urdu history OR "تاریخ"',
-            'romance': 'Urdu romance OR "رومانوی ناول"',
-            'biography': 'Urdu biography OR "سوانح"',
-            'mystery': 'Urdu mystery OR "جاسوسی ناول"'
-          },
-          'ara': {
-            'fiction': 'Arabic fiction OR "رواية"',
-            'science fiction': 'Arabic "science fiction"',
-            'fantasy': 'Arabic fantasy OR "خيال"',
-            'history': 'Arabic history OR "تاريخ"',
-            'romance': 'Arabic romance OR "رواية رومانسية"',
-            'biography': 'Arabic biography OR "سيرة"',
-            'mystery': 'Arabic mystery OR "غموض"'
-          },
-          'per': {
-            'fiction': 'Persian fiction OR "رمان"',
-            'science fiction': 'Persian "science fiction"',
-            'fantasy': 'Persian fantasy OR "افسانه"',
-            'history': 'Persian history OR "تاریخ"',
-            'romance': 'Persian romance OR "رمان عاشقانه"',
-            'biography': 'Persian biography OR "زندگینامه"',
-            'mystery': 'Persian mystery OR "پلیسی"'
-          }
-        };
-
-        const langGenreMap = genreQueries[language];
-        const genreTerm = langGenreMap ? langGenreMap[category.toLowerCase()] : '';
-        
-        if (genreTerm) {
-          q = q ? `${q} (${genreTerm})` : genreTerm;
-        } else if (category) {
+        if (category) {
           q = q ? `${q} ${langLabel} ${category}` : `${langLabel} ${category}`;
         } else {
           q = q ? `${q} ${langLabel}` : langLabel;
@@ -703,7 +706,6 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         setOnlineBooks((prev) => {
           let merged = [...prev, ...newBooks];
           
-          // Apply language filter if language code is specified
           if (language) {
             merged = merged.filter((book) => 
               book.volumeInfo?.language?.startsWith(lang1) || 
@@ -711,12 +713,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             );
           }
           
-          // Filter out duplicate titles for cleaner rendering
           const filtered = merged.filter((book, index, self) =>
             self.findIndex(b => b.volumeInfo?.title?.toLowerCase() === book.volumeInfo?.title?.toLowerCase()) === index
           );
 
-          // Save back to cache
           searchCache.current[cacheKey] = filtered;
           try {
             sessionStorage.setItem('quillhawk-search-cache', JSON.stringify(searchCache.current));
@@ -727,60 +727,46 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
       const fetchGoogle = async () => {
         try {
-          let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=25`;
+          let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=30`;
           if (lang1) url += `&langRestrict=${lang1}`;
           
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
             if (!data.error && data.items) {
-              const books = data.items.map((b: any): OnlineBook => {
-                const saleability = b.saleInfo?.saleability;
-                const isFree = saleability === 'FREE_ON_GOOGLE_PLAY' || saleability === 'FREE';
-                const hasPrice = b.saleInfo?.retailPrice;
-                const priceStr = hasPrice 
-                  ? `₹${Math.round(b.saleInfo.retailPrice.amount)}` 
-                  : (isFree ? 'Free' : '₹149');
-                
-                return {
-                  id: b.id,
-                  source: 'Google Books',
-                  isPremium: !isFree,
-                  price: isFree ? undefined : priceStr,
-                  volumeInfo: {
-                    title: b.volumeInfo?.title || 'Unknown Title',
-                    authors: b.volumeInfo?.authors || ['Unknown Author'],
-                    description: b.volumeInfo?.description || 'No description available for this title.',
-                    imageLinks: b.volumeInfo?.imageLinks ? {
-                      thumbnail: b.volumeInfo.imageLinks.thumbnail || null
-                    } : null,
-                    infoLink: b.volumeInfo?.infoLink || '#',
-                    previewLink: b.volumeInfo?.previewLink || '#',
-                    language: b.volumeInfo?.language || 'eng'
-                  },
-                  accessInfo: b.accessInfo ? {
-                    ia: null,
-                    epub: b.accessInfo.epub ? {
-                      downloadLink: b.accessInfo.epub.downloadLink || null
-                    } : null
+              const books = data.items.map((b: any): OnlineBook => ({
+                id: b.id,
+                source: 'Google Books',
+                isPremium: false,
+                volumeInfo: {
+                  title: b.volumeInfo?.title || 'Unknown Title',
+                  authors: b.volumeInfo?.authors || ['Unknown Author'],
+                  description: b.volumeInfo?.description || 'No description available for this title.',
+                  imageLinks: b.volumeInfo?.imageLinks ? {
+                    thumbnail: b.volumeInfo.imageLinks.thumbnail || null
+                  } : null,
+                  infoLink: b.volumeInfo?.infoLink || '#',
+                  previewLink: b.volumeInfo?.previewLink || '#',
+                  language: b.volumeInfo?.language || 'eng'
+                },
+                accessInfo: b.accessInfo ? {
+                  ia: null,
+                  epub: b.accessInfo.epub ? {
+                    downloadLink: b.accessInfo.epub.downloadLink || null
                   } : null
-                };
-              });
+                } : null
+              }));
               updateBooks(books);
             }
           }
         } catch (e) {
-          console.error('Google Books error:', e);
-        } finally {
-          // Google Books usually returns in <300ms. Set isLoadingOnline to false immediately 
-          // so the user sees results right away and the main loader vanishes.
-          setIsLoadingOnline(false);
+          console.error('Google Books fallback error:', e);
         }
       };
 
       const fetchOpenLibrary = async () => {
         try {
-          let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryVal || category || 'fiction')}&limit=25`;
+          let olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryVal || category || 'fiction')}&limit=30`;
           if (lang2) olUrl += `&language=${lang2}`;
           
           const olRes = await fetch(olUrl);
@@ -810,7 +796,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             updateBooks(books);
           }
         } catch (e) {
-          console.error('Open Library fetch error:', e);
+          console.error('Open Library fallback error:', e);
         }
       };
 
@@ -847,11 +833,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             updateBooks(books);
           }
         } catch (e) {
-          console.error('Gutendex error:', e);
+          console.error('Gutendex fallback error:', e);
         }
       };
 
-      // Run fetches in parallel, letting each stream results into the UI as soon as it resolves.
       await Promise.allSettled([
         fetchGoogle(),
         fetchOpenLibrary(),
@@ -940,34 +925,34 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   if (activeReadingBook) {
     return (
       <div className="h-[calc(100vh-7rem)] w-full flex flex-col gap-4 relative animate-in fade-in duration-300">
-        <div className="flex justify-between items-center bg-slate-900/60 backdrop-blur border border-slate-800 p-4 rounded-2xl shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary/20 text-primary rounded-xl flex items-center justify-center">
-              <BookOpen className="w-4.5 h-4.5" />
+        <div className="flex justify-between items-center bg-[#070D1F]/90 backdrop-blur-md border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 bg-primary/20 text-primary rounded-xl flex items-center justify-center font-bold shrink-0 border border-primary/30">
+              <BookOpen className="w-5 h-5" />
             </div>
-            <h2 className="font-bold text-foreground truncate max-w-sm">{activeReadingBook.title}</h2>
+            <div className="min-w-0">
+              <h2 className="font-extrabold text-foreground truncate max-w-sm text-sm md:text-base">{activeReadingBook.title}</h2>
+              <p className="text-xs text-slate-400 truncate">{activeReadingBook.author || 'QuillHawk Literary Edition'}</p>
+            </div>
           </div>
-          <Button onClick={() => setActiveReadingBook(null)} variant="secondary" size="sm" className="px-5">
+          <Button onClick={() => setActiveReadingBook(null)} variant="secondary" size="sm" className="px-5 font-bold">
             Exit Reader
           </Button>
         </div>
-        <div className="flex-1 w-full relative min-h-[500px]">
-          {activeReadingBook.source === 'Open Library' && activeReadingBook.iaId ? (
-            <iframe 
-              src={`https://archive.org/embed/${activeReadingBook.iaId}?js=1`}
-              className="w-full h-full border-0 rounded-2xl bg-slate-900 min-h-[600px]" 
-              title={activeReadingBook.title || "Open Library Reader"} 
-            />
-          ) : (
-            <Reader 
-              bookUrl={activeReadingBook.url} 
-              bookId={activeReadingBook.id || "inline-book"} 
-              userId={userId} 
-              title={activeReadingBook.title}
-              author={activeReadingBook.author}
-              description={activeReadingBook.description}
-            />
-          )}
+        <div className="flex-1 w-full relative min-h-[550px]">
+          <Reader 
+            bookUrl={activeReadingBook.url} 
+            bookId={activeReadingBook.id || "inline-book"} 
+            userId={userId} 
+            title={activeReadingBook.title}
+            author={activeReadingBook.author}
+            description={activeReadingBook.description}
+            source={activeReadingBook.source}
+            iaId={activeReadingBook.iaId}
+            previewLink={activeReadingBook.previewLink}
+            infoLink={activeReadingBook.infoLink}
+            readMode={activeReadingBook.readMode}
+          />
         </div>
       </div>
     );
@@ -1119,6 +1104,39 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           </div>
         )}
       </div>
+
+      {/* Quick Discovery Genre Chips for Global Catalog */}
+      {activeTab === 'online' && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Quick Discovery:
+          </span>
+          {[
+            { label: '🔥 All Bestsellers', q: 'bestseller fiction', cat: '' },
+            { label: '🚀 Sci-Fi & Cyberpunk', q: 'science fiction', cat: 'Science Fiction' },
+            { label: '🧙 Fantasy & Magic', q: 'fantasy adventure', cat: 'Fantasy' },
+            { label: '🧠 Mind & Growth', q: 'psychology habits self-help', cat: 'Psychology' },
+            { label: '🕵️ Mystery & Crime', q: 'mystery detective thriller', cat: 'Mystery' },
+            { label: '🏛️ Philosophy & Classics', q: 'philosophy classics', cat: 'Philosophy' },
+            { label: '📚 World Literature', q: 'classic literature novel', cat: 'Fiction' },
+            { label: '💼 Wealth & Business', q: 'finance economics business', cat: 'History' },
+            { label: '🌸 Manga & Novels', q: 'japanese novel anime', cat: 'Fiction' }
+          ].map((chip) => (
+            <button
+              key={chip.label}
+              onClick={() => {
+                setSearchQuery(chip.q);
+                setCategory(chip.cat);
+                setDebouncedSearchQuery(chip.q);
+                searchOnlineLibrary(chip.q);
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 bg-slate-900/80 hover:bg-primary/20 text-slate-300 hover:text-white border border-slate-800 hover:border-primary/40 transition-all shadow-sm active:scale-95"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Advanced filters on Online and Local tabs */}
       {(activeTab === 'online' || activeTab === 'local') && (
@@ -1723,110 +1741,98 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
         </div>
       </Modal>
 
-      {/* Premium Store Deal Purchase Modal */}
+      {/* Global Book Details & Instant Free Read Modal */}
       <Modal 
         isOpen={isStoreModalOpen} 
-        onClose={() => { if (!isPurchasing) setIsStoreModalOpen(false); }}
+        onClose={() => setIsStoreModalOpen(false)} 
         title=""
       >
         {selectedStoreBook && (() => {
           const info = selectedStoreBook.volumeInfo || {};
           const thumbnail = info.imageLinks?.thumbnail?.replace('http:', 'https:');
-          const price = selectedStoreBook.price || '₹149';
           
-          const handlePurchaseBook = () => {
-            setIsPurchasing(true);
-            setTimeout(() => {
-              try {
-                const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
-                const file_url = selectedStoreBook.accessInfo?.epub?.downloadLink || 
-                  (selectedStoreBook.id?.startsWith('gutendex-') 
-                    ? `https://www.gutenberg.org/ebooks/${selectedStoreBook.id.replace('gutendex-', '')}.epub.noimages` 
-                    : `https://www.gutenberg.org/ebooks/1342.epub.noimages`);
-                const newBook = {
-                  id: selectedStoreBook.id,
-                  title: info.title,
-                  author: info.authors?.[0] || 'Unknown Author',
-                  cover_url: thumbnail || '',
-                  file_url: file_url,
-                  is_premium: false,
-                  googleId: selectedStoreBook.source === 'Google Books' ? selectedStoreBook.id : undefined,
-                  language: selectedStoreBook.volumeInfo?.language || 'en'
-                };
-                
-                if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
-                  const updated = [newBook, ...addedList];
-                  localStorage.setItem('added-to-library-books', JSON.stringify(updated));
-                  const cleanList = updated.map((b: any) => ({
-                    ...b,
-                    cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
-                  }));
-                  document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
-                  setLocalAddedBooks(updated);
-                }
-                
-                setIsPurchasing(false);
-                setIsStoreModalOpen(false);
-                alert(`Congratulations! You have successfully purchased "${info.title}" for ${price}! It is now unlocked in your bookshelves!`);
-                setActiveReadingBook({ url: newBook.file_url, title: newBook.title });
-              } catch (e) {
-                console.error(e);
-                setIsPurchasing(false);
+          const handleUnlockAndRead = () => {
+            try {
+              const addedList = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+              const file_url = selectedStoreBook.accessInfo?.epub?.downloadLink || 
+                (selectedStoreBook.id?.startsWith('gutendex-') 
+                  ? `https://www.gutenberg.org/ebooks/${selectedStoreBook.id.replace('gutendex-', '')}.epub.noimages` 
+                  : (selectedStoreBook.accessInfo?.ia 
+                    ? `https://archive.org/download/${selectedStoreBook.accessInfo.ia}/${selectedStoreBook.accessInfo.ia}.epub`
+                    : `https://www.gutenberg.org/ebooks/1342.epub.noimages`));
+              
+              const newBook = {
+                id: selectedStoreBook.id,
+                title: info.title,
+                author: info.authors?.[0] || 'Unknown Author',
+                cover_url: thumbnail || '',
+                file_url: file_url,
+                is_premium: false,
+                googleId: selectedStoreBook.source === 'Google Books' ? selectedStoreBook.id : undefined,
+                iaId: selectedStoreBook.accessInfo?.ia || undefined,
+                language: selectedStoreBook.volumeInfo?.language || 'en'
+              };
+              
+              if (!addedList.some((b: any) => b.title.toLowerCase() === info.title.toLowerCase())) {
+                const updated = [newBook, ...addedList];
+                localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+                const cleanList = updated.map((b: any) => ({
+                  ...b,
+                  cover_url: b.cover_url?.startsWith('data:') ? '' : (b.cover_url || '')
+                }));
+                document.cookie = "added-to-library-books=" + encodeURIComponent(JSON.stringify(cleanList)) + "; path=/; max-age=31536000";
+                setLocalAddedBooks(updated);
+                triggerOfflineDownload(newBook.id, newBook.title, newBook.author, newBook.cover_url, newBook.file_url);
               }
-            }, 1800);
+              
+              setIsStoreModalOpen(false);
+              handleStartReading(selectedStoreBook);
+            } catch (e) {
+              console.error(e);
+            }
           };
 
           return (
             <div className="text-center space-y-6 py-4 relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-warning/5 rounded-full blur-[50px] pointer-events-none"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[50px] pointer-events-none"></div>
               
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-warning uppercase tracking-widest bg-warning/10 px-3 py-1 rounded-full border border-warning/20">PREMIUM STORE DEAL</span>
+                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">✨ 100% FREE LITERARY ACCESS</span>
                 <h3 className="text-xl font-bold text-white mt-3 leading-tight">{info.title}</h3>
-                <p className="text-xs text-indigo-300 font-medium">{info.authors?.[0] || 'Unknown Author'}</p>
+                <p className="text-xs text-blue-300 font-medium">{info.authors?.[0] || 'Unknown Author'}</p>
               </div>
 
-              <div className="flex gap-4 items-center bg-slate-950/60 p-4 border border-slate-850 rounded-2xl max-w-sm mx-auto shadow-inner">
+              <div className="flex gap-4 items-center bg-[#070D1F]/80 p-4 border border-slate-800 rounded-2xl max-w-sm mx-auto shadow-inner">
                 {thumbnail ? (
                   <img src={thumbnail} alt={info.title} className="w-16 h-24 object-cover rounded shadow shadow-black/60 shrink-0" />
                 ) : (
                   <div className="w-16 h-24 bg-slate-900 flex items-center justify-center text-xs p-1 text-center font-bold text-slate-600 rounded shrink-0 border border-slate-800">No Cover</div>
                 )}
                 <div className="text-left flex-1 space-y-1.5 overflow-hidden">
-                  <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{info.description}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">Language: {info.language?.toUpperCase() || 'ENG'}</p>
+                  <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{info.description || 'Public archive literary work accessible for all QuillHawk readers.'}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">Archive: {selectedStoreBook.source || 'Global Catalog'}</p>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-warning/10 to-amber-500/10 border border-warning/25 rounded-2xl p-4 flex justify-between items-center max-w-sm mx-auto">
-                <span className="text-xs font-bold text-slate-300 tracking-wide uppercase">Razorpay Price:</span>
-                <span className="text-xl font-extrabold text-warning font-mono">{price}</span>
+              <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/25 rounded-2xl p-4 flex justify-between items-center max-w-sm mx-auto">
+                <span className="text-xs font-bold text-slate-300 tracking-wide uppercase">Access Tier:</span>
+                <span className="text-sm font-black text-emerald-400 font-mono uppercase tracking-wider">Free Unrestricted</span>
               </div>
 
               <div className="flex flex-col gap-2.5 pt-2 max-w-sm mx-auto">
                 <Button 
-                  onClick={handlePurchaseBook}
-                  disabled={isPurchasing}
-                  className="w-full bg-gradient-to-r from-warning to-amber-500 hover:from-warning/90 hover:to-amber-500/90 text-slate-950 font-black py-4 shadow-[0_0_15px_rgba(245,158,11,0.25)] rounded-xl relative text-sm"
+                  onClick={handleUnlockAndRead}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-black py-4 shadow-[0_0_20px_rgba(59,130,246,0.3)] rounded-xl relative text-sm flex items-center justify-center gap-2"
                 >
-                  {isPurchasing ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full" />
-                      <span>Contacting Razorpay APIs...</span>
-                    </div>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <span>💳</span> Buy Instantly via Razorpay
-                    </span>
-                  )}
+                  <BookOpen className="w-4 h-4" />
+                  <span>Start Reading Now</span>
                 </Button>
                 <Button 
                   onClick={() => setIsStoreModalOpen(false)}
-                  disabled={isPurchasing}
                   variant="ghost" 
                   className="w-full text-slate-500 hover:text-slate-300 font-bold"
                 >
-                  Cancel
+                  Close
                 </Button>
               </div>
             </div>

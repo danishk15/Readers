@@ -45,7 +45,12 @@ export default function Reader({
   userId, 
   title, 
   author, 
-  description 
+  description,
+  source,
+  iaId,
+  previewLink,
+  infoLink,
+  readMode = 'epub'
 }: { 
   bookUrl: string; 
   bookId: string; 
@@ -53,6 +58,11 @@ export default function Reader({
   title?: string;
   author?: string;
   description?: string;
+  source?: string;
+  iaId?: string;
+  previewLink?: string;
+  infoLink?: string;
+  readMode?: 'epub' | 'archive' | 'google' | 'interactive';
 }) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
@@ -61,6 +71,11 @@ export default function Reader({
   const [timeSpent, setTimeSpent] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
   const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
+  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'archive' | 'google' | 'study'>(() => {
+    if (iaId && (!bookUrl || readMode === 'archive')) return 'archive';
+    if (readMode === 'google' && previewLink) return 'google';
+    return 'reader';
+  });
 
   // Check if there is an offline cached version in IndexedDB
   useEffect(() => {
@@ -95,7 +110,12 @@ export default function Reader({
     setFallbackPage(1);
     setCurrentPage(0);
     setLoading(true);
-  }, [bookId, bookUrl]);
+    if (iaId && (!bookUrl || readMode === 'archive')) {
+      setCurrentViewMode('archive');
+    } else {
+      setCurrentViewMode('reader');
+    }
+  }, [bookId, bookUrl, iaId, readMode]);
 
   // Dynamic simulated book text based on title, author, and description
   const getSimulatedBookChapters = () => {
@@ -430,26 +450,90 @@ export default function Reader({
   };
 
   const styles = READER_THEMES[theme] || READER_THEMES.dark;
+  const externalLink = infoLink || previewLink || (iaId ? `https://archive.org/details/${iaId}` : null);
 
   return (
     <div className={`flex flex-col h-full ${styles.bg} ${styles.text} border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300`}>
       {/* Dynamic Header */}
-      <div className={`h-16 ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'bg-white/90 border-slate-200/80 text-slate-900' : 'bg-slate-950/80 border-slate-800/60 text-white'} backdrop-blur-md border-b flex items-center justify-between px-6 z-10 flex-shrink-0`}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold">
+      <div className={`h-16 ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'bg-white/90 border-slate-200/80 text-slate-900' : 'bg-slate-950/80 border-slate-800/60 text-white'} backdrop-blur-md border-b flex items-center justify-between px-4 md:px-6 z-10 flex-shrink-0 gap-2`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0">
             <BookOpen className="w-4 h-4" />
           </div>
-          <div>
-            <div className={`font-extrabold text-sm truncate max-w-[150px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>{title || 'QuillHawk Book'}</div>
-            <div className="text-[10px] text-slate-500 font-medium">
-              Weekly progress logged: <span className="text-warning font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
+          <div className="min-w-0">
+            <div className={`font-extrabold text-sm truncate max-w-[140px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>
+              {title || 'QuillHawk Book'}
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 truncate">
+              <span>Time:</span>
+              <span className="text-warning font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
+              {source && (
+                <>
+                  <span className="text-slate-700">|</span>
+                  <span className="text-blue-400 font-bold uppercase tracking-wider text-[9px]">{source}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Customize Options */}
-        {!isPdf && (
-          <div className="hidden md:flex items-center gap-3 text-[11px] bg-slate-900/40 border border-slate-800/60 px-4 py-1.5 rounded-xl shadow-inner">
+        {/* View Mode Switcher Pills */}
+        <div className="hidden sm:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/70">
+          <button
+            onClick={() => setCurrentViewMode('reader')}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+              currentViewMode === 'reader' 
+                ? 'bg-primary text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            🪶 Ink Reader
+          </button>
+          
+          {iaId && (
+            <button
+              onClick={() => setCurrentViewMode('archive')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                currentViewMode === 'archive' 
+                  ? 'bg-primary text-white shadow' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🏛️ Archive Viewer
+            </button>
+          )}
+
+          {previewLink && (
+            <button
+              onClick={() => setCurrentViewMode('google')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                currentViewMode === 'google' 
+                  ? 'bg-primary text-white shadow' 
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🌐 Web View
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setUseReflowableFallback(true);
+              setCurrentViewMode('study');
+            }}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+              currentViewMode === 'study' 
+                ? 'bg-primary text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📖 Study Edition
+          </button>
+        </div>
+
+        {/* Customize Options (shown in reader or study mode) */}
+        {!isPdf && (currentViewMode === 'reader' || currentViewMode === 'study') && (
+          <div className="hidden lg:flex items-center gap-3 text-[11px] bg-slate-900/40 border border-slate-800/60 px-4 py-1.5 rounded-xl shadow-inner">
             {/* Font Select */}
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 font-bold">Font:</span>
@@ -491,32 +575,59 @@ export default function Reader({
           </div>
         )}
 
-        <div className="flex gap-2">
-          {!isPdf && (
+        <div className="flex items-center gap-2 shrink-0">
+          {externalLink && (
+            <a 
+              href={externalLink} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hidden md:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-[10px] font-bold transition-colors"
+              title="Open the complete original library archive"
+            >
+              <span>Original Archive</span>
+              <span className="text-xs">↗</span>
+            </a>
+          )}
+
+          {!isPdf && currentViewMode === 'reader' && (
             <>
-              <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold">Prev</Button>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === activeChapters.length} className="font-bold">Next</Button>
+              <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold text-xs">Prev</Button>
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === activeChapters.length} className="font-bold text-xs">Next</Button>
             </>
           )}
         </div>
       </div>
       
-      {loading && (
+      {loading && currentViewMode === 'reader' && (
         <div className={`absolute inset-0 flex flex-col items-center justify-center ${styles.bg} z-20 space-y-4`}>
           <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-          <p className="text-xs text-slate-500 animate-pulse font-medium">Decoding book stream... CORS secure loading active.</p>
+          <p className="text-xs text-slate-400 animate-pulse font-medium">Connecting to digital archive... Loading book text & chapters.</p>
         </div>
       )}
       
       {/* Main View Area */}
       <div className={`flex-1 w-full relative z-0 overflow-y-auto ${styles.bg}`}>
-        {isPdf ? (
+        {currentViewMode === 'archive' && iaId ? (
+          <iframe 
+            src={`https://archive.org/embed/${iaId}?js=1`} 
+            className="w-full h-full border-0 bg-slate-950 min-h-[600px]" 
+            title={title || "Internet Archive Reader"} 
+            allowFullScreen
+          />
+        ) : currentViewMode === 'google' && previewLink ? (
+          <iframe 
+            src={previewLink} 
+            className="w-full h-full border-0 bg-slate-950 min-h-[600px]" 
+            title={title || "Web Book Viewer"} 
+            allowFullScreen
+          />
+        ) : isPdf ? (
           <iframe 
             src={resolvedBookUrl} 
             className="w-full h-full border-0 bg-slate-900" 
             title={title || "PDF Reader"} 
           />
-        ) : useReflowableFallback ? (
+        ) : (useReflowableFallback || currentViewMode === 'study') ? (
           (() => {
             const safeFallbackPage = Math.min(fallbackPage, activeChapters.length);
             return (
@@ -563,7 +674,7 @@ export default function Reader({
                     >
                       ← Previous Section
                     </Button>
-                    <span>Page {safeFallbackPage} of {activeChapters.length} ({Math.round((safeFallbackPage / activeChapters.length) * 100)}%)</span>
+                    <span>Section {safeFallbackPage} of {activeChapters.length} ({Math.round((safeFallbackPage / activeChapters.length) * 100)}%)</span>
                     <Button 
                       variant="secondary" 
                       size="sm" 

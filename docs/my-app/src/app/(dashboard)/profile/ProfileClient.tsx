@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
-import { Award, BookOpen, Edit3, MessageSquare, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { Award, BookOpen, Edit3, ShieldCheck, Sparkles, Star, Clock, Laptop, Shield } from 'lucide-react';
+import { getLoginHistory } from '@/utils/supabase/client';
 
 interface Profile {
   id: string;
@@ -23,6 +24,14 @@ interface ProfileClientProps {
 export default function ProfileClient({ initialProfile, initialUser, logs }: ProfileClientProps) {
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const history = getLoginHistory();
+      setLoginHistory(history);
+    } catch {}
+  }, []);
 
   // Milestone Engine Logic
   const totalSeconds = logs?.reduce((acc, log) => acc + (log.time_spent_seconds || 0), 0) || 0;
@@ -56,7 +65,7 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
   const isPresetAvatar = profile?.avatar_url && ['📚', '🌌', '🕵️', '🧙', '💻', '🐉'].includes(profile.avatar_url);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
       {/* Profile Header Card */}
       <div className="relative overflow-hidden rounded-2xl border border-card-border bg-card/40 backdrop-blur-md p-6 md:p-8 shadow-xl">
         {/* Glow Effects */}
@@ -116,7 +125,7 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
           {/* Edit Profile Action Trigger */}
           <button
             onClick={() => setIsEditOpen(true)}
-            className="flex items-center gap-2 px-4.5 py-2 rounded-xl text-xs font-bold border border-slate-800 bg-slate-900/50 hover:bg-slate-900 text-slate-300 hover:text-white transition-all shadow-md duration-300 hover:border-slate-700 self-center md:self-start shrink-0 group"
+            className="flex items-center gap-2 px-4.5 py-2 rounded-xl text-xs font-bold border border-slate-800 bg-slate-900/50 hover:bg-slate-900 text-slate-300 hover:text-white transition-all shadow-md duration-300 hover:border-slate-700 self-center md:self-start shrink-0 group cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform duration-300" />
             <span>Customize Profile</span>
@@ -195,6 +204,56 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
               Read books and customized your profile to earn special badges!
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Account Security & Login Activity History */}
+      <div className="space-y-4 pt-4 border-t border-slate-800/80">
+        <h2 className="text-xl font-bold tracking-tight text-slate-200 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-primary" />
+          <span>Login Records & Active Session</span>
+        </h2>
+        
+        <div className="rounded-2xl border border-card-border bg-card/30 backdrop-blur-sm p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+            <div className="flex items-center gap-2.5">
+              <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Active Device Session</span>
+            </div>
+            <span className="text-xs text-slate-400 font-medium">
+              Signed in as: <strong className="text-slate-200">{initialUser?.email}</strong>
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-bold text-slate-400 block uppercase tracking-wider">Recent Login Records</span>
+            {loginHistory.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {loginHistory.map((rec) => (
+                  <div key={rec.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-950/50 border border-slate-800/60 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Laptop className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-200">{rec.username || rec.email}</p>
+                        <p className="text-[10px] text-slate-500">{rec.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{new Date(rec.timestamp).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60 text-xs text-slate-400 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <span>Current login recorded just now.</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

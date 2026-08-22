@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Check, AlertCircle, ArrowRight, Zap } from 'lucide-react';
+import { BookOpen, Check, AlertCircle, ArrowRight, Zap, History, UserCheck, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { createClient, getURL } from '@/utils/supabase/client';
+import { createClient, getURL, getStoredAccounts, getLoginHistory } from '@/utils/supabase/client';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface AuthContainerProps {
@@ -36,10 +36,25 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
   // Social / Demo Auth States
   const [oauthLoading, setOauthLoading] = useState<'google' | 'discord' | 'demo' | null>(null);
 
+  // Saved accounts & login records
+  const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
+  const [loginRecords, setLoginRecords] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
   const redirectMessage = searchParams.get('message');
+
+  // Load saved accounts and login records on mount
+  useEffect(() => {
+    try {
+      const accounts = getStoredAccounts();
+      setSavedAccounts(accounts);
+      const history = getLoginHistory();
+      setLoginRecords(history);
+    } catch {}
+  }, [mode]);
 
   // Sync redirect error/message if present
   useEffect(() => {
@@ -64,6 +79,15 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
     window.addEventListener('theme-style-change', updateTheme);
     return () => window.removeEventListener('theme-style-change', updateTheme);
   }, []);
+
+  // Quick Select an account from history
+  const handleSelectSavedAccount = (account: any) => {
+    setLoginEmail(account.email);
+    if (account.password) {
+      setLoginPassword(account.password);
+    }
+    setLoginError(null);
+  };
 
   // Handle Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -176,10 +200,13 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
 
       if (error) {
         setSignUpError(error.message);
-      } else if (data?.session) {
+      } else if (data?.session || data?.user) {
         window.location.href = '/dashboard';
       } else {
-        setSignUpSuccessMessage("Account created successfully! Please check your email inbox to verify your account before logging in.");
+        setSignUpSuccessMessage("Account created successfully! You can now log in.");
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1200);
       }
     } catch (err: any) {
       setSignUpError(err?.message || "An unexpected error occurred during signup.");
@@ -219,51 +246,17 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
     const demoPassword = 'DemoReaderPass123!';
 
     try {
-      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: demoEmail,
         password: demoPassword,
       });
 
-      if (!signInErr && signInData?.session) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('readsphere-demo-mode', 'true');
-        }
+      if (!error && data?.session) {
         window.location.href = '/dashboard';
         return;
-      }
-
-      const { data: signUpData } = await supabase.auth.signUp({
-        email: demoEmail,
-        password: demoPassword,
-        options: {
-          data: {
-            full_name: 'Demo Reader',
-            username: 'demoreader',
-          }
-        }
-      });
-
-      if (signUpData?.session) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('readsphere-demo-mode', 'true');
-        }
-        window.location.href = '/dashboard';
-        return;
-      }
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('readsphere-demo-mode', 'true');
-        localStorage.setItem('readsphere-demo-user', JSON.stringify({
-          id: 'demo-reader-id-101',
-          email: demoEmail,
-          user_metadata: { full_name: 'Demo Reader', username: 'demoreader' }
-        }));
       }
       window.location.href = '/dashboard';
-    } catch (err: any) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('readsphere-demo-mode', 'true');
-      }
+    } catch {
       window.location.href = '/dashboard';
     }
   };
@@ -303,7 +296,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
             <span className="text-2xl font-bold tracking-wide font-display text-white">ReadSphere</span>
           </div>
           <p className="text-xs text-slate-400 max-w-xs">
-            {mode === 'login' ? 'Welcome back! Sign in to access your digital library.' : 'Create your reader account to start reading & tracking books.'}
+            {mode === 'login' ? 'Welcome back! Sign in to access your digital library & records.' : 'Create your reader account to start reading & tracking books.'}
           </p>
         </div>
 
@@ -359,7 +352,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                 ) : (
                   <Zap className="w-4 h-4 text-amber-400" />
                 )}
-                <span>⚡ Instant Demo Reader Login</span>
+                <span>⚡ Instant 1-Click Demo Login</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -397,8 +390,61 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
               </div>
             </div>
 
+            {/* Saved Accounts / Login Records Quick Selector */}
+            {savedAccounts.length > 0 && (
+              <div className="mb-5 p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-primary" />
+                    <span>Saved Accounts ({savedAccounts.length})</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="text-[10px] text-primary hover:underline font-semibold cursor-pointer flex items-center gap-1"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>{showHistory ? 'Hide' : 'History'}</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {savedAccounts.map((acc: any) => (
+                    <button
+                      key={acc.id || acc.email}
+                      type="button"
+                      onClick={() => handleSelectSavedAccount(acc)}
+                      className={`text-left px-2.5 py-1.5 rounded-xl border text-xs flex items-center gap-2 transition-all duration-150 cursor-pointer ${
+                        loginEmail.toLowerCase() === acc.email.toLowerCase()
+                          ? 'border-primary bg-primary/20 text-white font-bold'
+                          : 'border-slate-800 bg-slate-900/60 hover:bg-slate-900 text-slate-300'
+                      }`}
+                    >
+                      <span className="text-sm">{acc.avatar_url || '📚'}</span>
+                      <div className="truncate max-w-[130px]">
+                        <span className="truncate block font-semibold">{acc.username || acc.full_name || acc.email.split('@')[0]}</span>
+                        <span className="text-[9px] text-slate-500 truncate block">{acc.email}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {showHistory && loginRecords.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Recent Login Records</span>
+                    {loginRecords.slice(0, 3).map((r: any) => (
+                      <div key={r.id} className="text-[11px] text-slate-400 flex items-center justify-between">
+                        <span className="truncate">{r.email}</span>
+                        <span className="text-[10px] text-slate-600">{new Date(r.timestamp).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Divider */}
-            <div className="relative flex items-center justify-center my-6">
+            <div className="relative flex items-center justify-center my-5">
               <div className="border-t border-slate-800 w-full" />
               <span className="bg-[#0c101c] px-3 text-[11px] font-medium text-slate-500 uppercase tracking-widest absolute">
                 or with email
@@ -433,9 +479,10 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                     <input 
                       type="checkbox" 
                       id="remember-me" 
+                      defaultChecked
                       className="rounded border-slate-800 bg-slate-950 text-primary focus:ring-0 cursor-pointer w-3.5 h-3.5" 
                     />
-                    <span>Remember me</span>
+                    <span>Remember account</span>
                   </label>
                   <a 
                     href="/forgot-password" 
@@ -553,7 +600,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                 ) : (
                   <Zap className="w-4 h-4 text-amber-400" />
                 )}
-                <span>⚡ Instant Demo Reader Login</span>
+                <span>⚡ Instant 1-Click Demo Login</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -613,11 +660,11 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                   type="button"
                   onClick={() => {
                     setSignUpSuccessMessage(null);
-                    setMode('login');
+                    window.location.href = '/dashboard';
                   }}
                   className={`w-full py-3 text-xs font-bold ${buttonPrimaryClass}`}
                 >
-                  Proceed to Sign In
+                  Proceed to Dashboard
                 </button>
               </div>
             ) : (
@@ -725,7 +772,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                 Already have an account?{' '}
                 <button 
                   type="button"
-                  onClick={() => { setMode('login'); setLoginError(null); }}
+                  onClick={() => { setMode('login'); setSignUpError(null); }}
                   className="text-primary font-bold hover:underline cursor-pointer"
                 >
                   Sign in instead

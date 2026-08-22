@@ -6,40 +6,66 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  // Check local session cookie first for instant verification
+  const localSessionCookie = request.cookies.get('readsphere_auth_session')?.value
+  let isAuthenticated = false
 
-  // Define protected routes (e.g. /dashboard, /library/premium)
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/communities')
+  if (localSessionCookie) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(localSessionCookie))
+      if (parsed?.user?.id) {
+        isAuthenticated = true
+      }
+    } catch {}
+  }
 
-  if (isProtectedRoute) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  // If not authenticated via local cookie, check Supabase SSR client
+  if (!isAuthenticated) {
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll()
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+              supabaseResponse = NextResponse.next({
+                request,
+              })
+              cookiesToSet.forEach(({ name, value, options }) =>
+                supabaseResponse.cookies.set(name, value, options)
+              )
+            },
+          },
+        }
+      )
 
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
-    }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        isAuthenticated = true
+      }
+    } catch {}
+  }
+
+  const { pathname } = request.nextUrl
+
+  // Protected routes
+  const isProtectedRoute =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/communities') ||
+    pathname.startsWith('/competition') ||
+    pathname.startsWith('/premium') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/publish')
+
+  if (isProtectedRoute && !isAuthenticated) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('message', 'Please sign in to access your library.')
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse

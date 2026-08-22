@@ -14,8 +14,8 @@ interface InteractiveCardProps {
 export default function InteractiveCard({
   children,
   onClick,
-  glowColor = 'rgba(91,108,255,0.15)',
-  borderColor = 'rgba(91,108,255,0.3)',
+  glowColor = 'rgba(37,99,235,0.22)',
+  borderColor = 'rgba(203,213,225,0.35)',
   className = '',
   theme: customTheme
 }: InteractiveCardProps) {
@@ -35,7 +35,7 @@ export default function InteractiveCard({
     // Otherwise, listen for global theme switcher updates
     const updateTheme = () => {
       try {
-        const saved = localStorage.getItem('readsphere-theme-style') as any;
+        const saved = (localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style')) as any;
         if (saved && ['default', 'glass', 'neo', 'brutalist'].includes(saved)) {
           setInternalTheme(saved);
         } else {
@@ -83,14 +83,14 @@ export default function InteractiveCard({
     setTilt({ x: 0, y: 0 });
   };
 
-  // Card theme-based custom classes
-  let themeCardClass = 'bg-[#0b0f19]/80 border border-slate-800/80 rounded-2xl shadow-lg';
+  // Card theme-based custom classes (Inkish Blue + Greyish Silver palette)
+  let themeCardClass = 'bg-[#0D1733]/90 border border-slate-700/60 rounded-2xl shadow-lg';
   if (activeTheme === 'glass') {
-    themeCardClass = 'bg-slate-900/35 backdrop-blur-2xl border border-white/5 shadow-2xl rounded-[20px]';
+    themeCardClass = 'bg-slate-900/40 backdrop-blur-2xl border border-slate-300/15 shadow-2xl rounded-[20px]';
   } else if (activeTheme === 'neo') {
-    themeCardClass = 'bg-[#1e2022] shadow-[6px_6px_16px_#121314,_-6px_-6px_16px_#2a2d30] border border-slate-800/30 rounded-[24px]';
+    themeCardClass = 'bg-[#0F172A] shadow-[8px_8px_20px_#080C17,_-8px_-8px_20px_#16223D] border border-slate-700/30 rounded-[24px]';
   } else if (activeTheme === 'brutalist') {
-    themeCardClass = 'bg-[#141414] border-3 border-white shadow-[6px_6px_0px_#000000] rounded-none';
+    themeCardClass = 'bg-[#0C101C] border-3 border-slate-200 shadow-[6px_6px_0px_#38BDF8] rounded-none';
   }
 
   // Dynamic shadow glows for modern styles

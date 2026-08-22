@@ -52,6 +52,8 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
   // Predefined premium avatar backgrounds if they select an emoji preset
   const getAvatarStyle = (emoji: string) => {
     switch (emoji) {
+      case '🪶': return 'bg-blue-600/25 text-blue-300 border-blue-400/40';
+      case '🦅': return 'bg-slate-500/25 text-slate-200 border-slate-400/40';
       case '📚': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
       case '🌌': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case '🕵️': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
@@ -62,7 +64,7 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
     }
   };
 
-  const isPresetAvatar = profile?.avatar_url && ['📚', '🌌', '🕵️', '🧙', '💻', '🐉'].includes(profile.avatar_url);
+  const isPresetAvatar = profile?.avatar_url && ['🪶', '🦅', '📚', '🌌', '🕵️', '🧙', '💻', '🐉'].includes(profile.avatar_url);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
@@ -94,7 +96,7 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
           <div className="flex-1 text-center md:text-left space-y-3 min-w-0">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                {profile?.username || 'Reader'}
+                {profile?.username || 'QuillHawk Reader'}
               </h1>
               <div className="flex justify-center md:justify-start gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-900 border border-slate-800 text-slate-400 rounded-md">
@@ -102,7 +104,7 @@ export default function ProfileClient({ initialProfile, initialUser, logs }: Pro
                 </span>
                 {profile?.premium_status && (
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-warning/20 border border-warning/30 text-warning rounded-md flex items-center gap-0.5">
-                    👑 Premium
+                    👑 VIP Soaring Pass
                   </span>
                 )}
               </div>

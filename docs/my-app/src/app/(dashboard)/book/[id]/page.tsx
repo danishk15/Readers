@@ -102,7 +102,7 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
 
             <p className="text-slate-400 text-sm leading-relaxed max-w-2xl pt-2">
-              Embark on an epic literary journey with ReadSphere's curated classic edition of "{book.title}". Dive into customizable typographic layouts, track reading achievements, and discuss characters in global server chat groups.
+              Embark on an epic literary journey with QuillHawk&apos;s curated classic edition of &quot;{book.title}&quot;. Dive into customizable typographic layouts, track reading achievements, and discuss characters in global guild chat groups.
             </p>
           </div>
 

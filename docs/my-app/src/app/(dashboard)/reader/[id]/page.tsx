@@ -22,7 +22,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        setUser(user || { id: 'reader-guest', email: 'guest@readsphere.com' });
+        setUser(user || { id: 'reader-guest', email: 'guest@quillhawk.app' });
 
         let loadedBook = null;
 
@@ -63,7 +63,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
           loadedBook = {
             id,
             title: formattedTitle,
-            author: 'ReadSphere Library Edition',
+            author: 'QuillHawk Library Edition',
             file_url: ''
           };
         }

@@ -119,12 +119,12 @@ export default function CommunitiesPage() {
         <div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
             <Users className="w-8 h-8 text-primary" />
-            <span>Discussion Servers</span>
+            <span>QuillHawk Literary Guilds</span>
           </h1>
-          <p className="text-muted text-sm mt-1">Join a server to discuss your favorite book genres and connect with readers.</p>
+          <p className="text-muted text-sm mt-1">Join a literary guild to discuss your favorite book genres and connect with readers globally.</p>
         </div>
         <Link href="/communities/create" passHref legacyBehavior>
-          <Button className="bg-primary hover:bg-primary/95 shadow-md shadow-primary/10">Create Server</Button>
+          <Button className="bg-primary hover:bg-primary-hover shadow-md shadow-primary/20">Create Guild</Button>
         </Link>
       </div>
 

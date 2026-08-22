@@ -61,7 +61,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
   useEffect(() => {
     const updateTheme = () => {
       try {
-        const saved = localStorage.getItem('readsphere-theme-style') as any;
+        const saved = (localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style')) as any;
         if (saved && ['default', 'glass', 'neo', 'brutalist'].includes(saved)) {
           setTheme(saved);
         }
@@ -193,38 +193,38 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
     }
   };
 
-  let cardBoxClass = 'bg-[#0c101c] border border-slate-800 shadow-[0_10px_40px_rgba(0,0,0,0.6)] rounded-3xl';
-  let buttonPrimaryClass = 'bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 rounded-xl transition-colors duration-150';
-  let inputClass = 'border-slate-800 bg-slate-950/90 text-slate-100 placeholder:text-slate-600 focus:ring-primary/40 focus:border-slate-700';
+  let cardBoxClass = 'bg-[#0B132B]/95 border border-slate-700/80 shadow-[0_15px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(37,99,235,0.15)] rounded-3xl';
+  let buttonPrimaryClass = 'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/30 rounded-xl transition-all duration-150 border border-slate-200/20';
+  let inputClass = 'border-slate-700/80 bg-[#060B18]/90 text-slate-100 placeholder:text-slate-500 focus:ring-primary/40 focus:border-slate-500';
 
   if (theme === 'glass') {
-    cardBoxClass = 'bg-slate-900/80 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.6)] rounded-[28px]';
-    buttonPrimaryClass = 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md shadow-cyan-500/20 rounded-2xl transition-colors duration-150';
+    cardBoxClass = 'bg-slate-900/85 backdrop-blur-2xl border border-slate-300/20 shadow-[0_15px_50px_rgba(0,0,0,0.7),0_0_30px_rgba(56,189,248,0.2)] rounded-[28px]';
+    buttonPrimaryClass = 'bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-500/25 rounded-2xl transition-colors duration-150 border border-white/20';
   } else if (theme === 'neo') {
-    cardBoxClass = 'bg-[#1e2022] border border-slate-800/40 shadow-2xl rounded-[28px]';
-    buttonPrimaryClass = 'bg-teal-600 hover:bg-teal-500 text-white shadow-md rounded-2xl transition-colors duration-150';
-    inputClass = 'border-transparent bg-[#17191b] shadow-inner text-slate-100 focus:ring-0';
+    cardBoxClass = 'bg-[#0F172A] border border-slate-700/40 shadow-2xl rounded-[28px]';
+    buttonPrimaryClass = 'bg-blue-600 hover:bg-blue-500 text-white shadow-md rounded-2xl transition-colors duration-150';
+    inputClass = 'border-transparent bg-[#091024] shadow-inner text-slate-100 focus:ring-0';
   } else if (theme === 'brutalist') {
-    cardBoxClass = 'bg-[#141414] border-4 border-white shadow-[8px_8px_0px_#000000] rounded-none';
-    buttonPrimaryClass = 'bg-[#ec4899] text-white border-2 border-black font-black hover:bg-[#db2777] active:bg-[#be185d] rounded-none uppercase tracking-wider transition-colors duration-150';
+    cardBoxClass = 'bg-[#0C101C] border-4 border-slate-200 shadow-[8px_8px_0px_#38BDF8] rounded-none';
+    buttonPrimaryClass = 'bg-[#38BDF8] text-slate-950 border-2 border-black font-black hover:bg-[#0284c7] active:bg-[#0369a1] rounded-none uppercase tracking-wider transition-colors duration-150';
     inputClass = 'border-2 border-black rounded-none bg-white text-black placeholder:text-slate-500 focus:ring-0 focus:border-black';
   }
 
   const isSignup = mode === 'signup';
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-[#060814] bg-[radial-gradient(ellipse_at_top,_rgba(91,108,255,0.12),_transparent_55%)] relative select-none">
+    <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-[#050814] bg-[radial-gradient(ellipse_at_top,_rgba(37,99,235,0.2),_transparent_55%),radial-gradient(ellipse_at_bottom,_rgba(148,163,184,0.1),_transparent_50%)] relative select-none">
       <div className="w-full max-w-md mx-auto my-8 [perspective:1200px]">
         {/* Branding Header */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="flex items-center gap-2.5 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-violet-500 flex items-center justify-center shadow-lg shadow-primary/30">
-              <BookOpen className="text-white w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-slate-300 flex items-center justify-center shadow-lg shadow-blue-600/30 border border-slate-300/30">
+              <span className="text-xl">🪶</span>
             </div>
-            <span className="text-2xl font-bold tracking-wide font-display text-white">ReadSphere</span>
+            <span className="text-2xl font-black tracking-wide font-display text-white">QuillHawk</span>
           </div>
           <p className="text-xs text-slate-400 max-w-xs">
-            {mode === 'login' ? 'Welcome back! Sign in to access your digital library.' : 'Create your reader account to start reading & tracking books.'}
+            {mode === 'login' ? 'Welcome back! Sign in to access your digital library.' : 'Create your QuillHawk account to start reading & tracking books.'}
           </p>
         </div>
 
@@ -238,7 +238,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
             style={{ display: isSignup ? 'none' : 'block' }}
           >
             {/* Tabs */}
-            <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-slate-950/80 border border-slate-800/80">
+            <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-xl bg-slate-950/80 border border-slate-700/80">
               <button
                 type="button"
                 onClick={() => { setMode('login'); setLoginError(null); }}
@@ -350,8 +350,8 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
 
             {/* Divider */}
             <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-slate-800 w-full" />
-              <span className="bg-[#0c101c] px-3 text-[11px] font-medium text-slate-500 uppercase tracking-widest absolute">
+              <div className="border-t border-slate-700/80 w-full" />
+              <span className="bg-[#0B132B] px-3 text-[11px] font-medium text-slate-400 uppercase tracking-widest absolute">
                 or email login
               </span>
             </div>
@@ -414,7 +414,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-1.5">
-                    Sign In to ReadSphere
+                    Sign In to QuillHawk
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
@@ -423,7 +423,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
 
             <div className="mt-5 text-center text-xs text-slate-400">
               <span>
-                New to ReadSphere?{' '}
+                New to QuillHawk?{' '}
                 <button 
                   type="button"
                   onClick={() => { setMode('signup'); setSignUpError(null); }}

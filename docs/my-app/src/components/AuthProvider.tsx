@@ -41,12 +41,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     };
 
     if (typeof window !== 'undefined') {
+      window.addEventListener('quillhawk-auth-change', handleCustomAuthChange);
       window.addEventListener('readsphere-auth-change', handleCustomAuthChange);
     }
 
     return () => {
       authListener?.subscription?.unsubscribe?.();
       if (typeof window !== 'undefined') {
+        window.removeEventListener('quillhawk-auth-change', handleCustomAuthChange);
         window.removeEventListener('readsphere-auth-change', handleCustomAuthChange);
       }
     };

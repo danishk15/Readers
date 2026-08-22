@@ -1,6 +1,6 @@
 'use client';
 
-const DB_NAME = 'ReadSphereOfflineDB';
+const DB_NAME = 'QuillHawkOfflineDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline-books';
 

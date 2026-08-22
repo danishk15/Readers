@@ -25,6 +25,8 @@ interface ProfileEditModalProps {
 
 // Predefined premium reading-themed avatars
 const PRESET_AVATARS = [
+  { name: 'Quill Scribe', value: '🪶', bg: 'bg-blue-600/25 text-blue-300 border-blue-400/40' },
+  { name: 'Hawk Watcher', value: '🦅', bg: 'bg-slate-500/25 text-slate-200 border-slate-400/40' },
   { name: 'Classic Scholar', value: '📚', bg: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   { name: 'Cosmic Navigator', value: '🌌', bg: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   { name: 'Mystery Sleuth', value: '🕵️', bg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },

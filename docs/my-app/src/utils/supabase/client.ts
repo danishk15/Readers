@@ -38,16 +38,18 @@ export const DEFAULT_COMMUNITIES = [
 export function setAuthSessionCookie(session: any) {
   if (typeof document === 'undefined') return;
   if (!session) {
+    document.cookie = 'quillhawk_auth_session=; path=/; max-age=0; SameSite=Lax';
     document.cookie = 'readsphere_auth_session=; path=/; max-age=0; SameSite=Lax';
     return;
   }
   const serialized = encodeURIComponent(JSON.stringify(session));
+  document.cookie = `quillhawk_auth_session=${serialized}; path=/; max-age=2592000; SameSite=Lax`;
   document.cookie = `readsphere_auth_session=${serialized}; path=/; max-age=2592000; SameSite=Lax`;
 }
 
 export function getAuthSessionCookie(): any {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/readsphere_auth_session=([^;]+)/);
+  const match = document.cookie.match(/quillhawk_auth_session=([^;]+)/) || document.cookie.match(/readsphere_auth_session=([^;]+)/);
   if (!match) return null;
   try {
     return JSON.parse(decodeURIComponent(match[1]));
@@ -60,7 +62,7 @@ export function getAuthSessionCookie(): any {
 export function getStoredAccounts(): any[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem('readsphere_registered_users');
+    const raw = localStorage.getItem('quillhawk_registered_users') || localStorage.getItem('readsphere_registered_users');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -70,7 +72,7 @@ export function getStoredAccounts(): any[] {
 export function getLoginHistory(): any[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem('readsphere_login_history');
+    const raw = localStorage.getItem('quillhawk_login_history') || localStorage.getItem('readsphere_login_history');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -92,6 +94,7 @@ export function recordLoginEvent(user: any) {
     };
     // Keep most recent 20 logins without duplicate entries
     const updated = [entry, ...history.filter((h: any) => h.email?.toLowerCase() !== user.email?.toLowerCase())].slice(0, 20);
+    localStorage.setItem('quillhawk_login_history', JSON.stringify(updated));
     localStorage.setItem('readsphere_login_history', JSON.stringify(updated));
   } catch {}
 }
@@ -109,6 +112,7 @@ export function createClient() {
       try { fn(event, session); } catch {}
     });
     if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('quillhawk-auth-change', { detail: { event, session } }));
       window.dispatchEvent(new CustomEvent('readsphere-auth-change', { detail: { event, session } }));
     }
   };
@@ -147,7 +151,7 @@ export function createClient() {
             full_name: histItem.username || histItem.email.split('@')[0],
             username: histItem.username || histItem.email.split('@')[0],
             avatar_url: histItem.avatar_url || '📚',
-            bio: 'Avid reader on ReadSphere.',
+            bio: 'Avid reader on QuillHawk.',
             premium_status: true,
             password: password || 'SavedPassword123!',
             created_at: histItem.timestamp || new Date().toISOString(),
@@ -155,6 +159,7 @@ export function createClient() {
           };
           accounts.push(user);
           if (typeof window !== 'undefined') {
+            localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
             localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
           }
         }
@@ -166,6 +171,7 @@ export function createClient() {
           if (password && !user.password) {
             user.password = password;
             if (typeof window !== 'undefined') {
+              localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
               localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
             }
           }
@@ -186,6 +192,7 @@ export function createClient() {
 
           setAuthSessionCookie(session);
           if (typeof window !== 'undefined') {
+            localStorage.setItem('quillhawk_current_session', JSON.stringify(session));
             localStorage.setItem('readsphere_current_session', JSON.stringify(session));
           }
           recordLoginEvent(session.user);
@@ -208,7 +215,7 @@ export function createClient() {
         full_name: normalizedEmail.split('@')[0],
         username: normalizedEmail.split('@')[0],
         avatar_url: '📚',
-        bio: 'Passionate reader on ReadSphere.',
+        bio: 'Passionate reader on QuillHawk.',
         premium_status: true,
         created_at: new Date().toISOString(),
         last_login_at: new Date().toISOString()
@@ -216,6 +223,7 @@ export function createClient() {
 
       accounts.push(newUser);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
         localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
       }
 
@@ -235,6 +243,7 @@ export function createClient() {
 
       setAuthSessionCookie(session);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('quillhawk_current_session', JSON.stringify(session));
         localStorage.setItem('readsphere_current_session', JSON.stringify(session));
       }
       recordLoginEvent(session.user);
@@ -268,7 +277,7 @@ export function createClient() {
         full_name: fullName,
         username: username,
         avatar_url: '📚',
-        bio: 'Proud reader on ReadSphere.',
+        bio: 'Proud reader on QuillHawk.',
         premium_status: true,
         created_at: new Date().toISOString(),
         last_login_at: new Date().toISOString()
@@ -276,6 +285,7 @@ export function createClient() {
 
       accounts.push(newUser);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
         localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
       }
 
@@ -295,6 +305,7 @@ export function createClient() {
 
       setAuthSessionCookie(session);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('quillhawk_current_session', JSON.stringify(session));
         localStorage.setItem('readsphere_current_session', JSON.stringify(session));
       }
       recordLoginEvent(session.user);
@@ -307,7 +318,7 @@ export function createClient() {
       const providerName = (provider || 'discord').toLowerCase();
       const accounts = getStoredAccounts();
 
-      const defaultEmail = `${providerName}.reader@readsphere.app`;
+      const defaultEmail = `${providerName}.reader@quillhawk.app`;
       let user = accounts.find((a: any) => a.email.toLowerCase() === defaultEmail.toLowerCase());
 
       if (!user) {
@@ -324,6 +335,7 @@ export function createClient() {
         };
         accounts.push(user);
         if (typeof window !== 'undefined') {
+          localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
           localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
         }
       }
@@ -344,6 +356,7 @@ export function createClient() {
 
       setAuthSessionCookie(session);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('quillhawk_current_session', JSON.stringify(session));
         localStorage.setItem('readsphere_current_session', JSON.stringify(session));
       }
       recordLoginEvent(session.user);
@@ -358,7 +371,9 @@ export function createClient() {
     async signOut() {
       setAuthSessionCookie(null);
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('quillhawk_current_session');
         localStorage.removeItem('readsphere_current_session');
+        localStorage.removeItem('quillhawk-demo-mode');
         localStorage.removeItem('readsphere-demo-mode');
       }
       notifyAuthChange('SIGNED_OUT', null);
@@ -381,7 +396,7 @@ export function createClient() {
 
       if (typeof window !== 'undefined') {
         try {
-          const raw = localStorage.getItem('readsphere_current_session');
+          const raw = localStorage.getItem('quillhawk_current_session') || localStorage.getItem('readsphere_current_session');
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed?.user) return { data: { user: parsed.user }, error: null } as any;
@@ -405,7 +420,7 @@ export function createClient() {
 
       if (typeof window !== 'undefined') {
         try {
-          const raw = localStorage.getItem('readsphere_current_session');
+          const raw = localStorage.getItem('quillhawk_current_session') || localStorage.getItem('readsphere_current_session');
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed) return { data: { session: parsed }, error: null } as any;
@@ -421,11 +436,12 @@ export function createClient() {
         await originalAuth.updateUser({ data });
       } catch {}
 
-      const session = getAuthSessionCookie() || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('readsphere_current_session') || '{}') : null);
+      const session = getAuthSessionCookie() || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('quillhawk_current_session') || localStorage.getItem('readsphere_current_session') || '{}') : null);
       if (session?.user) {
         session.user.user_metadata = { ...session.user.user_metadata, ...data };
         setAuthSessionCookie(session);
         if (typeof window !== 'undefined') {
+          localStorage.setItem('quillhawk_current_session', JSON.stringify(session));
           localStorage.setItem('readsphere_current_session', JSON.stringify(session));
 
           // Also update in registered users list
@@ -433,6 +449,7 @@ export function createClient() {
           const idx = accounts.findIndex((a: any) => a.id === session.user.id || a.email === session.user.email);
           if (idx !== -1) {
             accounts[idx] = { ...accounts[idx], ...data };
+            localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
             localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
           }
         }
@@ -519,11 +536,12 @@ export function createClient() {
 
         if (typeof window !== 'undefined') {
           try {
-            const key = `readsphere_table_${relation}`;
-            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+            const key = `quillhawk_table_${relation}`;
+            const existing = JSON.parse(localStorage.getItem(key) || localStorage.getItem(`readsphere_table_${relation}`) || '[]');
             const itemsToInsert = Array.isArray(values) ? values : [values];
             const updated = [...itemsToInsert, ...existing];
             localStorage.setItem(key, JSON.stringify(updated));
+            localStorage.setItem(`readsphere_table_${relation}`, JSON.stringify(updated));
           } catch {}
         }
         return { data: values, error: null };
@@ -543,6 +561,7 @@ export function createClient() {
                   const idx = accounts.findIndex((a: any) => a[column] === value);
                   if (idx !== -1) {
                     accounts[idx] = { ...accounts[idx], ...values };
+                    localStorage.setItem('quillhawk_registered_users', JSON.stringify(accounts));
                     localStorage.setItem('readsphere_registered_users', JSON.stringify(accounts));
                   }
                   const session = getAuthSessionCookie();

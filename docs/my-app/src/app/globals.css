@@ -1,69 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 :root {
-  --primary: #5B6CFF;
-  --secondary: #8B5CF6;
-  --bg-color: #0b0c10;
-  --surface-color: #1f2833;
-  --card-bg-color: #161b22;
-  --card-border-color: rgba(255, 255, 255, 0.08);
-  --card-shadow-style: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
-  --text-primary: #f8fafc;
-  --text-muted: #94a3b8;
+  /* Core Inkish Blue & Greyish Silver Palette */
+  --primary: #2563EB;             /* Vibrant Inkish Blue */
+  --primary-hover: #1D4ED8;
+  --secondary: #94A3B8;           /* Greyish Silver / Cool Slate */
+  --silver-accent: #CBD5E1;       /* Polished Silver Chrome */
+  --silver-highlight: #F8FAFC;    /* Pearlescent Silver Light */
+  --ink-deep: #050814;            /* Deep Midnight Ink */
+  --ink-navy: #0B132B;            /* Midnight Inkish Navy */
+  --bg-color: #060B18;            /* Inkish Blue Base */
+  --surface-color: #0B132B;        /* Inkish Slate Surface */
+  --card-bg-color: #0D1733;       /* Inkish Card Surface */
+  --card-border-color: rgba(203, 213, 225, 0.14); /* Brushed Silver Border */
+  --card-shadow-style: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 25px -3px rgba(37, 99, 235, 0.15);
+  --text-primary: #F8FAFC;        /* Silver Pearl */
+  --text-muted: #94A3B8;          /* Greyish Silver Muted */
   --border-radius-card: 1.25rem;
   --font-heading-family: var(--font-outfit), sans-serif;
   --font-body-family: var(--font-plus-jakarta), sans-serif;
   
-  /* Background gradients */
-  --bg-gradient: radial-gradient(circle at top left, rgba(91, 108, 255, 0.12), transparent 45%),
-                 radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.12), transparent 45%),
-                 linear-gradient(135deg, #0b0c10 0%, #161b22 100%);
+  /* Inkish Blue blended with Greyish Silver Background Gradients */
+  --bg-gradient: radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.22), transparent 45%),
+                 radial-gradient(circle at 85% 85%, rgba(148, 163, 184, 0.14), transparent 45%),
+                 radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.08), transparent 60%),
+                 linear-gradient(135deg, #050814 0%, #091024 45%, #060B18 100%);
 }
 
-/* Glassmorphism overrides */
+/* Glassmorphism overrides (Frosted Silver & Ink Glass) */
 html.theme-glass {
-  --primary: #8b5cf6;
-  --secondary: #06b6d4;
-  --bg-color: #030712;
-  --surface-color: rgba(15, 23, 42, 0.4);
-  --card-bg-color: rgba(15, 23, 42, 0.35);
-  --card-border-color: rgba(255, 255, 255, 0.07);
-  --card-shadow-style: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --primary: #38BDF8;
+  --secondary: #E2E8F0;
+  --bg-color: #040711;
+  --surface-color: rgba(11, 19, 43, 0.5);
+  --card-bg-color: rgba(13, 23, 51, 0.45);
+  --card-border-color: rgba(226, 232, 240, 0.2);
+  --card-shadow-style: 0 8px 32px 0 rgba(0, 0, 0, 0.45), 0 0 20px 0 rgba(56, 189, 248, 0.18);
   --border-radius-card: 1.5rem;
-  --bg-gradient: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.2), transparent 40%),
-                 radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.15), transparent 40%),
-                 linear-gradient(180deg, #030712 0%, #090d16 100%);
+  --bg-gradient: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.2), transparent 40%),
+                 radial-gradient(circle at 80% 80%, rgba(203, 213, 225, 0.16), transparent 40%),
+                 linear-gradient(180deg, #040711 0%, #080E20 100%);
 }
 
-/* Neomorphism overrides */
+/* Neomorphism overrides (Brushed Titanium & Ink Clay) */
 html.theme-neo {
-  --primary: #4f46e5;
-  --secondary: #0d9488;
-  --bg-color: #1e2022;
-  --surface-color: #1e2022;
-  --card-bg-color: #1e2022;
-  --card-border-color: rgba(255, 255, 255, 0.02);
-  --card-shadow-style: 6px 6px 16px #121314, -6px -6px 16px #2a2d30;
+  --primary: #3B82F6;
+  --secondary: #CBD5E1;
+  --bg-color: #0F172A;
+  --surface-color: #0F172A;
+  --card-bg-color: #0F172A;
+  --card-border-color: rgba(203, 213, 225, 0.06);
+  --card-shadow-style: 8px 8px 20px #080C17, -8px -8px 20px #16223D;
   --border-radius-card: 1.75rem;
-  --text-primary: #e2e8f0;
-  --text-muted: #64748b;
-  --bg-gradient: linear-gradient(135deg, #1e2022 0%, #17181a 100%);
+  --text-primary: #F1F5F9;
+  --text-muted: #94A3B8;
+  --bg-gradient: linear-gradient(135deg, #0F172A 0%, #0A0F1D 100%);
 }
 
-/* Brutalism overrides */
+/* Brutalism overrides (High-Contrast Cyber Silver & Inkish Blue) */
 html.theme-brutalist {
-  --primary: #facc15; /* Neon yellow */
-  --secondary: #ec4899; /* Neon pink */
-  --bg-color: #080808;
-  --surface-color: #141414;
-  --card-bg-color: #141414;
-  --card-border-color: #ffffff;
-  --card-shadow-style: 6px 6px 0px #ffffff;
-  --border-radius-card: 0px; /* Zero rounded corners for retro look */
-  --text-primary: #ffffff;
-  --text-muted: #a3a3a3;
-  --bg-gradient: linear-gradient(180deg, #000000 0%, #0c0c0c 100%);
+  --primary: #38BDF8;
+  --secondary: #E2E8F0;
+  --bg-color: #05070D;
+  --surface-color: #0C101C;
+  --card-bg-color: #0C101C;
+  --card-border-color: #E2E8F0;
+  --card-shadow-style: 6px 6px 0px #38BDF8;
+  --border-radius-card: 0px;
+  --text-primary: #FFFFFF;
+  --text-muted: #CBD5E1;
+  --bg-gradient: linear-gradient(180deg, #05070D 0%, #0A0E1A 100%);
 }
 
 @theme {
@@ -99,11 +106,30 @@ html.theme-brutalist {
   }
 }
 
+/* Polished Silver and Inkish Gradient Utilities */
+.silver-gradient-text {
+  background: linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 45%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ink-gradient-text {
+  background: linear-gradient(135deg, #93C5FD 0%, #3B82F6 50%, #1D4ED8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.silver-ink-card {
+  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 60%), #0D1733;
+  border: 1px solid rgba(203, 213, 225, 0.16);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(37, 99, 235, 0.12);
+}
+
 /* Glassmorphism utilities */
 .glass-blur-panel {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(11, 19, 43, 0.4);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(203, 213, 225, 0.14);
 }
 
 /* Theme sensitive buttons and cards */
@@ -117,7 +143,7 @@ html.theme-brutalist {
 
 /* Neomorphic card hover interactions */
 html.theme-neo .theme-card:hover {
-  box-shadow: 10px 10px 24px #121314, -10px -10px 24px #2a2d30;
+  box-shadow: 12px 12px 28px #080C17, -12px -12px 28px #16223D;
   transform: translateY(-2px);
 }
 
@@ -127,19 +153,19 @@ html.theme-brutalist .theme-card:hover {
   box-shadow: 9px 9px 0px var(--primary);
 }
 
-/* Dynamic moving backgrounds for Glassmorphism */
+/* Dynamic moving backgrounds */
 @keyframes drift {
   0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.15); }
-  66% { transform: translate(-20px, 20px) scale(0.95); }
+  33% { transform: translate(30px, -50px) scale(1.12); }
+  66% { transform: translate(-20px, 20px) scale(0.96); }
   100% { transform: translate(0px, 0px) scale(1); }
 }
 
 .animate-drift-slow {
-  animation: drift 20s infinite ease-in-out;
+  animation: drift 22s infinite ease-in-out;
 }
 
 .animate-drift-mid {
-  animation: drift 15s infinite ease-in-out;
+  animation: drift 16s infinite ease-in-out;
 }
 

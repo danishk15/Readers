@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
   })
 
   // Check local session cookie first for instant verification
-  const localSessionCookie = request.cookies.get('readsphere_auth_session')?.value
+  const localSessionCookie = request.cookies.get('quillhawk_auth_session')?.value || request.cookies.get('readsphere_auth_session')?.value
   let isAuthenticated = false
 
   if (localSessionCookie) {

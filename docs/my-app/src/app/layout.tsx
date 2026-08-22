@@ -16,8 +16,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "ReadSphere",
-  description: "Community-driven reading platform",
+  title: "QuillHawk — Where Words Take Flight",
+  description: "The next-generation literary platform. Read, track, publish, and discuss together in deep ink and silver.",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
           __html: `
             (function() {
               try {
-                const theme = localStorage.getItem('readsphere-theme-style') || 'default';
+                const theme = localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style') || 'default';
                 if (theme && theme !== 'default') {
                   document.documentElement.classList.add('theme-' + theme);
                 }

@@ -15,10 +15,11 @@ interface EpubLocation {
 }
 
 const READER_THEMES: Record<string, { bg: string, text: string, border: string, rawBg: string, rawText: string }> = {
-  dark: { bg: 'bg-[#0b0c10]', text: 'text-[#cbd5e1]', border: 'border-slate-800', rawBg: '#0b0c10', rawText: '#cbd5e1' },
+  dark: { bg: 'bg-[#060B18]', text: 'text-[#E2E8F0]', border: 'border-slate-800/80', rawBg: '#060B18', rawText: '#E2E8F0' },
+  ink: { bg: 'bg-[#050814]', text: 'text-[#F8FAFC]', border: 'border-slate-700/80', rawBg: '#050814', rawText: '#F8FAFC' },
+  midnight: { bg: 'bg-[#0B132B]', text: 'text-[#F1F5F9]', border: 'border-slate-700', rawBg: '#0B132B', rawText: '#F1F5F9' },
   sepia: { bg: 'bg-[#f7f2e8]', text: 'text-[#433422]', border: 'border-[#ebdcc5]', rawBg: '#f7f2e8', rawText: '#433422' },
   light: { bg: 'bg-[#ffffff]', text: 'text-[#0f172a]', border: 'border-slate-200', rawBg: '#ffffff', rawText: '#0f172a' },
-  midnight: { bg: 'bg-[#0f172a]', text: 'text-[#f1f5f9]', border: 'border-slate-800', rawBg: '#0f172a', rawText: '#f1f5f9' },
   emerald: { bg: 'bg-[#051b11]', text: 'text-[#d2e7d6]', border: 'border-emerald-950', rawBg: '#051b11', rawText: '#d2e7d6' },
   amethyst: { bg: 'bg-[#1a0f2e]', text: 'text-[#f3e8ff]', border: 'border-purple-950', rawBg: '#1a0f2e', rawText: '#f3e8ff' },
   sand: { bg: 'bg-[#f4efe6]', text: 'text-[#2b261f]', border: 'border-amber-900/10', rawBg: '#f4efe6', rawText: '#2b261f' },
@@ -108,7 +109,7 @@ export default function Reader({
     return [
       {
         chapter: 'Book Overview & Introduction',
-        text: `Welcome to the complete, unrestrained reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the ReadSphere library, providing full reader access with customizable typography and design themes. In the following chapters, we present a deep-dive exploration of the work, its historical context, comprehensive analysis, and the narrative itself.`
+        text: `Welcome to the complete, unrestrained reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the QuillHawk library, providing full reader access with customizable typography and design themes. In the following chapters, we present a deep-dive exploration of the work, its historical context, comprehensive analysis, and the narrative itself.`
       },
       {
         chapter: 'Chapter I: Historical Context and Background',
@@ -132,11 +133,11 @@ export default function Reader({
       },
       {
         chapter: 'Chapter VI: Reader Reflection & Discussion Guide',
-        text: `To enrich your reading experience of "${bookTitle}", consider the following discussion points:\n\n1. How do the setting and atmospheric details influence the choices of the characters?\n2. In what ways does ${bookAuthor} challenge traditional narrative structures in this book?\n3. What is the significance of the resolution? Does it offer hope, or is it a tragedy?\n\nTake your time to reflect on these questions, note down your thoughts, and share them in the ReadSphere community channels to discuss with fellow readers.`
+        text: `To enrich your reading experience of "${bookTitle}", consider the following discussion points:\n\n1. How do the setting and atmospheric details influence the choices of the characters?\n2. In what ways does ${bookAuthor} challenge traditional narrative structures in this book?\n3. What is the significance of the resolution? Does it offer hope, or is it a tragedy?\n\nTake your time to reflect on these questions, note down your thoughts, and share them in the QuillHawk community channels to discuss with fellow readers.`
       },
       {
         chapter: 'Chapter VII: Essential Takeaways & Final Thoughts',
-        text: `As we conclude our journey through "${bookTitle}", we are left with a profound appreciation for ${bookAuthor}'s vision. It is a work that does not offer easy answers, but instead prompts us to ask better questions about ourselves and our world.\n\nThank you for reading this special edition on ReadSphere. We encourage you to keep exploring, sharing your reviews, and earning your reading milestones to unlock even more literature in our growing archive.`
+        text: `As we conclude our journey through "${bookTitle}", we are left with a profound appreciation for ${bookAuthor}'s vision. It is a work that does not offer easy answers, but instead prompts us to ask better questions about ourselves and our world.\n\nThank you for reading this special edition on QuillHawk. We encourage you to keep exploring, sharing your reviews, and earning your reading milestones to unlock even more literature in our growing archive.`
       }
     ];
   };
@@ -439,7 +440,7 @@ export default function Reader({
             <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <div className={`font-extrabold text-sm truncate max-w-[150px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>{title || 'ReadSphere Book'}</div>
+            <div className={`font-extrabold text-sm truncate max-w-[150px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>{title || 'QuillHawk Book'}</div>
             <div className="text-[10px] text-slate-500 font-medium">
               Weekly progress logged: <span className="text-warning font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
             </div>

@@ -46,7 +46,7 @@ export async function createClient() {
   );
 
   const getLocalCookieUser = () => {
-    const raw = cookieStore.get('readsphere_auth_session')?.value;
+    const raw = cookieStore.get('quillhawk_auth_session')?.value || cookieStore.get('readsphere_auth_session')?.value;
     if (raw) {
       try {
         const parsed = JSON.parse(decodeURIComponent(raw));
@@ -79,7 +79,7 @@ export async function createClient() {
         if (!res.error && res.data?.session) return res;
       } catch {}
 
-      const raw = cookieStore.get('readsphere_auth_session')?.value;
+      const raw = cookieStore.get('quillhawk_auth_session')?.value || cookieStore.get('readsphere_auth_session')?.value;
       if (raw) {
         try {
           const parsed = JSON.parse(decodeURIComponent(raw));
@@ -151,7 +151,7 @@ export async function createClient() {
                 id: localUser.id,
                 username: localUser.user_metadata?.username || localUser.user_metadata?.full_name || 'Reader',
                 avatar_url: localUser.user_metadata?.avatar_url || '📚',
-                bio: localUser.user_metadata?.bio || 'Avid reader on ReadSphere.',
+                bio: localUser.user_metadata?.bio || 'Avid reader on QuillHawk.',
                 premium_status: true,
                 email: localUser.email
               },

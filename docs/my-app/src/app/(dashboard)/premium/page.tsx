@@ -97,7 +97,7 @@ export default function PremiumPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'dummy_key_id',
         amount: order.amount,
         currency: order.currency,
-        name: `ReadSphere Premium - ${planName}`,
+        name: `QuillHawk VIP Pass - ${planName}`,
         description: 'Unlock exclusive books and offline downloads.',
         order_id: order.id,
         handler: async function (response: RazorpayResponse) {
@@ -118,7 +118,7 @@ export default function PremiumPage() {
               setMessage('Success! Payment verified. 500 Reading Minutes have been added to your milestone quest! 📚');
               loadStats();
             } else {
-              setMessage('Success! Payment verified. You are now a Premium VIP member! 👑');
+              setMessage('Success! Payment verified. You are now a QuillHawk VIP member! 👑');
               setIsPremium(true);
             }
           } else {
@@ -129,7 +129,7 @@ export default function PremiumPage() {
           email: user?.email || '',
         },
         theme: {
-          color: '#5B6CFF'
+          color: '#2563EB'
         }
       };
 
@@ -163,11 +163,11 @@ export default function PremiumPage() {
 
         {/* Pricing header */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-primary/10 to-violet-500/10 border border-primary/20 text-indigo-400 text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow">
+          <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600/10 to-indigo-500/10 border border-blue-500/30 text-blue-300 text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>ReadSphere VIP Hub</span>
+            <span>QuillHawk VIP Lounge</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Upgrade to Premium</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">QuillHawk Soaring Pass</h1>
           <p className="text-slate-400 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
             Unlock exclusive cloud access to best-selling titles, read books on the go, and track metrics.
           </p>
@@ -281,7 +281,7 @@ export default function PremiumPage() {
               The 500-Minute Weekly VIP Quest
             </h2>
             <p className="text-slate-400 text-sm max-w-2xl mx-auto leading-relaxed">
-              Want premium access without paying? Earn **1 Week of Free Premium VIP** automatically by reading **500 minutes** every week! Log your time reading any book in your library to power up your progression.
+              Want premium access without paying? Earn **1 Week of Free QuillHawk VIP** automatically by reading **500 minutes** every week! Log your time reading any book in your library to power up your progression.
             </p>
           </div>
 

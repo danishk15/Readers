@@ -12,7 +12,7 @@ import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllC
 function getOnlineBookReadParams(book: any) {
   const title = book.volumeInfo?.title || book.title || 'Unknown Title';
   const author = book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author';
-  const description = book.volumeInfo?.description || book.description || 'A curated literary work available in the ReadSphere catalog.';
+  const description = book.volumeInfo?.description || book.description || 'A curated literary work available in the QuillHawk catalog.';
   const id = book.id || book.title;
 
   if (book.isOpenLibrary) {
@@ -29,7 +29,7 @@ function getOnlineBookReadParams(book: any) {
     const gutenId = book.id.replace('gutendex-', '');
     return { url: `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`, title, author, description, id, source: 'Gutenberg' };
   } else {
-    return { url: book.file_url || '', title, author, description, id, source: book.source || 'ReadSphere' };
+    return { url: book.file_url || '', title, author, description, id, source: book.source || 'QuillHawk' };
   }
 }
 
@@ -387,13 +387,14 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   
   const [layoutMode, setLayoutMode] = useState<'grid' | 'shelf' | 'dome'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('readsphere-layout-mode') as 'grid' | 'shelf' | 'dome') || 'grid';
+      return (localStorage.getItem('quillhawk-layout-mode') as 'grid' | 'shelf' | 'dome') || (localStorage.getItem('readsphere-layout-mode') as 'grid' | 'shelf' | 'dome') || 'grid';
     }
     return 'grid';
   });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('quillhawk-layout-mode', layoutMode);
       localStorage.setItem('readsphere-layout-mode', layoutMode);
     }
   }, [layoutMode]);
@@ -402,7 +403,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem('readsphere-search-cache');
+      const stored = sessionStorage.getItem('quillhawk-search-cache') || sessionStorage.getItem('readsphere-search-cache');
       if (stored) {
         searchCache.current = JSON.parse(stored);
       }
@@ -718,7 +719,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           // Save back to cache
           searchCache.current[cacheKey] = filtered;
           try {
-            sessionStorage.setItem('readsphere-search-cache', JSON.stringify(searchCache.current));
+            sessionStorage.setItem('quillhawk-search-cache', JSON.stringify(searchCache.current));
           } catch (e) {}
           return filtered;
         });
@@ -1181,7 +1182,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Curated Masterpiece Collection</h2>
             <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
-              Every book in the ReadSphere library is completely free and available to everyone. Enjoy uninterrupted immersive reading, rich typographic layouts, and offline book saving!
+              Every book in the QuillHawk library is completely free and available to everyone. Enjoy uninterrupted immersive reading, rich typographic layouts, and offline book saving!
             </p>
           </div>
         </div>
@@ -1681,8 +1682,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 You selected <strong className="text-warning">"{lockedBookToUnlock.title}"</strong> by {lockedBookToUnlock.author}. This is an exclusive premium book.
               </p>
             )}
-            <p className="text-xs text-slate-500">
-              Upgrade to ReadSphere Premium or hit 500 Weekly Reading Minutes to unlock the entire lounge instantly!
+            <p className="text-xs text-slate-400">
+              Upgrade to QuillHawk VIP Soaring Pass or hit 500 Weekly Reading Minutes to unlock the entire lounge instantly!
             </p>
           </div>
 

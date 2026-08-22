@@ -11,7 +11,7 @@ export default function HomeThemeSelector() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('readsphere-theme-style') as ThemeStyle;
+      const saved = (localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style')) as ThemeStyle;
       if (saved && ['default', 'glass', 'neo', 'brutalist'].includes(saved)) {
         setActiveTheme(saved);
       }
@@ -21,6 +21,7 @@ export default function HomeThemeSelector() {
   const changeTheme = (newTheme: ThemeStyle) => {
     setActiveTheme(newTheme);
     try {
+      localStorage.setItem('quillhawk-theme-style', newTheme);
       localStorage.setItem('readsphere-theme-style', newTheme);
       
       // Remove existing classes
@@ -50,58 +51,58 @@ export default function HomeThemeSelector() {
   }[] = [
     { 
       id: 'default', 
-      label: 'Sleek Dark', 
-      desc: 'Ambient dark grid vibe with deep purple highlights and premium high-contrast layouts.',
+      label: 'Sleek Inkish Silver', 
+      desc: 'Deep ink midnight background with luminescent cobalt blue and brushed silver chrome.',
       icon: <Moon className="w-5 h-5" />, 
-      color: 'from-indigo-500 to-indigo-600',
-      glow: 'rgba(99, 102, 241, 0.15)',
-      border: 'rgba(99, 102, 241, 0.3)',
-      badge: 'Classic Dark'
+      color: 'from-blue-600 to-slate-400',
+      glow: 'rgba(37, 99, 235, 0.22)',
+      border: 'rgba(203, 213, 225, 0.35)',
+      badge: 'Quill Standard'
     },
     { 
       id: 'glass', 
-      label: 'Glassmorphism', 
-      desc: 'Translucent frosted layers, background blurs, and animated color blobs.',
+      label: 'Frosted Silver Glass', 
+      desc: 'Translucent ink glass, icy silver borders, and glowing oceanic sapphire ambient blobs.',
       icon: <Layers className="w-5 h-5" />, 
-      color: 'from-cyan-400 to-indigo-500',
-      glow: 'rgba(6, 182, 212, 0.25)',
-      border: 'rgba(6, 182, 212, 0.45)',
-      badge: 'Modern Aero'
+      color: 'from-sky-400 to-blue-600',
+      glow: 'rgba(56, 189, 248, 0.25)',
+      border: 'rgba(226, 232, 240, 0.45)',
+      badge: 'Aero Titanium'
     },
     { 
       id: 'neo', 
-      label: 'Neomorphism', 
-      desc: 'Soft matte clay surfaces with delicate convex extrusions and dual drop-shadows.',
+      label: 'Brushed Titanium & Ink', 
+      desc: 'Tactile slate clay surfaces with delicate convex extrusions and dual drop-shadows.',
       icon: <Cpu className="w-5 h-5" />, 
-      color: 'from-teal-400 to-emerald-500',
-      glow: 'rgba(20, 184, 166, 0.18)',
-      border: 'rgba(20, 184, 166, 0.3)',
+      color: 'from-slate-300 to-blue-500',
+      glow: 'rgba(148, 163, 184, 0.2)',
+      border: 'rgba(148, 163, 184, 0.35)',
       badge: 'Skeuomorphic'
     },
     { 
       id: 'brutalist', 
-      label: 'Neo-Brutalism', 
-      desc: 'Raw neon blocks, solid 3px borders, zero-radius curves, and heavy drop shadows.',
+      label: 'Cyber Silver & Ink', 
+      desc: 'Polished silver chrome borders, deep ink black geometry, and electric cyan highlights.',
       icon: <ShieldAlert className="w-5 h-5" />, 
-      color: 'from-yellow-400 to-pink-500',
-      glow: 'rgba(250, 204, 21, 0.3)',
-      border: 'rgba(250, 204, 21, 0.65)',
-      badge: 'Brutalist Retro'
+      color: 'from-slate-200 to-cyan-400',
+      glow: 'rgba(56, 189, 248, 0.3)',
+      border: 'rgba(226, 232, 240, 0.65)',
+      badge: 'Cyber Modern'
     }
   ];
 
   return (
     <section className="w-full max-w-6xl mx-auto px-6 py-12 z-10 relative">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-[11px] font-bold uppercase tracking-wider mb-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-[11px] font-bold uppercase tracking-wider mb-3 shadow">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Interactive Playroom</span>
+          <span>Interactive Visual Studio</span>
         </div>
         <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight font-display text-white mb-2">
           Experience Your Vibe
         </h2>
         <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
-          ReadSphere adapts to your visual style. Switch themes below to see the entire application redesign itself instantly.
+          QuillHawk adapts to your aesthetic. Switch themes below to see the entire platform re-skin itself in ink and silver instantly.
         </p>
       </div>
 
@@ -117,7 +118,7 @@ export default function HomeThemeSelector() {
               theme={t.id}
               className={`p-6 flex flex-col justify-between min-h-[220px] transition-all duration-300 relative group border ${
                 isActive 
-                  ? 'ring-2 ring-primary/60 scale-[1.02]' 
+                  ? 'ring-2 ring-blue-500/60 scale-[1.02]' 
                   : 'hover:scale-[1.01]'
               }`}
             >
@@ -127,11 +128,11 @@ export default function HomeThemeSelector() {
                     {t.icon}
                   </div>
                   {isActive ? (
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-md">
-                      <Check className="w-3 h-3" /> Selected
+                    <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-blue-500/20 text-blue-300 border border-blue-500/35 px-2 py-0.5 rounded-md">
+                      <Check className="w-3 h-3" /> Active
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-400 transition-colors uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-200 transition-colors uppercase tracking-wider">
                       {t.badge}
                     </span>
                   )}
@@ -145,7 +146,7 @@ export default function HomeThemeSelector() {
                 </p>
               </div>
 
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-white transition-colors mt-6 pt-3 border-t border-slate-800/40">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-white transition-colors mt-6 pt-3 border-t border-slate-700/40">
                 {isActive ? 'Active Design Theme' : 'Click to Apply Theme →'}
               </div>
             </InteractiveCard>

@@ -380,7 +380,7 @@ export default function CompetitionPage() {
           )}
 
           {/* Test Simulator button for guest sessions */}
-          {user?.email === 'guest@readsphere.com' && (
+          {(user?.email === 'guest@readsphere.com' || user?.email === 'guest@quillhawk.app' || user?.email?.includes('guest')) && (
             <button
               onClick={() => setSimulateActiveWeek(prev => !prev)}
               className="mt-3 px-3 py-1 rounded-lg text-[9px] font-bold border border-slate-850 bg-slate-950 text-slate-400 hover:text-white transition-colors"

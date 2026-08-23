@@ -66,24 +66,45 @@ export function UserProfileModal({
   };
 
   const bannerBg = user.banner_color || 'from-blue-900 via-indigo-950 to-slate-900';
+  const isGlassBanner = user.banner_color?.includes('/80') || user.banner_color?.includes('/75') || user.banner_color?.includes('glass');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="" className="max-w-md p-0 overflow-hidden border border-slate-800 bg-[#070D1F] rounded-3xl shadow-2xl">
       <div className="relative">
         {/* Discord Profile Banner */}
-        <div className={`h-32 w-full bg-gradient-to-r ${bannerBg} relative overflow-hidden`}>
-          <div className="absolute inset-0 bg-black/20" />
-          <div className="absolute top-[-40%] right-[-20%] w-44 h-44 bg-primary/20 rounded-full blur-2xl" />
-          
-          {/* Top-right Badges Pill */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 shadow">
-            {user.badges.slice(0, 3).map((badge) => (
-              <span key={badge.id} className="text-sm cursor-help" title={`${badge.name}: ${badge.description}`}>
-                {badge.icon}
-              </span>
-            ))}
+        {user.banner_url ? (
+          <div className="h-32 w-full relative overflow-hidden bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={user.banner_url} alt={user.displayName} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070D1F] via-black/25 to-black/10" />
+            
+            {/* Top-right Badges Pill */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 shadow">
+              {user.badges.slice(0, 3).map((badge) => (
+                <span key={badge.id} className="text-sm cursor-help" title={`${badge.name}: ${badge.description}`}>
+                  {badge.icon}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className={`h-32 w-full bg-gradient-to-r ${bannerBg} relative overflow-hidden border-b border-white/10`}>
+            <div className="absolute inset-0 bg-black/20" />
+            {isGlassBanner && (
+              <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-md pointer-events-none" />
+            )}
+            <div className="absolute top-[-40%] right-[-20%] w-44 h-44 bg-primary/20 rounded-full blur-2xl" />
+            
+            {/* Top-right Badges Pill */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 shadow">
+              {user.badges.slice(0, 3).map((badge) => (
+                <span key={badge.id} className="text-sm cursor-help" title={`${badge.name}: ${badge.description}`}>
+                  {badge.icon}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Avatar & Presence */}
         <div className="px-6 relative -mt-12 flex justify-between items-end">

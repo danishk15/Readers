@@ -13,6 +13,8 @@ interface Profile {
   username: string | null;
   bio: string | null;
   avatar_url: string | null;
+  banner_url?: string | null;
+  banner_color?: string;
   email?: string;
 }
 

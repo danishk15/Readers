@@ -1,5 +1,92 @@
 export type UserPresenceStatus = 'online' | 'idle' | 'dnd' | 'offline';
 
+export interface BannerTheme {
+  id: string;
+  name: string;
+  category: 'free' | 'glass';
+  isPremium: boolean;
+  value: string;
+  border: string;
+  previewBg: string;
+  description: string;
+  isGlass?: boolean;
+}
+
+export const FREE_BANNER_THEMES: BannerTheme[] = [
+  {
+    id: 'obsidian-black',
+    name: 'Obsidian Black',
+    category: 'free',
+    isPremium: false,
+    value: 'from-zinc-950 via-neutral-900 to-black',
+    border: 'border-zinc-700/60',
+    previewBg: 'from-zinc-950 via-neutral-900 to-black',
+    description: 'Deep midnight obsidian dark'
+  },
+  {
+    id: 'inkish-blue',
+    name: 'Inkish Blue',
+    category: 'free',
+    isPremium: false,
+    value: 'from-blue-900 via-indigo-950 to-slate-900',
+    border: 'border-blue-500/50',
+    previewBg: 'from-blue-900 via-indigo-950 to-slate-900',
+    description: 'Signature QuillHawk inkish navy'
+  },
+  {
+    id: 'greyish-slate',
+    name: 'Greyish Slate',
+    category: 'free',
+    isPremium: false,
+    value: 'from-slate-800 via-slate-700 to-zinc-900',
+    border: 'border-slate-400/50',
+    previewBg: 'from-slate-800 via-slate-700 to-zinc-900',
+    description: 'Metallic graphite & polished silver'
+  }
+];
+
+export const GLASS_BANNER_THEMES: BannerTheme[] = [
+  {
+    id: 'glass-obsidian',
+    name: 'Frosted Obsidian Glass',
+    category: 'glass',
+    isPremium: true,
+    isGlass: true,
+    value: 'from-slate-950/80 via-indigo-950/50 to-neutral-950/80',
+    border: 'border-white/30',
+    previewBg: 'from-slate-900/80 via-indigo-950/60 to-slate-950/80',
+    description: 'Smoky frosted glass with prismatic reflection'
+  },
+  {
+    id: 'glass-aurora',
+    name: 'Aurora Prism Glass',
+    category: 'glass',
+    isPremium: true,
+    isGlass: true,
+    value: 'from-cyan-950/75 via-purple-950/60 to-blue-950/75',
+    border: 'border-cyan-400/40',
+    previewBg: 'from-cyan-900/70 via-purple-900/60 to-blue-900/70',
+    description: 'Iridescent cyan and amethyst crystal glow'
+  },
+  {
+    id: 'glass-amber',
+    name: 'Champagne Amber Glass',
+    category: 'glass',
+    isPremium: true,
+    isGlass: true,
+    value: 'from-amber-950/80 via-yellow-950/60 to-stone-950/80',
+    border: 'border-amber-400/40',
+    previewBg: 'from-amber-950/80 via-yellow-900/60 to-stone-900/80',
+    description: 'Radiant champagne gold with warm crystal luster'
+  }
+];
+
+export const ALL_BANNER_THEMES: BannerTheme[] = [
+  ...FREE_BANNER_THEMES,
+  ...GLASS_BANNER_THEMES
+];
+
+
 export interface UserBadge {
   id: string;
   name: string;

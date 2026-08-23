@@ -208,6 +208,8 @@ export function getMyDiscordProfile(authUser?: any, dbProfile?: any, logs?: any[
       // Update with live user values if present
       if (authUser?.email && !parsed.email) parsed.email = authUser.email;
       if (dbProfile?.premium_status !== undefined) parsed.premium_status = dbProfile.premium_status;
+      if (dbProfile?.banner_url !== undefined && !parsed.banner_url) parsed.banner_url = dbProfile.banner_url;
+      if (dbProfile?.banner_color !== undefined && !parsed.banner_color) parsed.banner_color = dbProfile.banner_color;
       return parsed;
     }
   } catch (e) {
@@ -233,7 +235,8 @@ function createDefaultProfile(authUser?: any, dbProfile?: any, logs?: any[]): Di
     displayName: dbProfile?.username || authUser?.email?.split('@')[0] || 'QuillHawk Reader',
     email: authUser?.email || 'reader@quillhawk.app',
     avatar_url: dbProfile?.avatar_url || '🪶',
-    banner_color: 'from-blue-900 via-indigo-950 to-slate-900',
+    banner_url: dbProfile?.banner_url || null,
+    banner_color: dbProfile?.banner_color || 'from-blue-900 via-indigo-950 to-slate-900',
     bio: dbProfile?.bio || 'Passionate book enthusiast soaring through literature with QuillHawk.',
     status_emoji: '✨',
     status_text: 'Soaring with QuillHawk',

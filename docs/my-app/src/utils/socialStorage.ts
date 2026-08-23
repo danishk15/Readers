@@ -4,7 +4,14 @@ import {
   DirectMessageItem, 
   DMThread, 
   UserPresenceStatus,
-  BookShareAttachment 
+  BookShareAttachment,
+  DiscordServer,
+  DiscordCategory,
+  DiscordChannel,
+  ServerMember,
+  ServerMessageItem,
+  ServerRole,
+  ChannelType
 } from '@/types/social';
 
 // Pre-seeded demo companion friends for immediate social interaction
@@ -580,3 +587,948 @@ export function triggerCompanionSimulatedReply(
     if (onReplyGenerated) onReplyGenerated(replyMsg);
   }, 2200);
 }
+
+// ==========================================
+// DISCORD-STYLE SERVERS & CHANNELS STORAGE ENGINE
+// ==========================================
+
+export const DEFAULT_DISCORD_SERVERS: DiscordServer[] = [
+  {
+    id: 'server-quillhawk-central',
+    name: 'QuillHawk Central Literati',
+    icon: '🏰',
+    description: 'The official global community server for QuillHawk readers, writers, and book clubs.',
+    ownerId: 'companion-aria',
+    region: 'Global',
+    genre: 'General Literature',
+    bannerColor: 'from-blue-900 via-indigo-950 to-slate-900',
+    createdAt: '2024-11-01T00:00:00.000Z',
+    isJoined: true,
+    unreadTotal: 2,
+    categories: [
+      {
+        id: 'cat-central-info',
+        serverId: 'server-quillhawk-central',
+        name: '📢 Announcements & Rules',
+        channelIds: ['ch-central-announcements', 'ch-central-rules']
+      },
+      {
+        id: 'cat-central-chat',
+        serverId: 'server-quillhawk-central',
+        name: '💬 Main Hall',
+        channelIds: ['ch-central-general', 'ch-central-recs', 'ch-central-debates']
+      },
+      {
+        id: 'cat-central-clubs',
+        serverId: 'server-quillhawk-central',
+        name: '📖 Book Clubs',
+        channelIds: ['ch-central-buddy-reads', 'ch-central-bot-lounge']
+      },
+      {
+        id: 'cat-central-voice',
+        serverId: 'server-quillhawk-central',
+        name: '🎙️ Reading Lounges',
+        channelIds: ['ch-central-quiet-room', 'ch-central-cafe-ambience']
+      }
+    ],
+    channels: [
+      {
+        id: 'ch-central-announcements',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-info',
+        name: 'announcements',
+        type: 'announcement',
+        topic: 'Official QuillHawk feature updates and global library releases'
+      },
+      {
+        id: 'ch-central-rules',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-info',
+        name: 'rules-and-guidelines',
+        type: 'text',
+        topic: 'Community etiquette and respectful discussion guidelines'
+      },
+      {
+        id: 'ch-central-general',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-chat',
+        name: 'general-chat',
+        type: 'text',
+        topic: 'Hang out and talk about books, stories, and ideas',
+        unreadCount: 1
+      },
+      {
+        id: 'ch-central-recs',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-chat',
+        name: 'book-recommendations',
+        type: 'text',
+        topic: 'Share your favorite reads and discover new masterpieces'
+      },
+      {
+        id: 'ch-central-debates',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-chat',
+        name: 'chapter-debates',
+        type: 'text',
+        topic: 'In-depth plot analysis and character discussions'
+      },
+      {
+        id: 'ch-central-buddy-reads',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-clubs',
+        name: 'buddy-reads',
+        type: 'book_club',
+        topic: 'Group reading sprints with chapter milestones'
+      },
+      {
+        id: 'ch-central-bot-lounge',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-clubs',
+        name: 'quillbot-commands',
+        type: 'text',
+        topic: 'Ask /quillbot for book trivia, plot summaries, and suggestions'
+      },
+      {
+        id: 'ch-central-quiet-room',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-voice',
+        name: 'Quiet Reading Room',
+        type: 'voice',
+        topic: 'Muted focused reading lounge'
+      },
+      {
+        id: 'ch-central-cafe-ambience',
+        serverId: 'server-quillhawk-central',
+        categoryId: 'cat-central-voice',
+        name: 'Coffee Shop & Rain',
+        type: 'voice',
+        topic: 'Lo-Fi library ambience and study room'
+      }
+    ],
+    members: [
+      { user: DEFAULT_COMPANIONS[0], role: 'owner', joinedAt: '2024-11-01T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[1], role: 'moderator', joinedAt: '2024-11-05T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[2], role: 'vip', joinedAt: '2024-11-10T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[3], role: 'member', joinedAt: '2024-11-15T00:00:00.000Z' }
+    ]
+  },
+  {
+    id: 'server-urdu-adab',
+    name: 'Bazm-e-Urdu & Adab (بزمِ اردو و ادب)',
+    icon: '🇵🇰',
+    description: 'اردو کلاسیکی و جدید ادب، شاعری، افسانے، اور کتب خوانی کی سب سے بڑی محفل۔',
+    ownerId: 'companion-aria',
+    region: 'South Asia',
+    genre: 'Urdu Literature',
+    bannerColor: 'from-emerald-950 via-teal-950 to-slate-950',
+    createdAt: '2024-11-12T00:00:00.000Z',
+    isJoined: true,
+    unreadTotal: 1,
+    categories: [
+      {
+        id: 'cat-urdu-poetry',
+        serverId: 'server-urdu-adab',
+        name: '📜 اردو شاعری و کلام',
+        channelIds: ['ch-urdu-ghalib-iqbal', 'ch-urdu-bait-bazi', 'ch-urdu-sher-o-shayari']
+      },
+      {
+        id: 'cat-urdu-prose',
+        serverId: 'server-urdu-adab',
+        name: '📚 افسانہ و ناول',
+        channelIds: ['ch-urdu-manto', 'ch-urdu-novels', 'ch-urdu-peer-e-kamil']
+      },
+      {
+        id: 'cat-urdu-audio',
+        serverId: 'server-urdu-adab',
+        name: '🎙️ آڈیو و مطالعہ گاہ',
+        channelIds: ['ch-urdu-mushaira-hall', 'ch-urdu-study-lounge']
+      }
+    ],
+    channels: [
+      {
+        id: 'ch-urdu-ghalib-iqbal',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-poetry',
+        name: 'ghalib-o-iqbal-دیوان',
+        type: 'text',
+        topic: 'مرزا غالب، علامہ اقبال اور میر تقی میر کی شاعری پر فکری گفتگو'
+      },
+      {
+        id: 'ch-urdu-bait-bazi',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-poetry',
+        name: 'bait-bazi-بیت-بازی',
+        type: 'text',
+        topic: 'شعر و شاعری کی محفل اور بیت بازی کا مقابلہ'
+      },
+      {
+        id: 'ch-urdu-sher-o-shayari',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-poetry',
+        name: 'sher-o-shayari',
+        type: 'text',
+        topic: 'منتخب اشعار اور پسندیدہ غزلیں'
+      },
+      {
+        id: 'ch-urdu-manto',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-prose',
+        name: 'manto-afsanay-افسانے',
+        type: 'text',
+        topic: 'سعادت حسن منٹو، عصمت چغتائی، اور پریم چند کے شاہکار افسانے'
+      },
+      {
+        id: 'ch-urdu-novels',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-prose',
+        name: 'urdu-novels-ناولز',
+        type: 'text',
+        topic: 'راجہ گدھ، آگ کا دریا، بانو قدسیہ اور عبداللہ حسین کے ناولز'
+      },
+      {
+        id: 'ch-urdu-peer-e-kamil',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-prose',
+        name: 'peer-e-kamil-study',
+        type: 'book_club',
+        topic: 'پیرِ کامل اور عمیرہ احمد کی کتب کا مطالعہ اور تجزیہ'
+      },
+      {
+        id: 'ch-urdu-mushaira-hall',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-audio',
+        name: 'مشاعرہ ہال (Live Voice)',
+        type: 'voice',
+        topic: 'لائیو مشاعرہ اور تحت اللفظ کلام خوانی'
+      },
+      {
+        id: 'ch-urdu-study-lounge',
+        serverId: 'server-urdu-adab',
+        categoryId: 'cat-urdu-audio',
+        name: 'اردو مطالعہ گاہ',
+        type: 'voice',
+        topic: 'خاموش اور پرسکون مطالعہ کا کمرہ'
+      }
+    ],
+    members: [
+      { user: DEFAULT_COMPANIONS[0], role: 'owner', joinedAt: '2024-11-12T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[2], role: 'moderator', joinedAt: '2024-11-14T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[1], role: 'vip', joinedAt: '2024-11-20T00:00:00.000Z' }
+    ]
+  },
+  {
+    id: 'server-scifi',
+    name: 'Speculative & Sci-Fi Syndicate',
+    icon: '🌌',
+    description: 'Cyberpunk, space operas, time travel, hard sci-fi, and speculative futuristic literature.',
+    ownerId: 'companion-cyber',
+    region: 'Global',
+    genre: 'Sci-Fi',
+    bannerColor: 'from-cyan-950 via-blue-950 to-slate-950',
+    createdAt: '2024-12-01T00:00:00.000Z',
+    isJoined: true,
+    categories: [
+      {
+        id: 'cat-scifi-main',
+        serverId: 'server-scifi',
+        name: '🚀 SECTOR CHANNELS',
+        channelIds: ['ch-scifi-cyberpunk', 'ch-scifi-space-operas', 'ch-scifi-dune-asimov']
+      },
+      {
+        id: 'cat-scifi-labs',
+        serverId: 'server-scifi',
+        name: '🧪 WRITING LABS',
+        channelIds: ['ch-scifi-worldbuilding', 'ch-scifi-ai-fiction']
+      },
+      {
+        id: 'cat-scifi-voice',
+        serverId: 'server-scifi',
+        name: '🎙️ NEURAL LOUNGES',
+        channelIds: ['ch-scifi-holodeck', 'ch-scifi-orbital-station']
+      }
+    ],
+    channels: [
+      {
+        id: 'ch-scifi-cyberpunk',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-main',
+        name: 'cyberpunk-and-ai',
+        type: 'text',
+        topic: 'Neuromancer, Blade Runner, and AI-driven narratives'
+      },
+      {
+        id: 'ch-scifi-space-operas',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-main',
+        name: 'space-operas-and-fleets',
+        type: 'text',
+        topic: 'Galactic empires, interstellar travel, and alien contact'
+      },
+      {
+        id: 'ch-scifi-dune-asimov',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-main',
+        name: 'dune-and-foundation',
+        type: 'book_club',
+        topic: 'Frank Herbert & Isaac Asimov masterclass analysis'
+      },
+      {
+        id: 'ch-scifi-worldbuilding',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-labs',
+        name: 'scifi-worldbuilding',
+        type: 'text',
+        topic: 'Tech trees, propulsion physics, and future politics'
+      },
+      {
+        id: 'ch-scifi-ai-fiction',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-labs',
+        name: 'neural-fiction',
+        type: 'text',
+        topic: 'Interactive narratives and algorithmic storytelling'
+      },
+      {
+        id: 'ch-scifi-holodeck',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-voice',
+        name: 'Holodeck Reading Pod',
+        type: 'voice',
+        topic: 'Synthesized cyber audio stream'
+      },
+      {
+        id: 'ch-scifi-orbital-station',
+        serverId: 'server-scifi',
+        categoryId: 'cat-scifi-voice',
+        name: 'Orbital Reading Station',
+        type: 'voice',
+        topic: 'Deep space ambient white noise'
+      }
+    ],
+    members: [
+      { user: DEFAULT_COMPANIONS[3], role: 'owner', joinedAt: '2024-12-01T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[0], role: 'moderator', joinedAt: '2024-12-02T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[1], role: 'vip', joinedAt: '2024-12-05T00:00:00.000Z' }
+    ]
+  },
+  {
+    id: 'server-fantasy',
+    name: 'High Fantasy & Mythos Guild',
+    icon: '🧙',
+    description: 'Tavern tales, epic high fantasy, magic systems, dragons, and legendary sagas.',
+    ownerId: 'companion-jane',
+    region: 'Europe',
+    genre: 'Fantasy',
+    bannerColor: 'from-purple-950 via-violet-950 to-slate-950',
+    createdAt: '2024-12-05T00:00:00.000Z',
+    isJoined: false,
+    categories: [
+      {
+        id: 'cat-fantasy-halls',
+        serverId: 'server-fantasy',
+        name: '⚔️ GUILD HALLS',
+        channelIds: ['ch-fantasy-general', 'ch-fantasy-worldbuilding', 'ch-fantasy-magic-systems']
+      },
+      {
+        id: 'cat-fantasy-voice',
+        serverId: 'server-fantasy',
+        name: '🎙️ TAVERN AUDIO',
+        channelIds: ['ch-fantasy-tavern-fire', 'ch-fantasy-enchanted-forest']
+      }
+    ],
+    channels: [
+      {
+        id: 'ch-fantasy-general',
+        serverId: 'server-fantasy',
+        categoryId: 'cat-fantasy-halls',
+        name: 'tavern-chat',
+        type: 'text',
+        topic: 'Gather around the hearth and recount your favorite tales'
+      },
+      {
+        id: 'ch-fantasy-worldbuilding',
+        serverId: 'server-fantasy',
+        categoryId: 'cat-fantasy-halls',
+        name: 'maps-and-lore',
+        type: 'text',
+        topic: 'Cartography, mythical pantheons, and ancient lineages'
+      },
+      {
+        id: 'ch-fantasy-magic-systems',
+        serverId: 'server-fantasy',
+        categoryId: 'cat-fantasy-halls',
+        name: 'magic-systems-and-spells',
+        type: 'text',
+        topic: 'Hard vs soft magic systems and rune mechanics'
+      },
+      {
+        id: 'ch-fantasy-tavern-fire',
+        serverId: 'server-fantasy',
+        categoryId: 'cat-fantasy-voice',
+        name: 'Tavern Fireplace',
+        type: 'voice',
+        topic: 'Crackling fire and lute music'
+      },
+      {
+        id: 'ch-fantasy-enchanted-forest',
+        serverId: 'server-fantasy',
+        categoryId: 'cat-fantasy-voice',
+        name: 'Enchanted Library',
+        type: 'voice',
+        topic: 'Whispering tomes and calming birdsong'
+      }
+    ],
+    members: [
+      { user: DEFAULT_COMPANIONS[2], role: 'owner', joinedAt: '2024-12-05T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[0], role: 'moderator', joinedAt: '2024-12-06T00:00:00.000Z' }
+    ]
+  },
+  {
+    id: 'server-philosophy',
+    name: 'Philosophy & Deep Thinkers',
+    icon: '🏛️',
+    description: 'Stoicism, existentialism, Eastern wisdom, ethics, and timeless intellectual classics.',
+    ownerId: 'companion-arthur',
+    region: 'Global',
+    genre: 'Philosophy',
+    bannerColor: 'from-amber-950 via-yellow-950 to-slate-950',
+    createdAt: '2024-12-10T00:00:00.000Z',
+    isJoined: false,
+    categories: [
+      {
+        id: 'cat-philo-debates',
+        serverId: 'server-philosophy',
+        name: '🧠 THE ACADEMY',
+        channelIds: ['ch-philo-stoicism', 'ch-philo-existentialism', 'ch-philo-eastern']
+      },
+      {
+        id: 'cat-philo-voice',
+        serverId: 'server-philosophy',
+        name: '🎙️ SYMPOSIUMS',
+        channelIds: ['ch-philo-symposium', 'ch-philo-meditation']
+      }
+    ],
+    channels: [
+      {
+        id: 'ch-philo-stoicism',
+        serverId: 'server-philosophy',
+        categoryId: 'cat-philo-debates',
+        name: 'stoicism-and-ethics',
+        type: 'text',
+        topic: 'Marcus Aurelius, Seneca, Epictetus, and virtue ethics'
+      },
+      {
+        id: 'ch-philo-existentialism',
+        serverId: 'server-philosophy',
+        categoryId: 'cat-philo-debates',
+        name: 'existentialism-and-mind',
+        type: 'text',
+        topic: 'Nietzsche, Camus, Sartre, and consciousness debates'
+      },
+      {
+        id: 'ch-philo-eastern',
+        serverId: 'server-philosophy',
+        categoryId: 'cat-philo-debates',
+        name: 'eastern-wisdom-and-tao',
+        type: 'text',
+        topic: 'Tao Te Ching, Upanishads, Rumi, and Zen poetry'
+      },
+      {
+        id: 'ch-philo-symposium',
+        serverId: 'server-philosophy',
+        categoryId: 'cat-philo-voice',
+        name: 'Plato’s Symposium',
+        type: 'voice',
+        topic: 'Live dialectic debates and discussions'
+      },
+      {
+        id: 'ch-philo-meditation',
+        serverId: 'server-philosophy',
+        categoryId: 'cat-philo-voice',
+        name: 'Zen Meditation Hall',
+        type: 'voice',
+        topic: 'Singing bowls and contemplative quiet'
+      }
+    ],
+    members: [
+      { user: DEFAULT_COMPANIONS[1], role: 'owner', joinedAt: '2024-12-10T00:00:00.000Z' },
+      { user: DEFAULT_COMPANIONS[3], role: 'vip', joinedAt: '2024-12-11T00:00:00.000Z' }
+    ]
+  }
+];
+
+const DEFAULT_SERVER_MESSAGES: Record<string, ServerMessageItem[]> = {
+  'ch-central-general': [
+    {
+      id: 'smsg-c1',
+      serverId: 'server-quillhawk-central',
+      channelId: 'ch-central-general',
+      sender: DEFAULT_COMPANIONS[0],
+      content: 'Welcome everyone to the official QuillHawk Central server! 🏰✨ You can share books, create buddy-read channels, and debate literature in real time.',
+      createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+      reactions: { '🪶': ['companion-aria', 'companion-arthur'], '❤️': ['companion-jane'] },
+      pinned: true
+    },
+    {
+      id: 'smsg-c2',
+      serverId: 'server-quillhawk-central',
+      channelId: 'ch-central-general',
+      sender: DEFAULT_COMPANIONS[1],
+      content: 'The new multilingual library archives are spectacular. We now have access to classical world literature and original manuscripts in one click.',
+      createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+      reactions: { '👏': ['companion-aria'] }
+    },
+    {
+      id: 'smsg-c3',
+      serverId: 'server-quillhawk-central',
+      channelId: 'ch-central-general',
+      sender: DEFAULT_COMPANIONS[2],
+      content: 'I highly recommend checking out this edition of Pride and Prejudice! The AI bilingual translation engine works seamlessly in the reader.',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      bookShare: {
+        bookId: 'gutendex-1342',
+        title: 'Pride and Prejudice',
+        author: 'Jane Austen',
+        coverUrl: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+        description: 'A masterpiece of wit and social romance in 19th-century England.',
+        fileUrl: 'https://www.gutenberg.org/ebooks/1342.epub.noimages'
+      },
+      reactions: { '❤️': ['companion-aria', 'companion-arthur', 'companion-cyber'] }
+    }
+  ],
+  'ch-urdu-ghalib-iqbal': [
+    {
+      id: 'smsg-u1',
+      serverId: 'server-urdu-adab',
+      channelId: 'ch-urdu-ghalib-iqbal',
+      sender: DEFAULT_COMPANIONS[0],
+      content: 'خوش آمدید بزمِ اردو و ادب کے تمام احباب کو! 🇵🇰📖\nمرزا غالب فرماتے ہیں:\n\nہیں اور بھی دنیا میں سخن ور بہت اچھے\nکہتے ہیں کہ غالب کا ہے اندازِ بیاں اور',
+      createdAt: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+      reactions: { '❤️': ['companion-aria', 'companion-jane'], '🪶': ['companion-arthur'] },
+      pinned: true
+    },
+    {
+      id: 'smsg-u2',
+      serverId: 'server-urdu-adab',
+      channelId: 'ch-urdu-ghalib-iqbal',
+      sender: DEFAULT_COMPANIONS[2],
+      content: 'دیوانِ غالب کا نسخہ یہاں شیئر کر رہی ہوں تاکہ سب احباب آسانی سے مطالعہ کر سکیں:',
+      createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+      bookShare: {
+        bookId: 'urdu-1',
+        title: 'Dewan-e-Ghalib (دیوان غالب)',
+        author: 'Mirza Asadullah Khan Ghalib (مرزا اسد اللہ خان غالب)',
+        coverUrl: 'https://covers.openlibrary.org/b/id/12818862-M.jpg',
+        description: 'The monumental masterwork of Urdu and Persian poetry by Mirza Ghalib.'
+      },
+      reactions: { '⭐': ['companion-aria', 'companion-cyber'] }
+    }
+  ],
+  'ch-scifi-cyberpunk': [
+    {
+      id: 'smsg-s1',
+      serverId: 'server-scifi',
+      channelId: 'ch-scifi-cyberpunk',
+      sender: DEFAULT_COMPANIONS[3],
+      content: 'System boot sequence complete. 🌌 Uploading Frankenstein & speculative fiction analysis nodes. Who wants to join our weekly Cyber reading sprint?',
+      createdAt: new Date(Date.now() - 1000 * 60 * 150).toISOString(),
+      reactions: { '🚀': ['companion-aria'], '🤖': ['companion-cyber'] }
+    }
+  ]
+};
+
+// Local storage keys
+const SERVERS_KEY = 'quillhawk-discord-servers';
+const SERVER_MESSAGES_KEY_PREFIX = 'quillhawk-server-msgs-';
+
+export function getDiscordServers(): DiscordServer[] {
+  if (typeof window === 'undefined') return DEFAULT_DISCORD_SERVERS;
+  try {
+    const raw = localStorage.getItem(SERVERS_KEY);
+    if (!raw) {
+      localStorage.setItem(SERVERS_KEY, JSON.stringify(DEFAULT_DISCORD_SERVERS));
+      return DEFAULT_DISCORD_SERVERS;
+    }
+    const servers: DiscordServer[] = JSON.parse(raw);
+    return servers;
+  } catch (e) {
+    return DEFAULT_DISCORD_SERVERS;
+  }
+}
+
+export function saveDiscordServers(servers: DiscordServer[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SERVERS_KEY, JSON.stringify(servers));
+    window.dispatchEvent(new CustomEvent('quillhawk:servers_updated', { detail: servers }));
+  } catch (e) {
+    console.error('Error saving discord servers:', e);
+  }
+}
+
+export function getDiscordServer(serverId: string): DiscordServer | undefined {
+  const servers = getDiscordServers();
+  return servers.find(s => s.id === serverId);
+}
+
+export function createDiscordServer(
+  name: string,
+  description: string,
+  icon: string = '🏰',
+  region: string = 'Global',
+  genre: string = 'Literature',
+  template: 'default' | 'book_club' | 'urdu' | 'scifi' | 'fantasy' | 'custom' = 'default',
+  bannerColor: string = 'from-blue-900 via-indigo-950 to-slate-900'
+): DiscordServer {
+  const myProfile = getMyDiscordProfile();
+  const serverId = `server-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+  let categories: DiscordCategory[] = [];
+  let channels: DiscordChannel[] = [];
+
+  if (template === 'urdu') {
+    const cat1Id = `cat-urdu-p-${Date.now()}`;
+    const cat2Id = `cat-urdu-n-${Date.now()}`;
+    const cat3Id = `cat-urdu-v-${Date.now()}`;
+    const ch1Id = `ch-urdu-g-${Date.now()}`;
+    const ch2Id = `ch-urdu-b-${Date.now()}`;
+    const ch3Id = `ch-urdu-m-${Date.now()}`;
+    const ch4Id = `ch-urdu-v1-${Date.now()}`;
+
+    categories = [
+      { id: cat1Id, serverId, name: '📜 اردو شاعری و کلام', channelIds: [ch1Id, ch2Id] },
+      { id: cat2Id, serverId, name: '📚 افسانہ و ناول', channelIds: [ch3Id] },
+      { id: cat3Id, serverId, name: '🎙️ آڈیو و مطالعہ گاہ', channelIds: [ch4Id] }
+    ];
+    channels = [
+      { id: ch1Id, serverId, categoryId: cat1Id, name: 'ghalib-o-iqbal', type: 'text', topic: 'غالب و اقبال پر گفتگو' },
+      { id: ch2Id, serverId, categoryId: cat1Id, name: 'bait-bazi-بیت-بازی', type: 'text', topic: 'بیت بازی' },
+      { id: ch3Id, serverId, categoryId: cat2Id, name: 'manto-afsanay', type: 'text', topic: 'افسانے' },
+      { id: ch4Id, serverId, categoryId: cat3Id, name: 'اردو مطالعہ گاہ', type: 'voice', topic: 'مطالعہ روم' }
+    ];
+  } else if (template === 'book_club') {
+    const cat1Id = `cat-bc-info-${Date.now()}`;
+    const cat2Id = `cat-bc-chat-${Date.now()}`;
+    const cat3Id = `cat-bc-voice-${Date.now()}`;
+    const ch1Id = `ch-bc-ann-${Date.now()}`;
+    const ch2Id = `ch-bc-gen-${Date.now()}`;
+    const ch3Id = `ch-bc-chaps-${Date.now()}`;
+    const ch4Id = `ch-bc-v-${Date.now()}`;
+
+    categories = [
+      { id: cat1Id, serverId, name: '📢 CLUB INFO', channelIds: [ch1Id] },
+      { id: cat2Id, serverId, name: '💬 DISCUSSIONS', channelIds: [ch2Id, ch3Id] },
+      { id: cat3Id, serverId, name: '🎙️ LIVE SESSIONS', channelIds: [ch4Id] }
+    ];
+    channels = [
+      { id: ch1Id, serverId, categoryId: cat1Id, name: 'reading-schedule', type: 'announcement', topic: 'Weekly chapters to read' },
+      { id: ch2Id, serverId, categoryId: cat2Id, name: 'general-chat', type: 'text', topic: 'Book club general hangout' },
+      { id: ch3Id, serverId, categoryId: cat2Id, name: 'chapter-reactions', type: 'book_club', topic: 'Post your spoiler-tagged thoughts' },
+      { id: ch4Id, serverId, categoryId: cat3Id, name: 'Live Book Club Call', type: 'voice', topic: 'Sunday discussion audio room' }
+    ];
+  } else {
+    const cat1Id = `cat-gen-info-${Date.now()}`;
+    const cat2Id = `cat-gen-chat-${Date.now()}`;
+    const cat3Id = `cat-gen-voice-${Date.now()}`;
+    const ch1Id = `ch-gen-ann-${Date.now()}`;
+    const ch2Id = `ch-gen-chat-${Date.now()}`;
+    const ch3Id = `ch-gen-recs-${Date.now()}`;
+    const ch4Id = `ch-gen-voice-${Date.now()}`;
+
+    categories = [
+      { id: cat1Id, serverId, name: '📢 INFORMATION', channelIds: [ch1Id] },
+      { id: cat2Id, serverId, name: '💬 TEXT CHANNELS', channelIds: [ch2Id, ch3Id] },
+      { id: cat3Id, serverId, name: '🎙️ VOICE & READING', channelIds: [ch4Id] }
+    ];
+    channels = [
+      { id: ch1Id, serverId, categoryId: cat1Id, name: 'announcements', type: 'announcement', topic: 'Server updates' },
+      { id: ch2Id, serverId, categoryId: cat2Id, name: 'general', type: 'text', topic: 'General conversation' },
+      { id: ch3Id, serverId, categoryId: cat2Id, name: 'book-recommendations', type: 'text', topic: 'Share what you are reading' },
+      { id: ch4Id, serverId, categoryId: cat3Id, name: 'Study & Reading Lounge', type: 'voice', topic: 'Ambient reading space' }
+    ];
+  }
+
+  const newServer: DiscordServer = {
+    id: serverId,
+    name,
+    icon,
+    description,
+    ownerId: myProfile.id,
+    region,
+    genre,
+    bannerColor,
+    createdAt: new Date().toISOString(),
+    categories,
+    channels,
+    members: [
+      { user: myProfile, role: 'owner', joinedAt: new Date().toISOString() },
+      { user: DEFAULT_COMPANIONS[0], role: 'moderator', joinedAt: new Date().toISOString() }
+    ],
+    isJoined: true
+  };
+
+  const servers = getDiscordServers();
+  const updated = [newServer, ...servers];
+  saveDiscordServers(updated);
+
+  // Send a welcome message in the first text channel
+  const firstTextChannel = channels.find(c => c.type === 'text' || c.type === 'announcement') || channels[0];
+  if (firstTextChannel) {
+    sendServerMessage(
+      serverId,
+      firstTextChannel.id,
+      `🎉 Welcome to **${name}**! This server has been created for ${genre} discussions. Start chatting and invite fellow readers!`
+    );
+  }
+
+  return newServer;
+}
+
+export function joinDiscordServer(serverId: string): void {
+  const servers = getDiscordServers();
+  const myProfile = getMyDiscordProfile();
+  const server = servers.find(s => s.id === serverId);
+
+  if (server) {
+    server.isJoined = true;
+    if (!server.members.some(m => m.user.id === myProfile.id)) {
+      server.members.push({
+        user: myProfile,
+        role: 'member',
+        joinedAt: new Date().toISOString()
+      });
+    }
+    saveDiscordServers(servers);
+  }
+}
+
+export function leaveDiscordServer(serverId: string): void {
+  const servers = getDiscordServers();
+  const myProfile = getMyDiscordProfile();
+  const server = servers.find(s => s.id === serverId);
+
+  if (server) {
+    server.isJoined = false;
+    server.members = server.members.filter(m => m.user.id !== myProfile.id);
+    saveDiscordServers(servers);
+  }
+}
+
+export function createServerChannel(
+  serverId: string,
+  categoryId: string,
+  name: string,
+  type: ChannelType = 'text',
+  topic: string = ''
+): DiscordChannel | null {
+  const servers = getDiscordServers();
+  const server = servers.find(s => s.id === serverId);
+  if (!server) return null;
+
+  const cleanName = name.toLowerCase().trim().replace(/\s+/g, '-');
+  const channelId = `ch-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const newChannel: DiscordChannel = {
+    id: channelId,
+    serverId,
+    categoryId,
+    name: cleanName,
+    type,
+    topic
+  };
+
+  server.channels.push(newChannel);
+  
+  const category = server.categories.find(c => c.id === categoryId);
+  if (category) {
+    category.channelIds.push(channelId);
+  }
+
+  saveDiscordServers(servers);
+  return newChannel;
+}
+
+export function deleteServerChannel(serverId: string, channelId: string): void {
+  const servers = getDiscordServers();
+  const server = servers.find(s => s.id === serverId);
+  if (!server) return;
+
+  server.channels = server.channels.filter(c => c.id !== channelId);
+  server.categories.forEach(cat => {
+    cat.channelIds = cat.channelIds.filter(id => id !== channelId);
+  });
+
+  saveDiscordServers(servers);
+}
+
+export function getServerMessages(serverId: string, channelId: string): ServerMessageItem[] {
+  if (typeof window === 'undefined') return DEFAULT_SERVER_MESSAGES[channelId] || [];
+  try {
+    const raw = localStorage.getItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`);
+    if (!raw) {
+      const defaultMsgs = DEFAULT_SERVER_MESSAGES[channelId] || [];
+      if (defaultMsgs.length > 0) {
+        localStorage.setItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`, JSON.stringify(defaultMsgs));
+      }
+      return defaultMsgs;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    return DEFAULT_SERVER_MESSAGES[channelId] || [];
+  }
+}
+
+export function sendServerMessage(
+  serverId: string,
+  channelId: string,
+  content: string,
+  bookShare?: BookShareAttachment | null,
+  replyTo?: { id: string; senderName: string; content: string }
+): ServerMessageItem {
+  const myProfile = getMyDiscordProfile();
+  const msgId = `smsg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const newMsg: ServerMessageItem = {
+    id: msgId,
+    serverId,
+    channelId,
+    sender: myProfile,
+    content,
+    createdAt: new Date().toISOString(),
+    bookShare: bookShare || null,
+    reactions: {},
+    replyTo
+  };
+
+  const msgs = getServerMessages(serverId, channelId);
+  const updated = [...msgs, newMsg];
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('quillhawk:channel_messages_updated', {
+        detail: { serverId, channelId, messages: updated }
+      }));
+    } catch (e) {
+      console.error('Error saving channel message:', e);
+    }
+  }
+
+  // Check if message mentions /quillbot or bot
+  if (content.toLowerCase().includes('/quillbot') || content.toLowerCase().includes('@quillbot') || content.toLowerCase().includes('quillbot')) {
+    triggerQuillBotChannelReply(serverId, channelId, content);
+  }
+
+  return newMsg;
+}
+
+export function addServerMessageReaction(
+  serverId: string,
+  channelId: string,
+  messageId: string,
+  emoji: string
+): void {
+  const msgs = getServerMessages(serverId, channelId);
+  const msg = msgs.find(m => m.id === messageId);
+  if (!msg) return;
+
+  const myId = getMyDiscordProfile().id;
+  if (!msg.reactions) msg.reactions = {};
+
+  const currentUsers = msg.reactions[emoji] || [];
+  if (currentUsers.includes(myId)) {
+    // toggle off
+    msg.reactions[emoji] = currentUsers.filter(id => id !== myId);
+    if (msg.reactions[emoji].length === 0) {
+      delete msg.reactions[emoji];
+    }
+  } else {
+    // add
+    msg.reactions[emoji] = [...currentUsers, myId];
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`, JSON.stringify(msgs));
+      window.dispatchEvent(new CustomEvent('quillhawk:channel_messages_updated', {
+        detail: { serverId, channelId, messages: msgs }
+      }));
+    } catch (e) {}
+  }
+}
+
+export function pinServerMessage(serverId: string, channelId: string, messageId: string): void {
+  const msgs = getServerMessages(serverId, channelId);
+  const msg = msgs.find(m => m.id === messageId);
+  if (!msg) return;
+
+  msg.pinned = !msg.pinned;
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`, JSON.stringify(msgs));
+      window.dispatchEvent(new CustomEvent('quillhawk:channel_messages_updated', {
+        detail: { serverId, channelId, messages: msgs }
+      }));
+    } catch (e) {}
+  }
+}
+
+export function triggerQuillBotChannelReply(
+  serverId: string,
+  channelId: string,
+  userPrompt: string
+): void {
+  const botProfile: DiscordUserProfile = {
+    id: 'quillbot-ai',
+    username: 'quillbot',
+    discriminator: '0001',
+    displayName: 'QuillBot AI',
+    avatar_url: '🤖',
+    banner_color: 'from-blue-600 via-indigo-700 to-purple-800',
+    bio: 'QuillHawk Official AI Literary Companion. Ask me about any author, plot synopsis, or book analysis!',
+    presence: 'online',
+    member_since: 'Nov 2024',
+    premium_status: true,
+    level: 99,
+    xp: 9999,
+    badges: [
+      { id: 'bot', name: 'Verified Bot', icon: '🤖', description: 'Official QuillHawk Automated Intelligence', color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' }
+    ]
+  };
+
+  const lower = userPrompt.toLowerCase();
+  let botReply = "Hello! I am **QuillBot** 🤖, your AI reading companion on QuillHawk. You can search over millions of free books in the Global Catalog or ask me about literary classics!";
+
+  if (lower.includes('ghalib') || lower.includes('غالب')) {
+    botReply = "🪶 **Mirza Asadullah Khan Ghalib (1797–1869)** is one of the most celebrated Urdu and Persian poets. His *Dewan-e-Ghalib* explores philosophical depth, existential longing, and profound wordplay. You can read the original Urdu text directly in the QuillHawk Reader!";
+  } else if (lower.includes('iqbal') || lower.includes('اقبال')) {
+    botReply = "🦅 **Allama Muhammad Iqbal (1877–1938)**, the *Shair-e-Mashriq* (Poet of the East), infused Urdu and Persian literature with themes of selfhood (*Khudi*), perseverance, and spiritual revival in works like *Bang-e-Dra* and *Zarb-e-Kaleem*.";
+  } else if (lower.includes('recommend') || lower.includes('book')) {
+    botReply = "📚 Here are top recommendations available right now:\n1. **Pride and Prejudice** by Jane Austen (Classic Romance)\n2. **Frankenstein** by Mary Shelley (Gothic Sci-Fi)\n3. **Peer-e-Kamil** by Umera Ahmed (Urdu Contemporary Masterpiece)\n4. **Don Quijote** by Miguel de Cervantes (Epic Adventure)";
+  }
+
+  setTimeout(() => {
+    const msgs = getServerMessages(serverId, channelId);
+    const botMsg: ServerMessageItem = {
+      id: `smsg-bot-${Date.now()}`,
+      serverId,
+      channelId,
+      sender: botProfile,
+      content: botReply,
+      createdAt: new Date().toISOString(),
+      reactions: { '🤖': ['quillbot-ai'] }
+    };
+    const updated = [...msgs, botMsg];
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`${SERVER_MESSAGES_KEY_PREFIX}${channelId}`, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('quillhawk:channel_messages_updated', {
+          detail: { serverId, channelId, messages: updated }
+        }));
+      } catch (e) {}
+    }
+  }, 1600);
+}
+

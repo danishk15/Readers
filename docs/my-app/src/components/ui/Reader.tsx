@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
 import { BookOpen, Globe, Languages, Volume2, VolumeX, Sparkles, Copy, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
+import { getAuthenticBookChapters } from '@/utils/authenticBookContent';
 
 interface LocationStart {
   index: number;
@@ -158,46 +159,10 @@ export default function Reader({
     }
   }, [bookId, bookUrl, iaId, readMode]);
 
-  // Curated fallback book chapters
-  const getSimulatedBookChapters = useCallback(() => {
-    const bookTitle = title || 'Global Literature Edition';
-    const bookAuthor = author || 'Literary Author';
-    const bookDesc = description || 'A literary classic preserved in the QuillHawk global archive.';
-    const cleanDesc = bookDesc.replace(/<[^>]*>/g, '').slice(0, 500) + (bookDesc.length > 500 ? '...' : '');
-
-    return [
-      {
-        chapter: 'Book Overview & Introduction',
-        text: `Welcome to the complete, free reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the QuillHawk universal library, providing full reader access with customizable typography, original edition viewing, and real-time AI bilingual translation across 30+ world languages.`
-      },
-      {
-        chapter: 'Chapter I: Historical Context and Background',
-        text: `The release of "${bookTitle}" marked a significant milestone in world literature. Authors like ${bookAuthor} spent years observing their surroundings, crafting characters and settings that reflect the nuanced tensions of their era.\n\nTo fully appreciate this work, one must understand the environment in which it was conceived. It was a time of rapid cultural shifts, where traditional paradigms were challenged by new ways of thinking. Through this text, the author captures these dilemmas, embedding symbols and motifs that invite readers to look beyond the surface narrative.`
-      },
-      {
-        chapter: 'Chapter II: The Opening Narrative',
-        text: `Our story opens in a world shaped by expectation and quiet desire. The protagonist stands at a critical crossroads, facing decisions that will define their future. As they navigate the setting described by ${bookAuthor}, we feel a sense of anticipation.\n\n"Every choice," as the narrative suggests, "carries a weight of its own." The author uses rich, atmospheric prose to establish a backdrop that feels both immediate and timeless. We witness the first interactions, the subtle conflicts, and the spark of ambition that sets the journey in motion.`
-      },
-      {
-        chapter: 'Chapter III: Key Themes & Character Development',
-        text: `As the narrative of "${bookTitle}" progresses, several prominent themes emerge. The most critical of these is the struggle for self-determination in a rigid society. The characters find themselves torn between duty and personal truth.\n\n${bookAuthor} handles these conflicts with remarkable psychological depth. Each character is not merely an archetype, but a breathing entity with flaws, fears, and hopes. Through their dialogues and private reflections, we discover the core message: that identity is not given, but forged through trial.`
-      },
-      {
-        chapter: 'Chapter IV: Narrative Climax & Turning Point',
-        text: `The tension reaches its peak in this pivotal section. All prior conflicts converge in a single, defining moment. The protagonist is forced to confront their deepest fears, and the choices they make here are irreversible.\n\nHere, the pacing quickens, reflecting the urgency of the characters' plight. The prose is sharp, focused, and emotionally charged. We are reminded of the fragility of the peace they sought, and the cost of the path they chose. It is a masterclass in narrative tension, showing ${bookAuthor} at the height of their storytelling powers.`
-      },
-      {
-        chapter: 'Chapter V: Legacy and Literary Impact',
-        text: `Following its publication, "${bookTitle}" received widespread attention. Critics praised its daring structure and the honesty of its characters, though some contemporary readers found its themes controversial.\n\nDecades later, the legacy of ${bookAuthor}'s work remains secure. It continues to be studied in universities, discussed in book clubs, and translated across languages. It stands as a testament to the power of stories to transcend their original context, speaking to universal human experiences across generations.`
-      },
-      {
-        chapter: 'Chapter VI: Reader Reflection & Discussion Guide',
-        text: `To enrich your reading experience of "${bookTitle}", consider the following discussion points:\n\n1. How do the setting and atmospheric details influence the choices of the characters?\n2. In what ways does ${bookAuthor} challenge traditional narrative structures in this book?\n3. What is the significance of the resolution? Does it offer hope, or is it a tragedy?\n\nTake your time to reflect on these questions, note down your thoughts, and share them in the QuillHawk community channels to discuss with fellow readers.`
-      }
-    ];
-  }, [title, author, description]);
-
-  const chapters = getSimulatedBookChapters();
+  // Curated authentic book chapters (Peer-e-Kamil, Raja Gidh, Ghalib, Iqbal, Manto, World Classics)
+  const chapters = React.useMemo(() => {
+    return getAuthenticBookChapters(bookId, title, author, description);
+  }, [bookId, title, author, description]);
   const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
   const currentChapterObj = activeChapters[Math.min(fallbackPage - 1, activeChapters.length - 1)] || activeChapters[0];
 

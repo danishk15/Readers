@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { AUTHENTIC_BOOK_REGISTRY } from '@/utils/authenticBookContent';
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -43,6 +44,22 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             const addedBooks = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
             loadedBook = [...localBooks, ...addedBooks].find((b: any) => b.id === id || b.title?.toLowerCase() === id.toLowerCase());
           } catch {}
+        }
+
+        if (!loadedBook) {
+          const cleanId = id.toLowerCase();
+          const matched = AUTHENTIC_BOOK_REGISTRY.find(e => 
+            e.matchKeys.some(k => cleanId.includes(k.toLowerCase()) || k.toLowerCase().includes(cleanId))
+          );
+          if (matched) {
+            loadedBook = {
+              id,
+              title: matched.title,
+              author: matched.author,
+              description: `Authentic reading edition of ${matched.title} by ${matched.author}.`,
+              file_url: ''
+            };
+          }
         }
 
         if (!loadedBook && id.startsWith('gutendex-')) {

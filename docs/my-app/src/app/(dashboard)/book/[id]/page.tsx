@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, BookOpen, Star, Languages, Award, BookMarked } from 'lucide-react';
 import Link from 'next/link';
+import { AUTHENTIC_BOOK_REGISTRY } from '@/utils/authenticBookContent';
 
 export default function BookDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -16,13 +17,44 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
     async function loadBook() {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
-          .from('books')
-          .select('*')
-          .eq('id', id)
-          .single();
-        if (error) throw error;
-        setBook(data);
+        let loaded = null;
+        try {
+          const { data, error } = await supabase
+            .from('books')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (data && !error) loaded = data;
+        } catch {}
+
+        if (!loaded) {
+          try {
+            const localBooks = JSON.parse(localStorage.getItem('local-published-books') || '[]');
+            const addedBooks = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+            loaded = [...localBooks, ...addedBooks].find((b: any) => b.id === id || b.title?.toLowerCase() === id.toLowerCase());
+          } catch {}
+        }
+
+        if (!loaded) {
+          const cleanId = id.toLowerCase();
+          const matched = AUTHENTIC_BOOK_REGISTRY.find(e => 
+            e.matchKeys.some(k => cleanId.includes(k.toLowerCase()) || k.toLowerCase().includes(cleanId))
+          );
+          if (matched) {
+            loaded = {
+              id,
+              title: matched.title,
+              author: matched.author,
+              description: `Authentic reading edition of ${matched.title} by ${matched.author}. Complete multi-chapter text available for reading and offline study.`,
+              cover_url: 'https://archive.org/services/img/PEEREKAMILP.B.U.HUmeraAhmedEbooks.i360.pk',
+              file_url: '',
+              is_premium: false,
+              language: matched.language
+            };
+          }
+        }
+
+        setBook(loaded);
       } catch (err: any) {
         setError(err);
       } finally {

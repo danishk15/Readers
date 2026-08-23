@@ -1535,3 +1535,25 @@ export function triggerQuillBotChannelReply(
   }, 1600);
 }
 
+export function updateServerTheme(serverId: string, bannerColor: string): DiscordServer | null {
+  const servers = getDiscordServers();
+  const index = servers.findIndex(s => s.id === serverId);
+  if (index === -1) return null;
+  servers[index].bannerColor = bannerColor;
+  servers[index].themeColor = bannerColor;
+  saveDiscordServers(servers);
+  return servers[index];
+}
+
+export function updateChannelTheme(serverId: string, channelId: string, themeColor: string): DiscordChannel | null {
+  const servers = getDiscordServers();
+  const serverIndex = servers.findIndex(s => s.id === serverId);
+  if (serverIndex === -1) return null;
+  const chIndex = servers[serverIndex].channels.findIndex(c => c.id === channelId);
+  if (chIndex === -1) return null;
+  servers[serverIndex].channels[chIndex].themeColor = themeColor;
+  saveDiscordServers(servers);
+  return servers[serverIndex].channels[chIndex];
+}
+
+

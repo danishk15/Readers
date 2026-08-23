@@ -7,7 +7,11 @@ import {
   ServerMessageItem, 
   DiscordUserProfile, 
   BookShareAttachment, 
-  ChannelType 
+  ChannelType,
+  BannerTheme,
+  FREE_CHANNEL_THEMES,
+  VIP_CHANNEL_THEMES,
+  ALL_CHANNEL_THEMES
 } from '@/types/social';
 import { 
   getDiscordServers, 
@@ -21,9 +25,12 @@ import {
   addServerMessageReaction, 
   pinServerMessage, 
   getMyDiscordProfile,
+  updateServerTheme,
+  updateChannelTheme,
   DEFAULT_COMPANIONS 
 } from '@/utils/socialStorage';
 import { UserProfileModal } from '@/components/social/UserProfileModal';
+import { Modal } from '@/components/ui/Modal';
 import { 
   Hash, 
   Volume2, 
@@ -54,7 +61,13 @@ import {
   Headphones,
   Bell,
   Trash2,
-  BookMarked
+  BookMarked,
+  Palette,
+  Crown,
+  Lock,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
@@ -84,6 +97,16 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
   const [showMembersSidebar, setShowMembersSidebar] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ServerMessageItem | null>(null);
+
+  // Theme Customization States
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [themeScope, setThemeScope] = useState<'channel' | 'server'>('channel');
+  const [isVipModalOpen, setIsVipModalOpen] = useState(false);
+  const [vipModalReason, setVipModalReason] = useState({
+    title: 'VIP Channel & Group Themes',
+    description: 'Upgrade to QuillHawk VIP to unlock 12+ celestial frosted glass, cyberpunk, and cosmic channel themes!'
+  });
+  const [themeFeedback, setThemeFeedback] = useState<string | null>(null);
   
   // Voice Lounge Simulated State
   const [activeVoiceChannel, setActiveVoiceChannel] = useState<DiscordChannel | null>(null);
@@ -179,6 +202,43 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
 
   const activeServer = servers.find(s => s.id === activeServerId) || servers[0];
   const activeChannel = activeServer?.channels.find(c => c.id === activeChannelId) || activeServer?.channels[0];
+
+  const activeChannelTheme = activeChannel?.themeColor || activeServer?.bannerColor || activeServer?.themeColor || FREE_CHANNEL_THEMES[1].value;
+  const isGlassChannelTheme = VIP_CHANNEL_THEMES.some(t => t.isGlass && t.value === activeChannelTheme);
+  const activeServerBanner = activeServer?.bannerColor || FREE_CHANNEL_THEMES[1].value;
+  const isGlassServerBanner = VIP_CHANNEL_THEMES.some(t => t.isGlass && t.value === activeServerBanner);
+
+  const handleSelectTheme = (theme: BannerTheme) => {
+    if (theme.isPremium && !myProfile.premium_status) {
+      setVipModalReason({
+        title: `VIP Theme: ${theme.name}`,
+        description: `The ${theme.name} atmospheric theme is reserved for QuillHawk VIP members. Upgrade to VIP to unlock all 12+ vibrant and frosted glass server & channel themes!`
+      });
+      setIsVipModalOpen(true);
+      return;
+    }
+
+    if (themeScope === 'channel') {
+      updateChannelTheme(activeServerId, activeChannelId, theme.value);
+      setThemeFeedback(`Applied ${theme.name} to #${activeChannel?.name || 'channel'}!`);
+    } else {
+      updateServerTheme(activeServerId, theme.value);
+      setThemeFeedback(`Applied ${theme.name} to ${activeServer?.name || 'server'}!`);
+    }
+
+    setTimeout(() => setThemeFeedback(null), 3000);
+  };
+
+  const handleResetTheme = () => {
+    if (themeScope === 'channel') {
+      updateChannelTheme(activeServerId, activeChannelId, '');
+      setThemeFeedback(`Reset #${activeChannel?.name || 'channel'} theme to server default.`);
+    } else {
+      updateServerTheme(activeServerId, FREE_CHANNEL_THEMES[1].value);
+      setThemeFeedback(`Reset ${activeServer?.name || 'server'} theme to Inkish Blue.`);
+    }
+    setTimeout(() => setThemeFeedback(null), 3000);
+  };
 
   const handleSelectServer = (serverId: string) => {
     setActiveServerId(serverId);
@@ -368,9 +428,13 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
         
         {/* Server Header Dropdown */}
         <div className="relative">
+          <div className={`absolute inset-0 bg-gradient-to-r ${activeServerBanner} opacity-30 transition-all duration-500`} />
+          {isGlassServerBanner && (
+            <div className="absolute inset-0 bg-white/[0.04] backdrop-blur-md pointer-events-none" />
+          )}
           <button 
             onClick={() => setIsServerMenuOpen(!isServerMenuOpen)}
-            className="w-full h-14 px-4 border-b border-slate-850/80 flex items-center justify-between font-extrabold text-sm hover:bg-slate-900/60 transition-colors shadow-sm text-left"
+            className="w-full h-14 px-4 border-b border-slate-850/80 flex items-center justify-between font-extrabold text-sm hover:bg-slate-900/60 transition-colors shadow-sm text-left relative z-10"
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base shrink-0">{activeServer?.icon}</span>
@@ -382,6 +446,17 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
           {/* Server Settings Dropdown Menu */}
           {isServerMenuOpen && (
             <div className="absolute top-14 left-2 right-2 bg-slate-950 border border-slate-800 rounded-xl p-1.5 shadow-2xl z-50 space-y-1 animate-in fade-in slide-from-top-2 duration-200">
+              <button 
+                onClick={() => { setIsThemeModalOpen(true); setIsServerMenuOpen(false); }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-amber-300 hover:bg-amber-500/10 transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Server & Channel Themes</span>
+                </span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+
               <button 
                 onClick={() => { setIsCreateChannelModalOpen(true); setIsServerMenuOpen(false); }}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold text-indigo-400 hover:bg-indigo-600/15 transition-colors"
@@ -534,10 +609,16 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
       </div>
 
       {/* 3. MAIN CHAT & CONTENT AREA */}
-      <div className="flex-1 flex flex-col bg-[#070B16] relative min-w-0">
+      <div className="flex-1 flex flex-col bg-[#070B16] relative min-w-0 overflow-hidden">
         
+        {/* Ambient Channel & Server Atmosphere Glow */}
+        <div className={`absolute top-0 inset-x-0 h-64 bg-gradient-to-b ${activeChannelTheme} opacity-20 pointer-events-none transition-all duration-700 blur-3xl`} />
+        {isGlassChannelTheme && (
+          <div className="absolute inset-x-0 top-0 h-32 bg-white/[0.03] backdrop-blur-md pointer-events-none" />
+        )}
+
         {/* Channel Header */}
-        <div className="h-14 border-b border-slate-850/80 px-4 flex items-center justify-between bg-[#070B16]/90 backdrop-blur-md shrink-0 z-10">
+        <div className="h-14 border-b border-slate-850/80 px-4 flex items-center justify-between bg-[#070B16]/85 backdrop-blur-md shrink-0 z-10">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-2 font-black text-sm text-slate-100">
               {activeChannel?.type === 'text' && <Hash className="w-5 h-5 text-slate-500" />}
@@ -545,6 +626,11 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
               {activeChannel?.type === 'voice' && <Volume2 className="w-5 h-5 text-cyan-400" />}
               {activeChannel?.type === 'announcement' && <Megaphone className="w-5 h-5 text-amber-400" />}
               <span className="truncate">{activeChannel?.name || 'general'}</span>
+              {activeChannel?.themeColor && (
+                <span className="hidden sm:inline-flex text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  Custom Theme
+                </span>
+              )}
             </div>
 
             {activeChannel?.topic && (
@@ -558,6 +644,19 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
           </div>
 
           <div className="flex items-center gap-2 text-slate-400">
+            {/* Theme Customizer Trigger Button */}
+            <button 
+              onClick={() => {
+                setThemeScope('channel');
+                setIsThemeModalOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-lg hover:bg-slate-850 text-slate-400 hover:text-indigo-300 transition-colors flex items-center gap-1.5 border border-transparent hover:border-slate-800"
+              title="Customize Channel & Server Theme"
+            >
+              <Palette className="w-4 h-4 text-indigo-400" />
+              <span className="hidden lg:inline text-xs font-bold">Theme</span>
+            </button>
+
             <button 
               onClick={() => setShowPinnedOnly(!showPinnedOnly)}
               className={`p-2 rounded-lg hover:bg-slate-850 transition-colors ${showPinnedOnly ? 'bg-indigo-600/20 text-indigo-400' : ''}`}
@@ -1199,6 +1298,273 @@ export function DiscordServerWorkspace({ initialServerId, initialChannelId }: Di
           </div>
         </div>
       )}
+
+      {/* MODAL 5: CHANNEL & GROUP THEMES */}
+      {isThemeModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-5 max-h-[88vh] flex flex-col animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            {/* Top Glow */}
+            <div className="absolute top-0 left-1/4 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-850">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-indigo-400" />
+                  <span>Channel & Group Theme Atmosphere</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Select from 3 free themes or unlock 12+ VIP celestial, cyberpunk, and frosted glass atmospheres.
+                </p>
+              </div>
+              <button onClick={() => setIsThemeModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Feedback Toast */}
+            {themeFeedback && (
+              <div className="flex items-center gap-2 p-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-bold animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{themeFeedback}</span>
+              </div>
+            )}
+
+            {/* Scope Switcher: Active Channel vs Entire Server */}
+            <div className="flex items-center gap-2 p-1.5 bg-slate-900/80 border border-slate-800 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setThemeScope('channel')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  themeScope === 'channel'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Hash className="w-3.5 h-3.5" />
+                <span>Active Channel (#{activeChannel?.name})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setThemeScope('server')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  themeScope === 'server'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span className="text-sm">{activeServer?.icon || '🏰'}</span>
+                <span>Entire Server ({activeServer?.name})</span>
+              </button>
+            </div>
+
+            {/* Themes List Scrollable */}
+            <div className="flex-1 overflow-y-auto space-y-5 pr-1 no-scrollbar">
+              {/* Section 1: 3 Free Classic Themes */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <span>✨ Free Classic Themes</span>
+                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-md border border-emerald-500/20">3 Available</span>
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {FREE_CHANNEL_THEMES.map((theme) => {
+                    const isCurrent = themeScope === 'channel' 
+                      ? activeChannel?.themeColor === theme.value || (!activeChannel?.themeColor && activeServer?.bannerColor === theme.value)
+                      : activeServer?.bannerColor === theme.value;
+
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => handleSelectTheme(theme)}
+                        className={`group relative h-20 rounded-2xl bg-gradient-to-r ${theme.value} border p-3 flex flex-col justify-between text-left transition-all duration-300 hover:scale-[1.02] shadow-md overflow-hidden ${
+                          isCurrent 
+                            ? `${theme.border} ring-2 ring-primary shadow-primary/20 shadow-lg scale-[1.02]` 
+                            : 'border-slate-800 hover:border-slate-600 opacity-90 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between z-10">
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-black/60 backdrop-blur-sm text-slate-300 px-2 py-0.5 rounded border border-white/10">
+                            Free
+                          </span>
+                          {isCurrent && (
+                            <span className="bg-emerald-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" /> Active
+                            </span>
+                          )}
+                        </div>
+                        <div className="z-10">
+                          <span className="text-xs font-black text-white drop-shadow block truncate">{theme.name}</span>
+                          <span className="text-[9px] text-slate-300/80 drop-shadow block truncate">{theme.description}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 2: 12 VIP Atmospheric Themes */}
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Crown className="w-3.5 h-3.5 text-amber-400" />
+                    <span>👑 VIP Atmospheric Themes</span>
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2 py-0.2 rounded-md border border-amber-500/30">12 VIP Exclusive</span>
+                  </h4>
+                  {!myProfile.premium_status && (
+                    <Link href="/premium" className="text-[10px] text-amber-400 hover:underline font-bold flex items-center gap-1">
+                      <span>Unlock All VIP</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {VIP_CHANNEL_THEMES.map((theme) => {
+                    const isCurrent = themeScope === 'channel'
+                      ? activeChannel?.themeColor === theme.value || (!activeChannel?.themeColor && activeServer?.bannerColor === theme.value)
+                      : activeServer?.bannerColor === theme.value;
+                    const isLocked = !myProfile.premium_status;
+
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => handleSelectTheme(theme)}
+                        className={`group relative h-22 rounded-2xl bg-gradient-to-r ${theme.previewBg} border p-3 flex flex-col justify-between text-left transition-all duration-300 hover:scale-[1.02] shadow-lg overflow-hidden backdrop-blur-md ${
+                          isCurrent 
+                            ? `${theme.border} ring-2 ring-amber-400 shadow-amber-500/20 shadow-xl scale-[1.02]` 
+                            : isLocked
+                            ? 'border-slate-800/90 hover:border-amber-500/40'
+                            : 'border-white/20 hover:border-white/40'
+                        }`}
+                      >
+                        {/* Frosted glass shine overlay if glass theme */}
+                        {theme.isGlass && (
+                          <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-sm pointer-events-none" />
+                        )}
+                        <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none" />
+
+                        <div className="flex items-center justify-between z-10">
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-amber-500/20 backdrop-blur-sm text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" /> VIP
+                          </span>
+                          {isCurrent ? (
+                            <span className="bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" /> Active
+                            </span>
+                          ) : isLocked ? (
+                            <span className="bg-black/70 backdrop-blur-sm text-amber-300 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-500/30">
+                              <Lock className="w-2.5 h-2.5" /> VIP
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="z-10">
+                          <span className="text-xs font-black text-white drop-shadow block truncate flex items-center gap-1">
+                            <span>{theme.name}</span>
+                          </span>
+                          <span className="text-[9px] text-slate-300/80 drop-shadow block truncate">{theme.description}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-850">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetTheme}
+                className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-3 py-2 rounded-xl"
+              >
+                Reset to Default
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsThemeModalOpen(false)}
+                  className="text-xs text-slate-400 hover:text-white px-4 py-2 rounded-xl"
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIP UPGRADE MODAL */}
+      <Modal
+        isOpen={isVipModalOpen}
+        onClose={() => setIsVipModalOpen(false)}
+        title=""
+        className="max-w-md p-0 overflow-hidden border border-amber-500/30 bg-[#070D1F] rounded-3xl shadow-2xl"
+      >
+        <div className="relative p-6 sm:p-7 space-y-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-yellow-500/30 to-amber-500/10 border border-amber-500/40 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+            <Crown className="w-8 h-8 text-amber-400 animate-bounce" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full">
+              👑 QuillHawk VIP Studio
+            </span>
+            <h3 className="text-xl font-black text-white tracking-tight">{vipModalReason.title}</h3>
+            <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+              {vipModalReason.description}
+            </p>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-850 rounded-2xl p-4 text-left space-y-2.5 text-xs text-slate-300">
+            <div className="font-bold text-[11px] uppercase tracking-wider text-slate-400 mb-1">
+              VIP Members Unlock:
+            </div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>12+ Celestial, Cyberpunk & Frosted Glass Channel Themes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Palette className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span>Custom atmospheric background glows for servers & channels</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Golden VIP Member badges across all community hubs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span>Unlimited AI Translation & Offline EPUB Reading</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setIsVipModalOpen(false)}
+              className="flex-1 border border-slate-800 text-slate-400 hover:text-white py-2.5 rounded-xl text-xs font-bold"
+            >
+              Maybe Later
+            </Button>
+            <Link href="/premium" className="flex-1">
+              <Button
+                className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5"
+              >
+                <span>Upgrade to VIP</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Modal>
 
       {/* USER PROFILE MODAL */}
       {selectedUserForModal && (

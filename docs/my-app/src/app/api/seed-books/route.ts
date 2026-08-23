@@ -19,6 +19,113 @@ export async function GET() {
     }
 
     const defaultBooks = [
+      // Urdu Classics - Originals & Translations
+      { 
+        title: 'Dewan-e-Ghalib (دیوان غالب)', 
+        author: 'Mirza Asadullah Khan Ghalib', 
+        cover_url: 'https://www.gutenberg.org/cache/epub/72237/pg72237.cover.medium.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/72237.epub.noimages', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Love Sonnets of Ghalib (English Translation)', 
+        author: 'Mirza Ghalib (Trans. Dr. Sarfaraz K. Niazi)', 
+        cover_url: 'https://archive.org/services/img/love-sonnets-of-ghalib-dr.-sarfaraz-k.-niazi', 
+        file_url: 'https://archive.org/download/love-sonnets-of-ghalib-dr.-sarfaraz-k.-niazi/love-sonnets-of-ghalib-dr.-sarfaraz-k.-niazi.epub', 
+        is_premium: false, 
+        language: 'en'
+      },
+      { 
+        title: 'Kulliyat-e-Iqbal: Bang-e-Dra & Shikwa (کلیات اقبال)', 
+        author: 'Allama Dr. Muhammad Iqbal', 
+        cover_url: 'https://archive.org/services/img/kulliyatiqbalurdu', 
+        file_url: 'https://archive.org/download/kulliyatiqbalurdu/kulliyatiqbalurdu.epub', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'The Secrets of the Self (Asrar-e-Khudi Translation)', 
+        author: 'Allama Muhammad Iqbal (Trans. Reynold A. Nicholson)', 
+        cover_url: 'https://covers.openlibrary.org/b/id/8231456-M.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/43881.epub.noimages', 
+        is_premium: false, 
+        language: 'en'
+      },
+      { 
+        title: 'Peer-e-Kamil (پیر کامل)', 
+        author: 'Umera Ahmed', 
+        cover_url: 'https://archive.org/services/img/PEEREKAMILP.B.U.HUmeraAhmedEbooks.i360.pk', 
+        file_url: 'https://archive.org/download/PEEREKAMILP.B.U.HUmeraAhmedEbooks.i360.pk/PEEREKAMILP.B.U.HUmeraAhmedEbooks.i360.pk.epub', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Raja Gidh (راجہ گدھ)', 
+        author: 'Bano Qudsia', 
+        cover_url: 'https://archive.org/services/img/raja-gidh_202102', 
+        file_url: 'https://archive.org/download/raja-gidh_202102/raja-gidh_202102.epub', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Thanda Gosht & Manto Afsanay (ٹھنڈا گوشت اور افسانے)', 
+        author: 'Saadat Hasan Manto', 
+        cover_url: 'https://archive.org/services/img/thandagoshtmuqaddamamanto', 
+        file_url: 'https://archive.org/download/thandagoshtmuqaddamamanto/thandagoshtmuqaddamamanto.epub', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Bagh-o-Bahar (باغ و بہار)', 
+        author: 'Mir Amman', 
+        cover_url: 'https://www.gutenberg.org/cache/epub/70864/pg70864.cover.medium.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/70864.epub.noimages', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'The Tale of the Four Durwesh (Bagh-o-Bahar English)', 
+        author: 'Mir Amman (Trans. Duncan Forbes)', 
+        cover_url: 'https://covers.openlibrary.org/b/id/8314125-M.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/16084.epub.noimages', 
+        is_premium: false, 
+        language: 'en'
+      },
+      { 
+        title: 'Fasana-e-Azad (فسانہ آزاد)', 
+        author: 'Ratan Nath Dhar Sarshar', 
+        cover_url: 'https://www.gutenberg.org/cache/epub/71708/pg71708.cover.medium.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/71708.epub.noimages', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Qissa Hatim Tai (قصہ حاتم طائی)', 
+        author: 'Traditional Folklore', 
+        cover_url: 'https://www.gutenberg.org/cache/epub/71434/pg71434.cover.medium.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/71434.epub.noimages', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Intikhab-e-Kalam-e-Mir (انتخاب کلام میر)', 
+        author: 'Mir Taqi Mir', 
+        cover_url: 'https://www.gutenberg.org/cache/epub/72111/pg72111.cover.medium.jpg', 
+        file_url: 'https://www.gutenberg.org/ebooks/72111.epub.noimages', 
+        is_premium: false, 
+        language: 'ur'
+      },
+      { 
+        title: 'Godan (گودان)', 
+        author: 'Munshi Premchand', 
+        cover_url: 'https://archive.org/services/img/Godan-Hindi', 
+        file_url: 'https://archive.org/download/Godan-Hindi/Godan-Hindi.epub', 
+        is_premium: false, 
+        language: 'ur'
+      },
+
+      // World Classics - Originals & Translations
       {
         title: 'The Great Gatsby',
         author: 'F. Scott Fitzgerald',
@@ -60,7 +167,7 @@ export async function GET() {
         language: 'en'
       },
       {
-        title: 'Don Quijote',
+        title: 'Don Quijote de la Mancha (Original Español)',
         author: 'Miguel de Cervantes Saavedra',
         cover_url: 'https://covers.openlibrary.org/b/id/8254881-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/2000.epub.noimages',
@@ -68,7 +175,15 @@ export async function GET() {
         language: 'es'
       },
       {
-        title: 'Le Tour du monde en quatre-vingts jours',
+        title: 'Don Quixote (English Translation)',
+        author: 'Miguel de Cervantes (Trans. John Ormsby)',
+        cover_url: 'https://covers.openlibrary.org/b/id/8254881-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/996.epub.noimages',
+        is_premium: false,
+        language: 'en'
+      },
+      {
+        title: 'Le Tour du monde en 80 jours (Original Français)',
         author: 'Jules Verne',
         cover_url: 'https://covers.openlibrary.org/b/id/8313431-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/800.epub.noimages',
@@ -76,7 +191,15 @@ export async function GET() {
         language: 'fr'
       },
       {
-        title: 'Faust: Eine Tragödie',
+        title: 'Around the World in 80 Days (English Translation)',
+        author: 'Jules Verne (Trans. George Makepeace Towle)',
+        cover_url: 'https://covers.openlibrary.org/b/id/8313431-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/103.epub.noimages',
+        is_premium: false,
+        language: 'en'
+      },
+      {
+        title: 'Faust: Eine Tragödie (Original Deutsch)',
         author: 'Johann Wolfgang von Goethe',
         cover_url: 'https://covers.openlibrary.org/b/id/8282121-M.jpg',
         file_url: 'https://www.gutenberg.org/ebooks/2229.epub.noimages',
@@ -84,44 +207,28 @@ export async function GET() {
         language: 'de'
       },
       {
-        title: 'Bagh-o-Bahar',
-        author: 'Mir Amman',
-        cover_url: 'https://www.gutenberg.org/cache/epub/70864/pg70864.cover.medium.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/70864.epub.noimages',
+        title: 'Faust (English Verse Translation)',
+        author: 'Johann Wolfgang von Goethe (Trans. Bayard Taylor)',
+        cover_url: 'https://covers.openlibrary.org/b/id/8282121-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/14591.epub.noimages',
         is_premium: false,
-        language: 'ur'
+        language: 'en'
       },
       {
-        title: 'Dewan-e-Ghalib',
-        author: 'Mirza Asadullah Khan Ghalib',
-        cover_url: 'https://www.gutenberg.org/cache/epub/72237/pg72237.cover.medium.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/72237.epub.noimages',
+        title: 'War and Peace (English Unabridged)',
+        author: 'Leo Tolstoy (Trans. Louise & Aylmer Maude)',
+        cover_url: 'https://covers.openlibrary.org/b/id/8231996-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/2600.epub.noimages',
         is_premium: false,
-        language: 'ur'
+        language: 'en'
       },
       {
-        title: 'Fasana-e-Azad',
-        author: 'Ratan Nath Dhar Sarshar',
-        cover_url: 'https://www.gutenberg.org/cache/epub/71708/pg71708.cover.medium.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/71708.epub.noimages',
+        title: 'The Arabian Nights Entertainments (1001 Nights)',
+        author: 'Traditional Arabic (Trans. Andrew Lang)',
+        cover_url: 'https://covers.openlibrary.org/b/id/8235123-M.jpg',
+        file_url: 'https://www.gutenberg.org/ebooks/128.epub.noimages',
         is_premium: false,
-        language: 'ur'
-      },
-      {
-        title: 'Qissa Hatim Tai',
-        author: 'Traditional',
-        cover_url: 'https://www.gutenberg.org/cache/epub/71434/pg71434.cover.medium.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/71434.epub.noimages',
-        is_premium: false,
-        language: 'ur'
-      },
-      {
-        title: 'Intikhab-e-Kalam-e-Mir',
-        author: 'Mir Taqi Mir',
-        cover_url: 'https://www.gutenberg.org/cache/epub/72111/pg72111.cover.medium.jpg',
-        file_url: 'https://www.gutenberg.org/ebooks/72111.epub.noimages',
-        is_premium: false,
-        language: 'ur'
+        language: 'en'
       }
     ];
 

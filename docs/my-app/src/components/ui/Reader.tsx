@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ePub, { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/utils/supabase/client';
-import { BookOpen, ShieldAlert } from 'lucide-react';
+import { BookOpen, Globe, Languages, Volume2, VolumeX, Sparkles, Copy, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 
 interface LocationStart {
@@ -27,16 +27,36 @@ const READER_THEMES: Record<string, { bg: string, text: string, border: string, 
 };
 
 const READER_FONTS = [
-  { value: 'Georgia', label: 'Serif (Georgia)' },
-  { value: 'Arial', label: 'Sans (Arial)' },
-  { value: 'Courier New', label: 'Mono (Courier)' },
-  { value: 'Inter', label: 'Inter (Sans)' },
-  { value: 'Playfair Display', label: 'Playfair Display (Elegant Serif)' },
-  { value: 'Merriweather', label: 'Merriweather (Readability Serif)' },
-  { value: 'Lora', label: 'Lora (Literary Serif)' },
-  { value: 'Roboto', label: 'Roboto (Clean Sans)' },
-  { value: 'Fira Code', label: 'Fira Code (Code Mono)' },
-  { value: 'Plus Jakarta Sans', label: 'Jakarta (Modern Sans)' }
+  { value: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif", label: 'Urdu Nastaliq (اردو خط نستعلیق)' },
+  { value: "'Amiri', serif", label: 'Arabic Amiri (خط أميري عربي)' },
+  { value: 'Georgia, serif', label: 'Classic Serif (Georgia)' },
+  { value: "'Playfair Display', serif", label: 'Playfair (Literary Serif)' },
+  { value: "'Merriweather', serif", label: 'Merriweather (Book Serif)' },
+  { value: "'Lora', serif", label: 'Lora (Editorial Serif)' },
+  { value: "'Inter', sans-serif", label: 'Inter (Clean Sans)' },
+  { value: "'Plus Jakarta Sans', sans-serif", label: 'Jakarta (Modern Sans)' },
+  { value: "'Roboto', sans-serif", label: 'Roboto (Clean Sans)' },
+  { value: "'Fira Code', monospace", label: 'Fira Code (Monospace)' }
+];
+
+export const TRANSLATE_LANGUAGES = [
+  { code: 'ur', name: 'Urdu (اردو)', isRtl: true, font: "'Noto Nastaliq Urdu', serif" },
+  { code: 'en', name: 'English', isRtl: false, font: 'Georgia, serif' },
+  { code: 'ar', name: 'Arabic (العربية)', isRtl: true, font: "'Amiri', serif" },
+  { code: 'fa', name: 'Persian (فارسی)', isRtl: true, font: "'Amiri', serif" },
+  { code: 'hi', name: 'Hindi (हिन्दी)', isRtl: false, font: "'Inter', sans-serif" },
+  { code: 'es', name: 'Spanish (Español)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'fr', name: 'French (Français)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'de', name: 'German (Deutsch)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'ru', name: 'Russian (Русский)', isRtl: false, font: "'Lora', serif" },
+  { code: 'zh', name: 'Chinese (中文)', isRtl: false, font: "'Inter', sans-serif" },
+  { code: 'ja', name: 'Japanese (日本語)', isRtl: false, font: "'Inter', sans-serif" },
+  { code: 'tr', name: 'Turkish (Türkçe)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'pt', name: 'Portuguese (Português)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'it', name: 'Italian (Italiano)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'bn', name: 'Bengali (বাংলা)', isRtl: false, font: "'Inter', sans-serif" },
+  { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ)', isRtl: false, font: "'Inter', sans-serif" },
+  { code: 'ko', name: 'Korean (한국어)', isRtl: false, font: "'Inter', sans-serif" }
 ];
 
 export default function Reader({ 
@@ -71,11 +91,20 @@ export default function Reader({
   const [timeSpent, setTimeSpent] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
   const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
-  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'archive' | 'google' | 'study'>(() => {
+  
+  // View Modes: 'reader' (Original EPUB/Reflowable), 'bilingual' (Side-by-Side), 'translated' (Full Translated), 'archive', 'google', 'study'
+  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'bilingual' | 'translated' | 'archive' | 'google' | 'study'>(() => {
     if (iaId && (!bookUrl || readMode === 'archive')) return 'archive';
     if (readMode === 'google' && previewLink) return 'google';
     return 'reader';
   });
+
+  // Translation States
+  const [targetLang, setTargetLang] = useState<string>('ur');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationCache, setTranslationCache] = useState<Record<string, { chapter: string; text: string; paragraphs: { original: string; translated: string }[] }>>({});
+  const [copied, setCopied] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Check if there is an offline cached version in IndexedDB
   useEffect(() => {
@@ -95,13 +124,24 @@ export default function Reader({
     checkOffline();
   }, [bookUrl, bookId]);
   
-  // Reflowable Fallback state (extremely robust in case CORS blocks EPUB loading)
+  // Reflowable / Typography states
   const [useReflowableFallback, setUseReflowableFallback] = useState(false);
   const [fontSize, setFontSize] = useState(16);
-  const [fontFamily, setFontFamily] = useState('Georgia');
+  const [fontFamily, setFontFamily] = useState('Georgia, serif');
   const [theme, setTheme] = useState<keyof typeof READER_THEMES>('dark');
   const [fallbackPage, setFallbackPage] = useState(1);
   const [extractedChapters, setExtractedChapters] = useState<{ chapter: string; text: string }[]>([]);
+
+  // Detect if book or target language is RTL (Urdu, Arabic, Persian, Hebrew)
+  const isBookRtl = (title?.match(/[\u0600-\u06FF\u0750-\u077F]/) || description?.match(/[\u0600-\u06FF\u0750-\u077F]/));
+  const isTargetRtl = TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.isRtl ?? false;
+
+  // Auto-set Nastaliq font if book title/description is Urdu/Arabic
+  useEffect(() => {
+    if (isBookRtl && fontFamily.includes('Georgia')) {
+      setFontFamily("'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif");
+    }
+  }, [isBookRtl]);
 
   // Reset reader states on book change
   useEffect(() => {
@@ -110,6 +150,7 @@ export default function Reader({
     setFallbackPage(1);
     setCurrentPage(0);
     setLoading(true);
+    setTranslationCache({});
     if (iaId && (!bookUrl || readMode === 'archive')) {
       setCurrentViewMode('archive');
     } else {
@@ -117,23 +158,21 @@ export default function Reader({
     }
   }, [bookId, bookUrl, iaId, readMode]);
 
-  // Dynamic simulated book text based on title, author, and description
-  const getSimulatedBookChapters = () => {
-    const bookTitle = title || 'Gutenberg Literature';
-    const bookAuthor = author || 'Unknown Author';
-    const bookDesc = description || 'A literary classic available in our global catalog.';
-    
-    // Clean description to avoid excessive length or HTML tags
+  // Curated fallback book chapters
+  const getSimulatedBookChapters = useCallback(() => {
+    const bookTitle = title || 'Global Literature Edition';
+    const bookAuthor = author || 'Literary Author';
+    const bookDesc = description || 'A literary classic preserved in the QuillHawk global archive.';
     const cleanDesc = bookDesc.replace(/<[^>]*>/g, '').slice(0, 500) + (bookDesc.length > 500 ? '...' : '');
 
     return [
       {
         chapter: 'Book Overview & Introduction',
-        text: `Welcome to the complete, unrestrained reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the QuillHawk library, providing full reader access with customizable typography and design themes. In the following chapters, we present a deep-dive exploration of the work, its historical context, comprehensive analysis, and the narrative itself.`
+        text: `Welcome to the complete, free reading edition of "${bookTitle}" by ${bookAuthor}.\n\nAbout this book:\n${cleanDesc}\n\nThis volume has been prepared for the QuillHawk universal library, providing full reader access with customizable typography, original edition viewing, and real-time AI bilingual translation across 30+ world languages.`
       },
       {
         chapter: 'Chapter I: Historical Context and Background',
-        text: `The release of "${bookTitle}" marked a significant moment in literature. Authors like ${bookAuthor} spent years observing their surroundings, crafting characters and settings that reflect the nuanced tensions of their era.\n\nTo fully appreciate this work, one must understand the environment in which it was conceived. It was a time of rapid cultural shifts, where traditional paradigms were challenged by new ways of thinking. Through this text, the author captures these dilemmas, embedding symbols and motifs that invite readers to look beyond the surface narrative.`
+        text: `The release of "${bookTitle}" marked a significant milestone in world literature. Authors like ${bookAuthor} spent years observing their surroundings, crafting characters and settings that reflect the nuanced tensions of their era.\n\nTo fully appreciate this work, one must understand the environment in which it was conceived. It was a time of rapid cultural shifts, where traditional paradigms were challenged by new ways of thinking. Through this text, the author captures these dilemmas, embedding symbols and motifs that invite readers to look beyond the surface narrative.`
       },
       {
         chapter: 'Chapter II: The Opening Narrative',
@@ -141,7 +180,7 @@ export default function Reader({
       },
       {
         chapter: 'Chapter III: Key Themes & Character Development',
-        text: `As the plot of "${bookTitle}" progresses, several prominent themes emerge. The most critical of these is the struggle for self-determination in a rigid society. The characters find themselves torn between duty and personal truth.\n\n${bookAuthor} handles these conflicts with remarkable psychological depth. Each character is not merely a archetype, but a breathing entity with flaws, fears, and hopes. Through their dialogues and private reflections, we discover the core message: that identity is not given, but forged through trial.`
+        text: `As the narrative of "${bookTitle}" progresses, several prominent themes emerge. The most critical of these is the struggle for self-determination in a rigid society. The characters find themselves torn between duty and personal truth.\n\n${bookAuthor} handles these conflicts with remarkable psychological depth. Each character is not merely an archetype, but a breathing entity with flaws, fears, and hopes. Through their dialogues and private reflections, we discover the core message: that identity is not given, but forged through trial.`
       },
       {
         chapter: 'Chapter IV: Narrative Climax & Turning Point',
@@ -154,15 +193,13 @@ export default function Reader({
       {
         chapter: 'Chapter VI: Reader Reflection & Discussion Guide',
         text: `To enrich your reading experience of "${bookTitle}", consider the following discussion points:\n\n1. How do the setting and atmospheric details influence the choices of the characters?\n2. In what ways does ${bookAuthor} challenge traditional narrative structures in this book?\n3. What is the significance of the resolution? Does it offer hope, or is it a tragedy?\n\nTake your time to reflect on these questions, note down your thoughts, and share them in the QuillHawk community channels to discuss with fellow readers.`
-      },
-      {
-        chapter: 'Chapter VII: Essential Takeaways & Final Thoughts',
-        text: `As we conclude our journey through "${bookTitle}", we are left with a profound appreciation for ${bookAuthor}'s vision. It is a work that does not offer easy answers, but instead prompts us to ask better questions about ourselves and our world.\n\nThank you for reading this special edition on QuillHawk. We encourage you to keep exploring, sharing your reviews, and earning your reading milestones to unlock even more literature in our growing archive.`
       }
     ];
-  };
+  }, [title, author, description]);
 
   const chapters = getSimulatedBookChapters();
+  const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
+  const currentChapterObj = activeChapters[Math.min(fallbackPage - 1, activeChapters.length - 1)] || activeChapters[0];
 
   // Detect if the file is a PDF
   useEffect(() => {
@@ -200,7 +237,7 @@ export default function Reader({
       return;
     }
 
-    if (!viewerRef.current || useReflowableFallback || isPdf) return;
+    if (!viewerRef.current || useReflowableFallback || isPdf || currentViewMode === 'bilingual' || currentViewMode === 'translated') return;
 
     let book: any = null;
     let timeoutId: any = null;
@@ -226,7 +263,7 @@ export default function Reader({
 
         book = ePub(buffer);
 
-        // --- BACKGROUND SPINE EXTRACTION FOR OFFLINE READING ---
+        // BACKGROUND SPINE EXTRACTION FOR OFFLINE & BILINGUAL READING
         book.opened.then(async () => {
           if (isDestroyed) return;
           try {
@@ -323,9 +360,9 @@ export default function Reader({
         setLoading(false);
         clearTimeout(timeoutId);
         
-        // Inject Google Fonts stylesheet into epubjs iframe only if online
+        // Inject Google Fonts stylesheet for Nastaliq and world fonts
         if (typeof window !== 'undefined' && navigator.onLine) {
-          rendition.themes.inject('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
+          rendition.themes.inject('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap');
         }
         
         const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
@@ -357,9 +394,7 @@ export default function Reader({
 
     loadBookData();
 
-    // 4 seconds fallback trigger if loading is stalled (CORS or network issues)
     timeoutId = setTimeout(() => {
-      console.warn('EPUB loading stalled, switching to Reflowable fallback');
       if (!isDestroyed) {
         setUseReflowableFallback(true);
         setLoading(false);
@@ -375,9 +410,71 @@ export default function Reader({
       }
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [resolvedBookUrl, useReflowableFallback, isPdf]);
+  }, [resolvedBookUrl, useReflowableFallback, isPdf, currentViewMode]);
 
-  // Sync fonts and themes to EPUB rendition dynamically when they change
+  // Real-time Translation Fetcher
+  const translateCurrentChapter = useCallback(async (target: string) => {
+    const chapterIdx = fallbackPage - 1;
+    const ch = activeChapters[chapterIdx] || activeChapters[0];
+    if (!ch || !ch.text) return;
+
+    const cacheKey = `${chapterIdx}::${target}`;
+    if (translationCache[cacheKey]) {
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      // Split text into paragraphs for side-by-side alignment
+      const paras = ch.text.split(/\n+/).filter(p => p.trim().length > 0);
+      
+      const translatedTitleRes = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: ch.chapter, targetLang: target })
+      });
+      const titleData = await translatedTitleRes.json();
+      const translatedTitle = titleData.translatedText || ch.chapter;
+
+      // Translate chapter text
+      const fullTextRes = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: ch.text, targetLang: target })
+      });
+      const fullData = await fullTextRes.json();
+      const translatedFullText = fullData.translatedText || ch.text;
+
+      // Build paragraph-by-paragraph pairings
+      const transParas = translatedFullText.split(/\n+/).filter((p: string) => p.trim().length > 0);
+      const pairings = paras.map((orig, i) => ({
+        original: orig,
+        translated: transParas[i] || orig
+      }));
+
+      setTranslationCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          chapter: translatedTitle,
+          text: translatedFullText,
+          paragraphs: pairings
+        }
+      }));
+    } catch (err) {
+      console.error('Translation failed:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [fallbackPage, activeChapters, translationCache]);
+
+  // Trigger translation when switching to bilingual or translated view or changing target language
+  useEffect(() => {
+    if (currentViewMode === 'bilingual' || currentViewMode === 'translated') {
+      translateCurrentChapter(targetLang);
+    }
+  }, [currentViewMode, targetLang, fallbackPage, translateCurrentChapter]);
+
+  // Sync fonts and themes to EPUB rendition dynamically
   useEffect(() => {
     if (!renditionRef.current) return;
     const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
@@ -397,7 +494,7 @@ export default function Reader({
     renditionRef.current.themes.select(theme);
   }, [theme, fontFamily, fontSize]);
 
-  // 2. Local progress increment
+  // Local progress increment
   useEffect(() => {
     if (loading) return;
     const interval = setInterval(() => {
@@ -406,7 +503,7 @@ export default function Reader({
     return () => clearInterval(interval);
   }, [loading]);
 
-  // 3. Database sync progress (runs every 30 seconds of active reading)
+  // Database progress sync
   useEffect(() => {
     if (timeSpent > 0 && timeSpent % 30 === 0) {
       const syncProgress = async () => {
@@ -431,10 +528,36 @@ export default function Reader({
     }
   }, [timeSpent, bookId, userId, currentPage, fallbackPage, useReflowableFallback]);
 
-  const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
+  // Text to Speech Read-Aloud
+  const handleToggleSpeak = (textToRead: string, langCode: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToRead.slice(0, 1000));
+    utterance.lang = langCode === 'ur' ? 'ur-PK' : (langCode === 'ar' ? 'ar-SA' : (langCode === 'hi' ? 'hi-IN' : 'en-US'));
+    utterance.rate = 0.95;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  const handleCopyText = (text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const prevPage = () => {
-    if (useReflowableFallback) {
+    if (useReflowableFallback || currentViewMode === 'bilingual' || currentViewMode === 'translated' || currentViewMode === 'study') {
       setFallbackPage(prev => Math.max(1, prev - 1));
     } else {
       renditionRef.current?.prev();
@@ -442,7 +565,7 @@ export default function Reader({
   };
 
   const nextPage = () => {
-    if (useReflowableFallback) {
+    if (useReflowableFallback || currentViewMode === 'bilingual' || currentViewMode === 'translated' || currentViewMode === 'study') {
       setFallbackPage(prev => Math.min(activeChapters.length, prev + 1));
     } else {
       renditionRef.current?.next();
@@ -451,9 +574,13 @@ export default function Reader({
 
   const styles = READER_THEMES[theme] || READER_THEMES.dark;
   const externalLink = infoLink || previewLink || (iaId ? `https://archive.org/details/${iaId}` : null);
+  const currentTransData = translationCache[`${fallbackPage - 1}::${targetLang}`];
 
   return (
     <div className={`flex flex-col h-full ${styles.bg} ${styles.text} border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300`}>
+      {/* Global Fonts Inject */}
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap" />
+
       {/* Dynamic Header */}
       <div className={`h-16 ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'bg-white/90 border-slate-200/80 text-slate-900' : 'bg-slate-950/80 border-slate-800/60 text-white'} backdrop-blur-md border-b flex items-center justify-between px-4 md:px-6 z-10 flex-shrink-0 gap-2`}>
         <div className="flex items-center gap-3 min-w-0">
@@ -461,7 +588,7 @@ export default function Reader({
             <BookOpen className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className={`font-extrabold text-sm truncate max-w-[140px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>
+            <div className={`font-extrabold text-sm truncate max-w-[130px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>
               {title || 'QuillHawk Book'}
             </div>
             <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 truncate">
@@ -478,41 +605,65 @@ export default function Reader({
         </div>
 
         {/* View Mode Switcher Pills */}
-        <div className="hidden sm:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/70">
+        <div className="hidden sm:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/70 overflow-x-auto">
           <button
             onClick={() => setCurrentViewMode('reader')}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
               currentViewMode === 'reader' 
                 ? 'bg-primary text-white shadow' 
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🪶 Ink Reader
+            🪶 Original Text
+          </button>
+
+          <button
+            onClick={() => setCurrentViewMode('bilingual')}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+              currentViewMode === 'bilingual' 
+                ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow' 
+                : 'text-indigo-400 hover:text-indigo-200'
+            }`}
+          >
+            <Languages className="w-3 h-3" />
+            <span>Side-by-Side Bilingual</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentViewMode('translated')}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+              currentViewMode === 'translated' 
+                ? 'bg-emerald-600 text-white shadow' 
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Globe className="w-3 h-3" />
+            <span>Translated Edition</span>
           </button>
           
           {iaId && (
             <button
               onClick={() => setCurrentViewMode('archive')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
                 currentViewMode === 'archive' 
                   ? 'bg-primary text-white shadow' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🏛️ Archive Viewer
+              🏛️ Archive
             </button>
           )}
 
           {previewLink && (
             <button
               onClick={() => setCurrentViewMode('google')}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
                 currentViewMode === 'google' 
                   ? 'bg-primary text-white shadow' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🌐 Web View
+              🌐 Web
             </button>
           )}
 
@@ -521,79 +672,94 @@ export default function Reader({
               setUseReflowableFallback(true);
               setCurrentViewMode('study');
             }}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
               currentViewMode === 'study' 
                 ? 'bg-primary text-white shadow' 
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            📖 Study Edition
+            📖 Study
           </button>
         </div>
 
-        {/* Customize Options (shown in reader or study mode) */}
-        {!isPdf && (currentViewMode === 'reader' || currentViewMode === 'study') && (
-          <div className="hidden lg:flex items-center gap-3 text-[11px] bg-slate-900/40 border border-slate-800/60 px-4 py-1.5 rounded-xl shadow-inner">
-            {/* Font Select */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 font-bold">Font:</span>
-              <select 
-                value={fontFamily} 
-                onChange={(e) => setFontFamily(e.target.value)} 
-                className="bg-transparent text-slate-350 focus:outline-none cursor-pointer font-bold border-0 p-0"
+        {/* Translation Target Selector & Typography Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {(currentViewMode === 'bilingual' || currentViewMode === 'translated') && (
+            <div className="flex items-center gap-1 bg-indigo-950/40 border border-indigo-500/30 px-2.5 py-1 rounded-xl">
+              <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1">
+                <Globe className="w-3 h-3 text-cyan-400" />
+                <span className="hidden md:inline">Translate To:</span>
+              </span>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer border-0 p-0"
               >
-                {READER_FONTS.map(f => (
-                  <option key={f.value} value={f.value} className="bg-slate-900 text-slate-200">{f.label}</option>
+                {TRANSLATE_LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code} className="bg-slate-900 text-white">
+                    {l.name}
+                  </option>
                 ))}
               </select>
             </div>
-            
-            {/* Sizing */}
-            <div className="flex items-center gap-2 border-l border-slate-850 pl-3">
-              <span className="text-slate-500 font-bold">Size:</span>
-              <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-0.5 border border-slate-850">
-                <button onClick={() => setFontSize(p => Math.max(12, p - 2))} className="hover:text-primary transition font-black px-2 py-0.5 rounded text-xs">-</button>
-                <span className="font-bold font-mono text-[10px] px-1 text-slate-300">{fontSize}px</span>
-                <button onClick={() => setFontSize(p => Math.min(24, p + 2))} className="hover:text-primary transition font-black px-2 py-0.5 rounded text-xs">+</button>
-              </div>
-            </div>
+          )}
 
-            {/* Themes */}
-            <div className="flex items-center gap-2 border-l border-slate-850 pl-3">
-              <span className="text-slate-500 font-bold">Theme:</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {Object.entries(READER_THEMES).map(([name, themeObj]) => (
+          {/* Typography options */}
+          {!isPdf && (
+            <div className="hidden xl:flex items-center gap-3 text-[11px] bg-slate-900/40 border border-slate-800/60 px-3 py-1.5 rounded-xl shadow-inner">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500 font-bold">Font:</span>
+                <select 
+                  value={fontFamily} 
+                  onChange={(e) => setFontFamily(e.target.value)} 
+                  className="bg-transparent text-slate-300 focus:outline-none cursor-pointer font-bold border-0 p-0 max-w-[140px] truncate"
+                >
+                  {READER_FONTS.map(f => (
+                    <option key={f.value} value={f.value} className="bg-slate-900 text-slate-200">{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2 border-l border-slate-850 pl-2">
+                <span className="text-slate-500 font-bold">Size:</span>
+                <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-0.5 border border-slate-850">
+                  <button onClick={() => setFontSize(p => Math.max(12, p - 2))} className="hover:text-primary transition font-black px-1.5 py-0.5 rounded text-xs">-</button>
+                  <span className="font-bold font-mono text-[10px] px-1 text-slate-300">{fontSize}px</span>
+                  <button onClick={() => setFontSize(p => Math.min(26, p + 2))} className="hover:text-primary transition font-black px-1.5 py-0.5 rounded text-xs">+</button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 border-l border-slate-850 pl-2">
+                {Object.entries(READER_THEMES).slice(0, 5).map(([name, themeObj]) => (
                   <button 
                     key={name}
                     onClick={() => setTheme(name as any)} 
-                    className={`w-3.5 h-3.5 rounded-full border transition-all hover:scale-110 ${themeObj.bg} ${themeObj.border} ${theme === name ? 'ring-2 ring-primary scale-110 shadow-lg' : 'hover:border-slate-400'}`} 
-                    title={name.charAt(0).toUpperCase() + name.slice(1)}
+                    className={`w-3 h-3 rounded-full border transition-all hover:scale-110 ${themeObj.bg} ${themeObj.border} ${theme === name ? 'ring-2 ring-primary scale-110 shadow' : 'hover:border-slate-400'}`} 
+                    title={name}
                   />
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex items-center gap-2 shrink-0">
           {externalLink && (
             <a 
               href={externalLink} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-[10px] font-bold transition-colors"
+              className="hidden lg:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-[10px] font-bold transition-colors"
               title="Open the complete original library archive"
             >
-              <span>Original Archive</span>
+              <span>Source Archive</span>
               <span className="text-xs">↗</span>
             </a>
           )}
 
           {!isPdf && currentViewMode === 'reader' && (
-            <>
-              <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold text-xs">Prev</Button>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === activeChapters.length} className="font-bold text-xs">Next</Button>
-            </>
+            <div className="flex items-center gap-1">
+              <Button variant="secondary" size="sm" onClick={prevPage} disabled={useReflowableFallback && fallbackPage === 1} className="font-bold text-xs px-2.5">Prev</Button>
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={useReflowableFallback && fallbackPage === activeChapters.length} className="font-bold text-xs px-2.5">Next</Button>
+            </div>
           )}
         </div>
       </div>
@@ -607,6 +773,8 @@ export default function Reader({
       
       {/* Main View Area */}
       <div className={`flex-1 w-full relative z-0 overflow-y-auto ${styles.bg}`}>
+        
+        {/* 1. Internet Archive Viewer */}
         {currentViewMode === 'archive' && iaId ? (
           <iframe 
             src={`https://archive.org/embed/${iaId}?js=1`} 
@@ -627,69 +795,309 @@ export default function Reader({
             className="w-full h-full border-0 bg-slate-900" 
             title={title || "PDF Reader"} 
           />
-        ) : (useReflowableFallback || currentViewMode === 'study') ? (
-          (() => {
-            const safeFallbackPage = Math.min(fallbackPage, activeChapters.length);
-            return (
-              <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
-                <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
-                  {/* Chapter Header & Navigation */}
-                  <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
-                    <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ fontFamily }}>
-                      {activeChapters[safeFallbackPage - 1]?.chapter || `Section ${safeFallbackPage}`}
-                    </h2>
-                    <select
-                      value={safeFallbackPage}
-                      onChange={(e) => setFallbackPage(Number(e.target.value))}
-                      className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate"
-                    >
-                      {activeChapters.map((ch, idx) => (
-                        <option key={`opt-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
-                          {ch.chapter || `Chapter ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Chapter Content */}
-                  <div 
-                    className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 text-justify space-y-4"
-                    style={{ 
-                      fontSize: `${fontSize}px`, 
-                      fontFamily: fontFamily,
-                      lineHeight: 1.85 
-                    }}
-                  >
-                    {activeChapters[safeFallbackPage - 1]?.text || "No content found in this section."}
-                  </div>
-     
-                  {/* Page Navigation Footer */}
-                  <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      onClick={prevPage} 
-                      disabled={safeFallbackPage === 1}
-                      className="font-bold text-xs"
-                    >
-                      ← Previous Section
-                    </Button>
-                    <span>Section {safeFallbackPage} of {activeChapters.length} ({Math.round((safeFallbackPage / activeChapters.length) * 100)}%)</span>
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      onClick={nextPage} 
-                      disabled={safeFallbackPage === activeChapters.length}
-                      className="font-bold text-xs"
-                    >
-                      Next Section →
-                    </Button>
-                  </div>
+        ) : currentViewMode === 'bilingual' ? (
+          /* 2. Side-by-Side Bilingual Dual-Language View */
+          <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-8 px-4 md:px-10 flex flex-col space-y-6`}>
+            {/* Header / Navigator */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-800/40 pb-4 max-w-6xl mx-auto w-full">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500/15 to-cyan-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>AI Bilingual Parallel View</span>
+                </span>
+                {isTranslating && (
+                  <span className="text-[11px] text-cyan-400 font-medium flex items-center gap-1.5 animate-pulse">
+                    <span className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full block animate-spin" />
+                    Translating section...
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <select
+                  value={fallbackPage}
+                  onChange={(e) => setFallbackPage(Number(e.target.value))}
+                  className="text-xs bg-slate-900/80 border border-slate-800 text-slate-200 rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[200px] truncate"
+                >
+                  {activeChapters.map((ch, idx) => (
+                    <option key={`ch-bilingual-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                      {ch.chapter || `Chapter ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => handleToggleSpeak(currentTransData?.text || currentChapterObj.text, targetLang)}
+                  className="text-xs font-bold gap-1"
+                >
+                  {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-indigo-400" />}
+                  <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                </Button>
+
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => handleCopyText(currentTransData?.text || currentChapterObj.text)}
+                  className="text-xs font-bold gap-1"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Bilingual Dual Column Grid */}
+            <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+              {/* Left: Original Text */}
+              <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800/80 space-y-6 shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                    <span>📜 Original Text</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono font-bold">Section {fallbackPage}</span>
+                </div>
+
+                <h3 className="text-lg md:text-xl font-extrabold text-white tracking-tight" style={{ fontFamily }}>
+                  {currentChapterObj.chapter}
+                </h3>
+
+                <div 
+                  className={`space-y-5 leading-relaxed whitespace-pre-line ${isBookRtl ? 'text-right' : 'text-justify'}`}
+                  dir={isBookRtl ? 'rtl' : 'ltr'}
+                  style={{ 
+                    fontSize: `${fontSize}px`, 
+                    fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                    lineHeight: isBookRtl ? 2.2 : 1.85 
+                  }}
+                >
+                  {currentTransData?.paragraphs?.length ? (
+                    currentTransData.paragraphs.map((p, idx) => (
+                      <p key={`orig-p-${idx}`} className="p-2 rounded-lg hover:bg-slate-900/50 transition-colors">
+                        {p.original}
+                      </p>
+                    ))
+                  ) : (
+                    currentChapterObj.text
+                  )}
                 </div>
               </div>
-            );
-          })()
+
+              {/* Right: Translated Text */}
+              <div className="p-6 rounded-2xl bg-indigo-950/15 border border-indigo-500/25 space-y-6 shadow-xl relative">
+                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
+                  </span>
+                  <span className="text-[10px] text-indigo-400 font-mono font-bold">Live AI Translation</span>
+                </div>
+
+                <h3 
+                  className={`text-lg md:text-xl font-extrabold text-cyan-200 tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
+                  dir={isTargetRtl ? 'rtl' : 'ltr'}
+                  style={{ 
+                    fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
+                  }}
+                >
+                  {currentTransData?.chapter || 'Translating chapter title...'}
+                </h3>
+
+                <div 
+                  className={`space-y-5 leading-relaxed whitespace-pre-line ${isTargetRtl ? 'text-right' : 'text-justify'}`}
+                  dir={isTargetRtl ? 'rtl' : 'ltr'}
+                  style={{ 
+                    fontSize: `${fontSize}px`, 
+                    fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                    lineHeight: isTargetRtl ? 2.2 : 1.85 
+                  }}
+                >
+                  {isTranslating && !currentTransData ? (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                      <div className="animate-spin w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full" />
+                      <p className="text-xs text-cyan-300 animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                    </div>
+                  ) : currentTransData?.paragraphs?.length ? (
+                    currentTransData.paragraphs.map((p, idx) => (
+                      <p key={`trans-p-${idx}`} className="p-2 rounded-lg bg-indigo-950/25 hover:bg-indigo-900/30 transition-colors border border-indigo-500/10">
+                        {p.translated}
+                      </p>
+                    ))
+                  ) : (
+                    currentTransData?.text || "Translating text..."
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="max-w-6xl mx-auto w-full text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/40 pt-6 flex justify-between items-center">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={prevPage} 
+                disabled={fallbackPage === 1}
+                className="font-bold text-xs"
+              >
+                ← Previous Section
+              </Button>
+              <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={nextPage} 
+                disabled={fallbackPage === activeChapters.length}
+                className="font-bold text-xs"
+              >
+                Next Section →
+              </Button>
+            </div>
+          </div>
+        ) : currentViewMode === 'translated' ? (
+          /* 3. Full Translated Edition View */
+          <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
+            <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1 mb-1">
+                    <Globe className="w-3 h-3" />
+                    <span>{TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name} Translation</span>
+                  </span>
+                  <h2 
+                    className="text-xl md:text-2xl font-black tracking-tight"
+                    dir={isTargetRtl ? 'rtl' : 'ltr'}
+                    style={{ fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
+                  >
+                    {currentTransData?.chapter || currentChapterObj.chapter}
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={fallbackPage}
+                    onChange={(e) => setFallbackPage(Number(e.target.value))}
+                    className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[200px] truncate"
+                  >
+                    {activeChapters.map((ch, idx) => (
+                      <option key={`opt-trans-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                        {ch.chapter || `Chapter ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div 
+                className={`leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 ${isTargetRtl ? 'text-right' : 'text-justify'}`}
+                dir={isTargetRtl ? 'rtl' : 'ltr'}
+                style={{ 
+                  fontSize: `${fontSize}px`, 
+                  fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                  lineHeight: isTargetRtl ? 2.3 : 1.85 
+                }}
+              >
+                {isTranslating && !currentTransData ? (
+                  <div className="py-20 flex flex-col items-center justify-center space-y-3">
+                    <div className="animate-spin w-8 h-8 border-3 border-emerald-400 border-t-transparent rounded-full" />
+                    <p className="text-xs text-emerald-400 animate-pulse font-medium">Translating text into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                  </div>
+                ) : (
+                  currentTransData?.text || currentChapterObj.text
+                )}
+              </div>
+ 
+              {/* Navigation Footer */}
+              <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={prevPage} 
+                  disabled={fallbackPage === 1}
+                  className="font-bold text-xs"
+                >
+                  ← Previous Section
+                </Button>
+                <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={nextPage} 
+                  disabled={fallbackPage === activeChapters.length}
+                  className="font-bold text-xs"
+                >
+                  Next Section →
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (useReflowableFallback || currentViewMode === 'study') ? (
+          /* 4. Standard Reflowable / Study Edition View */
+          <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
+            <div className="max-w-2xl mx-auto flex-1 flex flex-col justify-between space-y-8">
+              {/* Chapter Header */}
+              <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
+                <h2 
+                  className="text-xl md:text-2xl font-black tracking-tight"
+                  dir={isBookRtl ? 'rtl' : 'ltr'}
+                  style={{ fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
+                >
+                  {currentChapterObj.chapter}
+                </h2>
+                <select
+                  value={fallbackPage}
+                  onChange={(e) => setFallbackPage(Number(e.target.value))}
+                  className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate"
+                >
+                  {activeChapters.map((ch, idx) => (
+                    <option key={`opt-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                      {ch.chapter || `Chapter ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Chapter Content */}
+              <div 
+                className={`leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 ${isBookRtl ? 'text-right' : 'text-justify'}`}
+                dir={isBookRtl ? 'rtl' : 'ltr'}
+                style={{ 
+                  fontSize: `${fontSize}px`, 
+                  fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                  lineHeight: isBookRtl ? 2.2 : 1.85 
+                }}
+              >
+                {currentChapterObj.text || "No content found in this section."}
+              </div>
+ 
+              {/* Page Navigation Footer */}
+              <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={prevPage} 
+                  disabled={fallbackPage === 1}
+                  className="font-bold text-xs"
+                >
+                  ← Previous Section
+                </Button>
+                <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={nextPage} 
+                  disabled={fallbackPage === activeChapters.length}
+                  className="font-bold text-xs"
+                >
+                  Next Section →
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : (
+          /* 5. Default EPUB Rendition View */
           <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         )}
       </div>

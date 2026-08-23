@@ -165,11 +165,11 @@ export default function PremiumPage() {
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600/10 to-indigo-500/10 border border-blue-500/30 text-blue-300 text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>QuillHawk VIP Lounge</span>
+            <span>QuillHawk VIP & Multilingual Suite</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">QuillHawk Soaring Pass</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">QuillHawk VIP Superpass</h1>
           <p className="text-slate-400 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Unlock exclusive cloud access to best-selling titles, read books on the go, and track metrics.
+            All online books in every language are 100% free! Upgrade or complete weekly reading quests for unlimited AI Bilingual Translation, Nastaliq typography, and instant offline EPUB saving.
           </p>
         </div>
 
@@ -183,9 +183,9 @@ export default function PremiumPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between">
               <ul className="space-y-3.5 text-xs text-slate-400">
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Bookshelf Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Multilingual Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Bilingual AI Translation</li>
                 <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 7 Days Offline access</li>
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> VIP lounge unlock</li>
               </ul>
               <Button 
                 variant="secondary"
@@ -206,9 +206,9 @@ export default function PremiumPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between">
               <ul className="space-y-3.5 text-xs text-slate-400">
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Bookshelf Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Multilingual Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Bilingual AI Translation</li>
                 <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 30 Days Offline access</li>
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> VIP lounge unlock</li>
               </ul>
               <Button 
                 variant="secondary"
@@ -229,9 +229,9 @@ export default function PremiumPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between">
               <ul className="space-y-3.5 text-xs text-slate-400">
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Bookshelf Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Full Multilingual Catalog</li>
+                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Bilingual AI Translation</li>
                 <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 90 Days Offline access</li>
-                <li className="flex items-center gap-2 font-medium"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> VIP lounge unlock</li>
               </ul>
               <Button 
                 variant="secondary"
@@ -248,15 +248,15 @@ export default function PremiumPage() {
           <Card className="bg-[#0b0c10]/80 border-warning/40 shadow-2xl relative overflow-hidden group hover:shadow-warning/15 hover:border-warning/60 transition-all transform scale-105 z-10 flex flex-col justify-between">
             <div className="absolute top-0 right-0 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[10px] font-black px-4 py-1.5 rounded-bl-xl tracking-widest uppercase shadow">BEST VALUE</div>
             <CardHeader className="text-center pb-4 pt-8">
-              <h2 className="text-xl font-black text-warning">Yearly Premium</h2>
+              <h2 className="text-xl font-black text-warning">Yearly VIP</h2>
               <p className="text-3xl font-black text-white font-mono mt-2">₹999 <span className="text-xs text-slate-500 font-semibold font-sans">/ yr</span></p>
             </CardHeader>
             <CardContent className="p-6 space-y-6 flex-1 flex flex-col justify-between bg-warning/5">
               <ul className="space-y-4 text-xs text-slate-300">
-                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Full Bookshelf Catalog</li>
-                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Full Offline DRM Access</li>
-                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> VIP lounge unlock</li>
-                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Immersive Badge unlock</li>
+                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Full Multilingual Catalog</li>
+                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Unlimited AI Bilingual Translation</li>
+                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Urdu Nastaliq & Calligraphy Suite</li>
+                <li className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4 text-warning shrink-0" /> Unlimited Offline EPUB Downloads</li>
               </ul>
               <Button 
                 className="w-full mt-6 bg-gradient-to-r from-warning to-amber-500 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg shadow-warning/20 transform hover:scale-[1.02] active:scale-95 transition-all" 

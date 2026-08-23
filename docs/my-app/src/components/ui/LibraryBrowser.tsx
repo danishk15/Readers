@@ -51,6 +51,11 @@ interface LocalBook {
   cover_url: string;
   file_url: string;
   is_premium: boolean;
+  language?: string;
+  is_original?: boolean;
+  is_translation?: boolean;
+  original_language?: string;
+  translated_to?: string;
 }
 
 interface LibraryBrowserProps {
@@ -64,6 +69,11 @@ interface OnlineBook {
   source?: string;
   isPremium?: boolean;
   price?: string;
+  is_original?: boolean;
+  is_translation?: boolean;
+  original_language?: string;
+  translated_to?: string;
+  language?: string;
   volumeInfo: {
     title: string;
     authors?: string[];
@@ -612,32 +622,45 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     readMode?: 'epub' | 'archive' | 'google' | 'interactive';
   } | null>(null);
 
-  const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery"];
+  const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery", "Poetry", "Philosophy", "Classics"];
+  const [versionType, setVersionType] = useState<'all' | 'original' | 'translation'>('all');
+
   const languages = [
-    { code: '', label: 'Any Language', iso6391: '', iso6392: '' },
-    { code: 'eng', label: 'English', iso6391: 'en', iso6392: 'eng' },
-    { code: 'ara', label: 'Arabic (العربية)', iso6391: 'ar', iso6392: 'ara' },
-    { code: 'per', label: 'Persian (فارسی)', iso6391: 'fa', iso6392: 'per' },
-    { code: 'hin', label: 'Hindi (हिन्दी)', iso6391: 'hi', iso6392: 'hin' },
-    { code: 'urd', label: 'Urdu (اردو)', iso6391: 'ur', iso6392: 'urd' },
-    { code: 'spa', label: 'Spanish (Español)', iso6391: 'es', iso6392: 'spa' },
-    { code: 'fre', label: 'French (Français)', iso6391: 'fr', iso6392: 'fre' },
-    { code: 'ger', label: 'German (Deutsch)', iso6391: 'de', iso6392: 'ger' },
-    { code: 'jpn', label: 'Japanese (日本語)', iso6391: 'ja', iso6392: 'jpn' },
-    { code: 'chi', label: 'Chinese (中文)', iso6391: 'zh', iso6392: 'chi' },
-    { code: 'rus', label: 'Russian (Русский)', iso6391: 'ru', iso6392: 'rus' },
-    { code: 'por', label: 'Portuguese (Português)', iso6391: 'pt', iso6392: 'por' },
-    { code: 'ita', label: 'Italian (Italiano)', iso6391: 'it', iso6392: 'ita' },
-    { code: 'tur', label: 'Turkish (Türkçe)', iso6391: 'tr', iso6392: 'tur' },
-    { code: 'dan', label: 'Danish (Dansk)', iso6391: 'da', iso6392: 'dan' },
-    { code: 'swe', label: 'Swedish (Svenska)', iso6391: 'sv', iso6392: 'swe' },
-    { code: 'nld', label: 'Dutch (Nederlands)', iso6391: 'nl', iso6392: 'dut' },
-    { code: 'kor', label: 'Korean (한국어)', iso6391: 'ko', iso6392: 'kor' }
+    { code: '', label: '🌐 All Languages (تمام زبانیں)', iso6391: '', iso6392: '' },
+    { code: 'urd', label: '🇵🇰 Urdu (اردو)', iso6391: 'ur', iso6392: 'urd' },
+    { code: 'eng', label: '🇬🇧 English', iso6391: 'en', iso6392: 'eng' },
+    { code: 'ara', label: '🇸🇦 Arabic (العربية)', iso6391: 'ar', iso6392: 'ara' },
+    { code: 'per', label: '🇮🇷 Persian (فارسی)', iso6391: 'fa', iso6392: 'per' },
+    { code: 'hin', label: '🇮🇳 Hindi (हिन्दी)', iso6391: 'hi', iso6392: 'hin' },
+    { code: 'spa', label: '🇪🇸 Spanish (Español)', iso6391: 'es', iso6392: 'spa' },
+    { code: 'fre', label: '🇫🇷 French (Français)', iso6391: 'fr', iso6392: 'fre' },
+    { code: 'ger', label: '🇩🇪 German (Deutsch)', iso6391: 'de', iso6392: 'ger' },
+    { code: 'rus', label: '🇷🇺 Russian (Русский)', iso6391: 'ru', iso6392: 'rus' },
+    { code: 'chi', label: '🇨🇳 Chinese (中文)', iso6391: 'zh', iso6392: 'chi' },
+    { code: 'jpn', label: '🇯🇵 Japanese (日本語)', iso6391: 'ja', iso6392: 'jpn' },
+    { code: 'tur', label: '🇹🇷 Turkish (Türkçe)', iso6391: 'tr', iso6392: 'tur' },
+    { code: 'por', label: '🇧🇷 Portuguese (Português)', iso6391: 'pt', iso6392: 'por' },
+    { code: 'ita', label: '🇮🇹 Italian (Italiano)', iso6391: 'it', iso6392: 'ita' },
+    { code: 'ben', label: '🇧🇩 Bengali (বাংলা)', iso6391: 'bn', iso6392: 'ben' },
+    { code: 'pan', label: '🇵🇰 Punjabi (پنجابی / ਪੰਜਾਬੀ)', iso6391: 'pa', iso6392: 'pan' },
+    { code: 'tam', label: '🇮🇳 Tamil (தமிழ்)', iso6391: 'ta', iso6392: 'tam' },
+    { code: 'tel', label: '🇮🇳 Telugu (తెలుగు)', iso6391: 'te', iso6392: 'tel' },
+    { code: 'mar', label: '🇮🇳 Marathi (मराठी)', iso6391: 'mr', iso6392: 'mar' },
+    { code: 'kor', label: '🇰🇷 Korean (한국어)', iso6391: 'ko', iso6392: 'kor' },
+    { code: 'nld', label: '🇳🇱 Dutch (Nederlands)', iso6391: 'nl', iso6392: 'dut' },
+    { code: 'swe', label: '🇸🇪 Swedish (Svenska)', iso6391: 'sv', iso6392: 'swe' },
+    { code: 'dan', label: '🇩🇰 Danish (Dansk)', iso6391: 'da', iso6392: 'dan' },
+    { code: 'pol', label: '🇵🇱 Polish (Polski)', iso6391: 'pl', iso6392: 'pol' },
+    { code: 'ind', label: '🇮🇩 Indonesian (Bahasa)', iso6391: 'id', iso6392: 'ind' },
+    { code: 'vie', label: '🇻🇳 Vietnamese (Tiếng Việt)', iso6391: 'vi', iso6392: 'vie' },
+    { code: 'gre', label: '🇬🇷 Greek (Ελληνικά)', iso6391: 'el', iso6392: 'gre' },
+    { code: 'heb', label: '🇮🇱 Hebrew (עבריت)', iso6391: 'he', iso6392: 'heb' },
+    { code: 'lat', label: '🏛️ Latin (Latina)', iso6391: 'la', iso6392: 'lat' }
   ];
 
   const searchOnlineLibrary = useCallback(async (forcedQuery?: string) => {
     const queryVal = typeof forcedQuery === 'string' ? forcedQuery : debouncedSearchQuery;
-    const cacheKey = `query:${queryVal || ''}|cat:${category}|lang:${language}`;
+    const cacheKey = `query:${queryVal || ''}|cat:${category}|lang:${language}|ver:${versionType}`;
 
     // Try cache hit first
     if (searchCache.current[cacheKey]) {
@@ -654,7 +677,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     try {
       // 1. First attempt: Query our unified high-performance multi-engine backend API
       try {
-        const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}`;
+        const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}&version=${encodeURIComponent(versionType || 'all')}`;
         const apiRes = await fetch(apiUrl);
         if (apiRes.ok) {
           const apiData = await apiRes.json();
@@ -709,7 +732,8 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           if (language) {
             merged = merged.filter((book) => 
               book.volumeInfo?.language?.startsWith(lang1) || 
-              book.volumeInfo?.language?.startsWith(lang2)
+              book.volumeInfo?.language?.startsWith(lang2) ||
+              !book.volumeInfo?.language
             );
           }
           
@@ -848,14 +872,14 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       setIsLoadingOnline(false);
       setIsBgLoading(false);
     }
-  }, [debouncedSearchQuery, category, language]);
+  }, [debouncedSearchQuery, category, language, versionType]);
 
-  // Execute search automatically when tab switches to online, or when query, category, or language changes
+  // Execute search automatically when tab switches to online, or when query, category, language, or version changes
   useEffect(() => {
     if (activeTab === 'online') {
       searchOnlineLibrary();
     }
-  }, [activeTab, debouncedSearchQuery, category, language, searchOnlineLibrary]);
+  }, [activeTab, debouncedSearchQuery, category, language, versionType, searchOnlineLibrary]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -887,6 +911,9 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     const matchesSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.author.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
+
+    if (versionType === 'original' && (b as any).is_original === false) return false;
+    if (versionType === 'translation' && (b as any).is_translation === false) return false;
     
     if (language) {
       const selectedLangObj = languages.find(l => l.code === language);
@@ -1112,27 +1139,29 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Quick Discovery:
           </span>
           {[
-            { label: '🔥 All Bestsellers', q: 'bestseller fiction', cat: '' },
-            { label: '🚀 Sci-Fi & Cyberpunk', q: 'science fiction', cat: 'Science Fiction' },
-            { label: '🧙 Fantasy & Magic', q: 'fantasy adventure', cat: 'Fantasy' },
-            { label: '🧠 Mind & Growth', q: 'psychology habits self-help', cat: 'Psychology' },
-            { label: '🕵️ Mystery & Crime', q: 'mystery detective thriller', cat: 'Mystery' },
-            { label: '🏛️ Philosophy & Classics', q: 'philosophy classics', cat: 'Philosophy' },
-            { label: '📚 World Literature', q: 'classic literature novel', cat: 'Fiction' },
-            { label: '💼 Wealth & Business', q: 'finance economics business', cat: 'History' },
-            { label: '🌸 Manga & Novels', q: 'japanese novel anime', cat: 'Fiction' }
+            { label: '🇵🇰 Urdu Adab & Poetry (اردو ادب)', q: 'دیوان غالب اقبال منٹو', cat: '', lang: 'urd', ver: 'all' },
+            { label: '📜 Original Editions (اصل کتابیں)', q: '', cat: '', lang: '', ver: 'original' },
+            { label: '🌐 Translated Editions (ترجمہ شدہ)', q: '', cat: '', lang: '', ver: 'translation' },
+            { label: '🔥 All Bestsellers', q: 'bestseller fiction', cat: '', lang: '', ver: 'all' },
+            { label: '🚀 Sci-Fi & Cyberpunk', q: 'science fiction', cat: 'Science Fiction', lang: '', ver: 'all' },
+            { label: '🧙 Fantasy & Magic', q: 'fantasy adventure', cat: 'Fantasy', lang: '', ver: 'all' },
+            { label: '🧠 Mind & Growth', q: 'psychology habits self-help', cat: 'Psychology', lang: '', ver: 'all' },
+            { label: '🏛️ Philosophy & Classics', q: 'philosophy classics', cat: 'Philosophy', lang: '', ver: 'all' },
+            { label: '📚 World Literature', q: 'classic literature novel', cat: 'Fiction', lang: '', ver: 'all' }
           ].map((chip) => (
             <button
               key={chip.label}
               onClick={() => {
-                setSearchQuery(chip.q);
-                setCategory(chip.cat);
-                setDebouncedSearchQuery(chip.q);
-                searchOnlineLibrary(chip.q);
+                if (chip.q !== undefined) setSearchQuery(chip.q);
+                if (chip.cat !== undefined) setCategory(chip.cat);
+                if (chip.lang !== undefined) setLanguage(chip.lang);
+                if (chip.ver !== undefined) setVersionType(chip.ver as any);
+                setDebouncedSearchQuery(chip.q || '');
+                searchOnlineLibrary(chip.q || '');
               }}
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 bg-slate-900/80 hover:bg-primary/20 text-slate-300 hover:text-white border border-slate-800 hover:border-primary/40 transition-all shadow-sm active:scale-95"
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 bg-slate-900/80 hover:bg-primary/20 text-slate-300 hover:text-white border border-slate-800 hover:border-primary/40 transition-all shadow-sm active:scale-95 flex items-center gap-1"
             >
-              {chip.label}
+              <span>{chip.label}</span>
             </button>
           ))}
         </div>
@@ -1142,7 +1171,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       {(activeTab === 'online' || activeTab === 'local') && (
         <div className="bg-slate-950/20 border border-slate-850 p-5 rounded-2xl flex flex-wrap gap-4 items-end animate-in slide-in-from-top-2 duration-300">
           {activeTab === 'online' && (
-            <div className="flex-1 min-w-[200px] space-y-1.5">
+            <div className="flex-1 min-w-[180px] space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                 <Globe className="w-3.5 h-3.5 text-indigo-400" /> Genre subject
               </label>
@@ -1157,7 +1186,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </div>
           )}
 
-          <div className="flex-grow-0 min-w-[150px] space-y-1.5">
+          <div className="flex-grow-0 min-w-[160px] space-y-1.5">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Language</label>
             <select 
               value={language} 
@@ -1167,6 +1196,19 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               {languages.map(lang => (
                 <option key={lang.code} value={lang.code}>{lang.label}</option>
               ))}
+            </select>
+          </div>
+
+          <div className="flex-grow-0 min-w-[160px] space-y-1.5">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Edition Version</label>
+            <select 
+              value={versionType} 
+              onChange={(e) => setVersionType(e.target.value as any)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-primary cursor-pointer hover:bg-slate-900/60 transition-colors"
+            >
+              <option value="all">All Editions (Originals & Translations)</option>
+              <option value="original">📜 Original Texts Only</option>
+              <option value="translation">🌐 Translated Editions Only</option>
             </select>
           </div>
 
@@ -1561,9 +1603,22 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         </div>
                       )}
                       
-                      {/* Catalog Source Tag */}
-                      <div className="absolute top-2 left-2 bg-slate-950/90 backdrop-blur-md text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 shadow z-10 uppercase tracking-widest">
-                        {book.source || 'Global'}
+                      {/* Edition Badge */}
+                      <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                        {book.source && (
+                          <div className="bg-slate-950/90 backdrop-blur-md text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 shadow uppercase tracking-widest">
+                            {book.source}
+                          </div>
+                        )}
+                        {book.is_translation ? (
+                          <div className="bg-cyan-950/90 backdrop-blur-md text-cyan-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-cyan-500/30 shadow tracking-wider">
+                            🌐 Translated ({book.translated_to || 'EN'})
+                          </div>
+                        ) : (
+                          <div className="bg-amber-950/90 backdrop-blur-md text-amber-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-amber-500/30 shadow tracking-wider">
+                            📜 Original ({book.original_language || book.language?.toUpperCase() || book.volumeInfo?.language?.toUpperCase() || 'Text'})
+                          </div>
+                        )}
                       </div>
 
                       {/* Offline Download Status Badges */}
@@ -1593,17 +1648,34 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         <p className="text-xs text-slate-500 truncate mt-1">{info.authors?.[0] || 'Unknown Author'}</p>
                       </div>
 
-                      <Button 
-                        size="sm" 
-                        variant={isAdded ? 'secondary' : 'primary'} 
-                        className={`w-full text-[10px] py-2 h-auto font-black flex items-center justify-center gap-1 rounded-xl transition-all ${
-                          isAdded ? 'bg-slate-900/60 text-green-400 border border-green-500/20 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                        }`}
-                        onClick={handleAddToLibrary}
-                        disabled={isAdded}
-                      >
-                        {isAdded ? '✓ Added' : '➕ Add to Bookshelf'}
-                      </Button>
+                      <div className="space-y-2">
+                        <Button 
+                          size="sm" 
+                          variant={isAdded ? 'secondary' : 'primary'} 
+                          className={`w-full text-[10px] py-2 h-auto font-black flex items-center justify-center gap-1 rounded-xl transition-all ${
+                            isAdded ? 'bg-slate-900/60 text-green-400 border border-green-500/20 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                          }`}
+                          onClick={handleAddToLibrary}
+                          disabled={isAdded}
+                        >
+                          {isAdded ? '✓ In Bookshelf' : '➕ Add to Bookshelf'}
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const cleanQuery = (info.title || '').replace(/\(.*?\)/g, '').trim();
+                            setSearchQuery(cleanQuery);
+                            setDebouncedSearchQuery(cleanQuery);
+                            setVersionType(book.is_translation ? 'original' : 'translation');
+                            searchOnlineLibrary(cleanQuery);
+                          }}
+                          className="w-full text-[9px] py-1 text-slate-400 hover:text-cyan-300 font-bold transition-colors text-center border-t border-slate-900/40 pt-1.5 flex items-center justify-center gap-1"
+                        >
+                          {book.is_translation ? '📜 Find Original Root Work' : '🌐 Find Other Language Translations'}
+                        </button>
+                      </div>
                     </CardContent>
                   </Card>
                 );

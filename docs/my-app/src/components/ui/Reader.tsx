@@ -141,6 +141,8 @@ export default function Reader({
   const isBookRtl = (title?.match(/[\u0600-\u06FF\u0750-\u077F]/) || description?.match(/[\u0600-\u06FF\u0750-\u077F]/));
   const isTargetRtl = TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.isRtl ?? false;
 
+  const [apiFetchedChapters, setApiFetchedChapters] = useState<{ chapter: string; text: string }[]>([]);
+
   // Auto-set Nastaliq font if book title/description is Urdu/Arabic
   useEffect(() => {
     if (isBookRtl && fontFamily.includes('Georgia')) {
@@ -148,9 +150,39 @@ export default function Reader({
     }
   }, [isBookRtl]);
 
+  // Fetch unabridged content from /api/books/content for complete multi-chapter reading
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicContent() {
+      if (customChapters && customChapters.length > 0) return;
+      try {
+        const query = new URLSearchParams({
+          id: bookId || '',
+          title: title || '',
+          author: author || '',
+          file_url: resolvedBookUrl || bookUrl || '',
+          iaId: iaId || '',
+          description: description || ''
+        });
+        const res = await fetch(`/api/books/content?${query.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.chapters) && data.chapters.length > 0 && isMounted) {
+            setApiFetchedChapters(data.chapters);
+          }
+        }
+      } catch (err) {
+        console.warn('API content fetch error:', err);
+      }
+    }
+    loadDynamicContent();
+    return () => { isMounted = false; };
+  }, [bookId, title, author, resolvedBookUrl, bookUrl, iaId, description, customChapters]);
+
   // Reset reader states on book change
   useEffect(() => {
     setExtractedChapters([]);
+    setApiFetchedChapters([]);
     const hasCustom = customChapters && customChapters.length > 0;
     setUseReflowableFallback(!bookUrl || !!hasCustom);
     setFallbackPage(1);
@@ -167,10 +199,11 @@ export default function Reader({
   // Curated authentic book chapters (Peer-e-Kamil, Raja Gidh, Ghalib, Iqbal, Manto, World Classics)
   const chapters = React.useMemo(() => {
     if (customChapters && customChapters.length > 0) return customChapters;
+    if (apiFetchedChapters && apiFetchedChapters.length > 0) return apiFetchedChapters;
     return getAuthenticBookChapters(bookId, title, author, description);
-  }, [bookId, title, author, description, customChapters]);
+  }, [bookId, title, author, description, customChapters, apiFetchedChapters]);
   const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
-  const currentChapterObj = activeChapters[Math.min(fallbackPage - 1, activeChapters.length - 1)] || activeChapters[0];
+  const currentChapterObj = activeChapters[Math.min(fallbackPage - 1, activeChapters.length - 1)] || activeChapters[0] || { chapter: 'Chapter 1', text: '' };
 
   // Detect if the file is a PDF
   useEffect(() => {

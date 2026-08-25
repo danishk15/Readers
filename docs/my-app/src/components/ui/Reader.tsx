@@ -71,7 +71,8 @@ export default function Reader({
   iaId,
   previewLink,
   infoLink,
-  readMode = 'epub'
+  readMode = 'epub',
+  customChapters
 }: { 
   bookUrl: string; 
   bookId: string; 
@@ -84,6 +85,7 @@ export default function Reader({
   previewLink?: string;
   infoLink?: string;
   readMode?: 'epub' | 'archive' | 'google' | 'interactive';
+  customChapters?: { chapter: string; text: string }[];
 }) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
@@ -126,7 +128,9 @@ export default function Reader({
   }, [bookUrl, bookId]);
   
   // Reflowable / Typography states
-  const [useReflowableFallback, setUseReflowableFallback] = useState(false);
+  const [useReflowableFallback, setUseReflowableFallback] = useState(() => {
+    return !bookUrl || (customChapters && customChapters.length > 0);
+  });
   const [fontSize, setFontSize] = useState(16);
   const [fontFamily, setFontFamily] = useState('Georgia, serif');
   const [theme, setTheme] = useState<keyof typeof READER_THEMES>('dark');
@@ -147,22 +151,24 @@ export default function Reader({
   // Reset reader states on book change
   useEffect(() => {
     setExtractedChapters([]);
-    setUseReflowableFallback(false);
+    const hasCustom = customChapters && customChapters.length > 0;
+    setUseReflowableFallback(!bookUrl || !!hasCustom);
     setFallbackPage(1);
     setCurrentPage(0);
-    setLoading(true);
+    setLoading(!(!bookUrl || hasCustom));
     setTranslationCache({});
     if (iaId && (!bookUrl || readMode === 'archive')) {
       setCurrentViewMode('archive');
     } else {
       setCurrentViewMode('reader');
     }
-  }, [bookId, bookUrl, iaId, readMode]);
+  }, [bookId, bookUrl, iaId, readMode, customChapters]);
 
   // Curated authentic book chapters (Peer-e-Kamil, Raja Gidh, Ghalib, Iqbal, Manto, World Classics)
   const chapters = React.useMemo(() => {
+    if (customChapters && customChapters.length > 0) return customChapters;
     return getAuthenticBookChapters(bookId, title, author, description);
-  }, [bookId, title, author, description]);
+  }, [bookId, title, author, description, customChapters]);
   const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
   const currentChapterObj = activeChapters[Math.min(fallbackPage - 1, activeChapters.length - 1)] || activeChapters[0];
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { createClient, CLASSIC_BOOKS } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, BookOpen, Star, Languages, Award, BookMarked } from 'lucide-react';
 import Link from 'next/link';
@@ -36,6 +36,13 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
         }
 
         if (!loaded) {
+          const classicFound = CLASSIC_BOOKS.find(b => b.id === id || b.title.toLowerCase() === id.toLowerCase());
+          if (classicFound) {
+            loaded = classicFound;
+          }
+        }
+
+        if (!loaded) {
           const cleanId = id.toLowerCase();
           const matched = AUTHENTIC_BOOK_REGISTRY.find(e => 
             e.matchKeys.some(k => cleanId.includes(k.toLowerCase()) || k.toLowerCase().includes(cleanId))
@@ -46,7 +53,7 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
               title: matched.title,
               author: matched.author,
               description: `Authentic reading edition of ${matched.title} by ${matched.author}. Complete multi-chapter text available for reading and offline study.`,
-              cover_url: 'https://archive.org/services/img/PEEREKAMILP.B.U.HUmeraAhmedEbooks.i360.pk',
+              cover_url: '',
               file_url: '',
               is_premium: false,
               language: matched.language

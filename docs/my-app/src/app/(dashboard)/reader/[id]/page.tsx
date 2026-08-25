@@ -139,6 +139,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
           title={book.title} 
           author={book.author} 
           description={book.description} 
+          customChapters={book.chapters}
         />
       </div>
       <div className="max-w-4xl mx-auto w-full">

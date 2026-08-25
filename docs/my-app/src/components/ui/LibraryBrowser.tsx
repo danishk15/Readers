@@ -521,7 +521,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       const cached = await getCachedBook(id);
       if (cached) {
         const blobUrl = URL.createObjectURL(cached.fileData);
-        setActiveReadingBook({ url: blobUrl, title: cached.title, author, description, id });
+        setActiveReadingBook({ url: blobUrl, title: cached.title, author, description, id, customChapters: book.chapters });
         return;
       }
     } catch (err) {
@@ -541,7 +541,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           }))
           .catch(err => console.warn('Background caching failed:', err));
       }
-      setActiveReadingBook({ url: currentUrl, title: book.title, author, description, id: resolvedId, source: resolvedSource });
+      setActiveReadingBook({ url: currentUrl, title: book.title, author, description, id: resolvedId, source: resolvedSource, customChapters: book.chapters });
     } else {
       let params = getOnlineBookReadParams(book);
       
@@ -550,7 +550,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           .then(() => setDownloadedBookIds(prev => [...prev, id]))
           .catch(err => console.warn('Background caching failed:', err));
       }
-      setActiveReadingBook(params);
+      setActiveReadingBook({ ...params, customChapters: book.chapters });
     }
   };
 
@@ -620,6 +620,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     previewLink?: string;
     infoLink?: string;
     readMode?: 'epub' | 'archive' | 'google' | 'interactive';
+    customChapters?: { chapter: string; text: string }[];
   } | null>(null);
 
   const categories = ["Fiction", "Science Fiction", "Fantasy", "History", "Romance", "Biography", "Mystery", "Poetry", "Philosophy", "Classics"];
@@ -979,6 +980,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             previewLink={activeReadingBook.previewLink}
             infoLink={activeReadingBook.infoLink}
             readMode={activeReadingBook.readMode}
+            customChapters={activeReadingBook.customChapters}
           />
         </div>
       </div>

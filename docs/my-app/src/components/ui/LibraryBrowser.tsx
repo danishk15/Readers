@@ -1775,7 +1775,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               </p>
             )}
             <p className="text-xs text-slate-400">
-              Upgrade to QuillHawk VIP Soaring Pass or hit 500 Weekly Reading Minutes to unlock the entire lounge instantly!
+              Upgrade to QuillHawk VIP Pass or hit 500 Weekly Reading Minutes to unlock the entire lounge instantly!
             </p>
           </div>
 

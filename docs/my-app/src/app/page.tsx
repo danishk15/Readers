@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, Sparkles, BookMarked, ArrowRight, Trophy, Compass } from "lucide-react";
+import { Users, BookMarked, ArrowRight, Trophy, Compass } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import InteractiveCard from "@/components/ui/InteractiveCard";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -62,20 +62,12 @@ export default async function Home() {
 
         {/* Hero Section */}
         <section className="relative pt-40 pb-20 px-6 max-w-7xl mx-auto z-10 flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface border border-card-border text-primary text-xs font-bold mb-8 transition-all cursor-default tracking-wide uppercase shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
-            <span>Where Words Take Flight • Next-Gen Literary Platform</span>
-          </div>
-          
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight mb-8 max-w-5xl leading-[1.08] font-display text-foreground">
-            Read. Write. Soar. <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-foreground via-primary to-slate-500">
-              In Silver & Midnight Ink.
-            </span>
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight mb-6 max-w-4xl leading-[1.08] font-display text-foreground">
+            QuillHawk
           </h1>
           
           <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto leading-relaxed mb-10">
-            Step into an elevated digital reading sanctuary. Immerse yourself in customizable reader typography, track literary quests, publish your manuscripts, and connect across global literary guilds.
+            A sanctuary for readers and authors. Explore classic and modern literature, customize your reading experience, and connect with fellow book lovers.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -134,7 +126,7 @@ export default async function Home() {
               <div className="w-14 h-14 rounded-2xl bg-surface border border-card-border flex items-center justify-center mb-6 group-hover:scale-110 transition-all">
                 <Trophy className="w-7 h-7 text-amber-500" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-foreground font-display group-hover:text-primary transition-colors">Soaring Tournaments</h3>
+              <h3 className="text-xl font-bold mb-3 text-foreground font-display group-hover:text-primary transition-colors">Reading Tournaments</h3>
               <p className="text-muted leading-relaxed text-sm">
                 Log reading minutes, climb regional leaderboards, and conquer the 500-Minute Weekly VIP Quest to earn free premium status.
               </p>
@@ -170,7 +162,6 @@ export default async function Home() {
           <div className="flex items-center gap-2 mb-4 md:mb-0">
             <span className="text-lg">🪶</span>
             <span className="font-bold text-foreground font-display">QuillHawk</span>
-            <span className="text-xs text-muted">| Where Words Take Flight</span>
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle variant="segmented" size="sm" showLabel={true} />

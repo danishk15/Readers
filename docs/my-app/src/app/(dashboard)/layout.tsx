@@ -102,7 +102,7 @@ export default async function DashboardLayout({
               : 'text-amber-700 dark:text-amber-400 hover:bg-surface-hover'
           }`}>
             <Award className="w-4 h-4 shrink-0 text-amber-500" />
-            <span>VIP Soaring Pass</span>
+            <span>VIP Pass</span>
           </Link>
         </div>
 
@@ -127,7 +127,7 @@ export default async function DashboardLayout({
               </p>
               {isPremium ? (
                 <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5 tracking-wider uppercase">
-                  👑 VIP Soaring Member
+                  👑 VIP Member
                 </span>
               ) : (
                 <span className="text-[9px] font-bold text-muted flex items-center gap-0.5 uppercase">

@@ -41,7 +41,7 @@ export const DEFAULT_COMPANIONS: DiscordUserProfile[] = [
     },
     badges: [
       { id: 'founder', name: 'QuillHawk Founder', icon: '🪶', description: 'Early access pioneer of QuillHawk', color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
-      { id: 'vip', name: 'VIP Soaring Member', icon: '👑', description: 'Active VIP tier subscriber', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+      { id: 'vip', name: 'VIP Member', icon: '👑', description: 'Active VIP tier subscriber', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
       { id: 'speed', name: 'Speed Reader', icon: '⚡', description: 'Read over 1,000 pages in record time', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' }
     ]
   },
@@ -237,9 +237,9 @@ function createDefaultProfile(authUser?: any, dbProfile?: any, logs?: any[]): Di
     avatar_url: dbProfile?.avatar_url || '🪶',
     banner_url: dbProfile?.banner_url || null,
     banner_color: dbProfile?.banner_color || 'from-blue-900 via-indigo-950 to-slate-900',
-    bio: dbProfile?.bio || 'Passionate book enthusiast soaring through literature with QuillHawk.',
+    bio: dbProfile?.bio || 'Passionate book enthusiast reading with QuillHawk.',
     status_emoji: '✨',
-    status_text: 'Soaring with QuillHawk',
+    status_text: 'Reading with QuillHawk',
     presence: 'online',
     member_since: 'Aug 2026',
     premium_status: !!dbProfile?.premium_status,
@@ -247,7 +247,7 @@ function createDefaultProfile(authUser?: any, dbProfile?: any, logs?: any[]): Di
     xp: xp,
     badges: [
       { id: 'founder', name: 'QuillHawk Pioneer', icon: '🪶', description: 'Early access member of QuillHawk', color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
-      ...(dbProfile?.premium_status ? [{ id: 'vip', name: 'VIP Soaring Member', icon: '👑', description: 'VIP Pass Tier Patron', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' }] : []),
+      ...(dbProfile?.premium_status ? [{ id: 'vip', name: 'VIP Member', icon: '👑', description: 'VIP Pass Tier Patron', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' }] : []),
       { id: 'bookworm', name: 'Verified Reader', icon: '📚', description: 'Active literary community reader', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' }
     ],
     currently_reading: {

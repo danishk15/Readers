@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { BookOpen, Users, Sparkles, TrendingUp, BookMarked, ArrowRight, Feather, Trophy, Compass } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import ThemeToggle from "@/components/ui/ThemeToggle";
 import InteractiveCard from "@/components/ui/InteractiveCard";
-import HomeThemeSelector from "@/components/ui/HomeThemeSelector";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -25,7 +23,6 @@ export default async function Home() {
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
           <a href="#features" className="hover:text-blue-400 transition-colors">Features</a>
-          <a href="#vibe" className="hover:text-blue-400 transition-colors">Theme Studio</a>
           <Link href="/communities" className="hover:text-blue-400 transition-colors">Guilds</Link>
           <Link href="/competition" className="hover:text-blue-400 transition-colors">Tournament</Link>
           <Link href="/premium" className="hover:text-blue-400 transition-colors">VIP Pass</Link>
@@ -104,13 +101,8 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Dynamic Vibe Switcher Showcase */}
-        <div id="vibe">
-          <HomeThemeSelector />
-        </div>
-
         {/* Floating Interactive Cards */}
-        <section id="features" className="relative w-full max-w-6xl mx-auto px-6 pb-32 z-10" style={{ perspective: '1000px' }}>
+        <section id="features" className="relative w-full max-w-6xl mx-auto px-6 py-12 pb-32 z-10" style={{ perspective: '1000px' }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 transform md:-rotate-1 hover:rotate-0 transition-transform duration-700 ease-out">
             
             {/* Card 1 */}
@@ -175,9 +167,6 @@ export default async function Home() {
           </p>
         </div>
       </footer>
-
-      {/* Floating Theme Style Selector */}
-      <ThemeToggle />
     </div>
   );
 }

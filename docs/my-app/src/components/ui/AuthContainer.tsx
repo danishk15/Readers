@@ -6,7 +6,6 @@ import { BookOpen, Check, AlertCircle, ArrowRight, History, UserCheck, LogIn, Ar
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { createClient, getStoredAccounts, getLoginHistory } from '@/utils/supabase/client';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface AuthContainerProps {
   defaultMode: 'login' | 'signup';
@@ -584,8 +583,6 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
           </div>
         </div>
       </div>
-
-      <ThemeToggle />
     </div>
   );
 }

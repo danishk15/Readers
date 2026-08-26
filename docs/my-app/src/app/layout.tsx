@@ -27,20 +27,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="antialiased dark">
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              try {
-                const theme = localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style') || 'default';
-                if (theme && theme !== 'default') {
-                  document.documentElement.classList.add('theme-' + theme);
-                }
-              } catch (e) {}
-            })();
-          `
-        }} />
-      </head>
       <body className={`${plusJakartaSans.variable} ${outfit.variable} min-h-screen bg-background text-foreground font-sans`}>
         <AuthProvider>
           {children}

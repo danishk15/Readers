@@ -3,7 +3,6 @@ import Link from 'next/link';
 import LogoutButton from '@/components/ui/LogoutButton';
 import { createClient } from '@/utils/supabase/server';
 import { BookOpen, Globe, Users, BookMarked, Award, Sparkles, Trophy, Feather, MessageSquare, Compass } from 'lucide-react';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default async function DashboardLayout({
   children,
@@ -170,9 +169,6 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
-
-      {/* Theme selector widget */}
-      <ThemeToggle />
     </div>
   );
 }

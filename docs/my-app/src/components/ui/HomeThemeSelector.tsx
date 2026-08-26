@@ -1,153 +1,114 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Moon, Layers, Cpu, ShieldAlert, Check, Sparkles } from 'lucide-react';
+import React from 'react';
+import { useTheme, AppTheme } from '@/components/ThemeProvider';
+import { Sparkles, Moon, Laptop, Check, ArrowRight } from 'lucide-react';
 import InteractiveCard from './InteractiveCard';
 
-type ThemeStyle = 'default' | 'glass' | 'neo' | 'brutalist';
-
 export default function HomeThemeSelector() {
-  const [activeTheme, setActiveTheme] = useState<ThemeStyle>('default');
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
-  useEffect(() => {
-    try {
-      const saved = (localStorage.getItem('quillhawk-theme-style') || localStorage.getItem('readsphere-theme-style')) as ThemeStyle;
-      if (saved && ['default', 'glass', 'neo', 'brutalist'].includes(saved)) {
-        setActiveTheme(saved);
-      }
-    } catch (e) {}
-  }, []);
-
-  const changeTheme = (newTheme: ThemeStyle) => {
-    setActiveTheme(newTheme);
-    try {
-      localStorage.setItem('quillhawk-theme-style', newTheme);
-      localStorage.setItem('readsphere-theme-style', newTheme);
-      
-      // Remove existing classes
-      document.documentElement.classList.remove('theme-glass', 'theme-neo', 'theme-brutalist');
-      
-      // Add new class if not default
-      if (newTheme !== 'default') {
-        document.documentElement.classList.add(`theme-${newTheme}`);
-      }
-      
-      // Trigger a window event in case other components need to listen for theme shifts
-      window.dispatchEvent(new Event('theme-style-change'));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const themesList: { 
-    id: ThemeStyle; 
-    label: string; 
-    desc: string; 
-    icon: React.ReactNode; 
+  const themesList: {
+    id: AppTheme;
+    label: string;
+    badge: string;
+    desc: string;
+    icon: React.ReactNode;
     color: string;
     glow: string;
     border: string;
-    badge: string;
   }[] = [
-    { 
-      id: 'default', 
-      label: 'Sleek Inkish Silver', 
-      desc: 'Deep ink midnight background with luminescent cobalt blue and brushed silver chrome.',
-      icon: <Moon className="w-5 h-5" />, 
-      color: 'from-blue-600 to-slate-400',
-      glow: 'rgba(37, 99, 235, 0.22)',
-      border: 'rgba(203, 213, 225, 0.35)',
-      badge: 'Quill Standard'
+    {
+      id: 'silver',
+      label: 'Silver Nude Theme',
+      badge: 'Signature Aesthetic',
+      desc: 'Warm silver-greyish nude base with soft alabaster cards, stone silver borders, and deep ink typography.',
+      icon: <Sparkles className="w-5 h-5 text-amber-500" />,
+      color: 'from-amber-200 via-stone-300 to-slate-400',
+      glow: 'rgba(219, 212, 202, 0.45)',
+      border: 'var(--card-border-color)',
     },
-    { 
-      id: 'glass', 
-      label: 'Frosted Silver Glass', 
-      desc: 'Translucent ink glass, icy silver borders, and glowing oceanic sapphire ambient blobs.',
-      icon: <Layers className="w-5 h-5" />, 
-      color: 'from-sky-400 to-blue-600',
-      glow: 'rgba(56, 189, 248, 0.25)',
-      border: 'rgba(226, 232, 240, 0.45)',
-      badge: 'Aero Titanium'
+    {
+      id: 'dark',
+      label: 'Midnight Dark Theme',
+      badge: 'Deep Ink Obsidian',
+      desc: 'Deep midnight navy base, obsidian slate surfaces, sapphire blue accents, and luminescent silver typography.',
+      icon: <Moon className="w-5 h-5 text-blue-400" />,
+      color: 'from-blue-600 via-indigo-700 to-slate-900',
+      glow: 'rgba(37, 99, 235, 0.35)',
+      border: 'var(--card-border-color)',
     },
-    { 
-      id: 'neo', 
-      label: 'Brushed Titanium & Ink', 
-      desc: 'Tactile slate clay surfaces with delicate convex extrusions and dual drop-shadows.',
-      icon: <Cpu className="w-5 h-5" />, 
-      color: 'from-slate-300 to-blue-500',
-      glow: 'rgba(148, 163, 184, 0.2)',
-      border: 'rgba(148, 163, 184, 0.35)',
-      badge: 'Skeuomorphic'
+    {
+      id: 'system',
+      label: 'System Default',
+      badge: 'Automatic Sync',
+      desc: 'Follows your operating system color scheme dynamically in real-time, activating Dark or Silver automatically.',
+      icon: <Laptop className="w-5 h-5 text-purple-400" />,
+      color: 'from-purple-500 via-indigo-600 to-blue-500',
+      glow: 'rgba(168, 85, 247, 0.35)',
+      border: 'var(--card-border-color)',
     },
-    { 
-      id: 'brutalist', 
-      label: 'Cyber Silver & Ink', 
-      desc: 'Polished silver chrome borders, deep ink black geometry, and electric cyan highlights.',
-      icon: <ShieldAlert className="w-5 h-5" />, 
-      color: 'from-slate-200 to-cyan-400',
-      glow: 'rgba(56, 189, 248, 0.3)',
-      border: 'rgba(226, 232, 240, 0.65)',
-      badge: 'Cyber Modern'
-    }
   ];
 
   return (
-    <section className="w-full max-w-6xl mx-auto px-6 py-12 z-10 relative">
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-[11px] font-bold uppercase tracking-wider mb-3 shadow">
+    <section className="w-full max-w-6xl mx-auto px-6 py-16 z-10 relative">
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-[11px] font-bold uppercase tracking-wider mb-3 shadow-sm">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Interactive Visual Studio</span>
+          <span>Visual Theme Customizer</span>
         </div>
-        <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight font-display text-white mb-2">
-          Experience Your Vibe
+        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-display text-foreground mb-3">
+          Choose Your Visual Experience
         </h2>
-        <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
-          QuillHawk adapts to your aesthetic. Switch themes below to see the entire platform re-skin itself in ink and silver instantly.
+        <p className="text-sm text-muted max-w-xl mx-auto leading-relaxed">
+          Switch seamlessly between the signature Silver aesthetic, deep Midnight Dark mode, or automatic System Default across your entire library.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {themesList.map((t) => {
-          const isActive = activeTheme === t.id;
+          const isActive = theme === t.id;
           return (
             <InteractiveCard
               key={t.id}
-              onClick={() => changeTheme(t.id)}
+              onClick={() => setTheme(t.id)}
               glowColor={t.glow}
               borderColor={t.border}
-              theme={t.id}
-              className={`p-6 flex flex-col justify-between min-h-[220px] transition-all duration-300 relative group border ${
-                isActive 
-                  ? 'ring-2 ring-blue-500/60 scale-[1.02]' 
-                  : 'hover:scale-[1.01]'
+              className={`p-7 flex flex-col justify-between min-h-[250px] transition-all duration-300 relative group border ${
+                isActive
+                  ? 'ring-2 ring-primary shadow-xl scale-[1.02] bg-card'
+                  : 'hover:scale-[1.01] bg-card/80 hover:bg-card'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${t.color} flex items-center justify-center text-slate-950 shadow-md group-hover:scale-105 transition-transform duration-300`}>
+                  <div
+                    className={`w-11 h-11 rounded-2xl bg-gradient-to-tr ${t.color} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300 border border-card-border`}
+                  >
                     {t.icon}
                   </div>
                   {isActive ? (
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-blue-500/20 text-blue-300 border border-blue-500/35 px-2 py-0.5 rounded-md">
-                      <Check className="w-3 h-3" /> Active
+                    <span className="flex items-center gap-1 text-[10px] font-black uppercase bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-full shadow-sm">
+                      <Check className="w-3 h-3" /> Active Mode
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-200 transition-colors uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-muted group-hover:text-foreground transition-colors uppercase tracking-wider">
                       {t.badge}
                     </span>
                   )}
                 </div>
-                
-                <h3 className="text-base font-bold text-white font-display mb-1.5 transition-colors">
+
+                <h3 className="text-lg font-bold text-foreground font-display mb-2 group-hover:text-primary transition-colors">
                   {t.label}
                 </h3>
-                <p className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors leading-relaxed line-clamp-3">
+                <p className="text-xs text-muted leading-relaxed line-clamp-3">
                   {t.desc}
                 </p>
               </div>
 
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-white transition-colors mt-6 pt-3 border-t border-slate-700/40">
-                {isActive ? 'Active Design Theme' : 'Click to Apply Theme →'}
+              <div className="flex items-center justify-between text-[11px] font-bold tracking-wider uppercase text-muted group-hover:text-foreground transition-colors mt-6 pt-4 border-t border-card-border/60">
+                <span>{isActive ? `Applied (${t.id === 'system' ? resolvedTheme : t.id})` : 'Click to Apply'}</span>
+                <ArrowRight className={`w-3.5 h-3.5 transition-transform ${isActive ? 'text-primary' : 'group-hover:translate-x-1'}`} />
               </div>
             </InteractiveCard>
           );

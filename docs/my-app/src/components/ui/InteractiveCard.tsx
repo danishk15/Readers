@@ -15,7 +15,7 @@ export default function InteractiveCard({
   children,
   onClick,
   glowColor = 'rgba(37,99,235,0.22)',
-  borderColor = 'rgba(203,213,225,0.35)',
+  borderColor = 'var(--card-border-color)',
   className = '',
   theme: customTheme
 }: InteractiveCardProps) {
@@ -83,8 +83,8 @@ export default function InteractiveCard({
     setTilt({ x: 0, y: 0 });
   };
 
-  // Card theme-based custom classes (Silver Greyish Nude shade palette)
-  const themeCardClass = 'bg-[#F6F2EC] border border-[#CEC7BD] rounded-2xl shadow-sm text-[#1C1E24]';
+  // Card theme-based custom classes using semantic theme tokens
+  const themeCardClass = 'bg-card border border-card-border rounded-2xl shadow-sm text-foreground';
 
   // Dynamic shadow glows for modern styles
   const shadowGlow = isHovered && activeTheme !== 'brutalist' && activeTheme !== 'neo'

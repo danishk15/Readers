@@ -41,13 +41,13 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
       />
       
       {/* Modal Content */}
-      <div className={`relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-[#F6F2EC] border border-[#CEC7BD] text-[#1C1E24] shadow-2xl transition-all ${className ? className : 'p-6'}`}>
+      <div className={`relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-card border border-card-border text-foreground shadow-2xl transition-all ${className ? className : 'p-6'}`}>
         {title ? (
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-foreground">{title}</h3>
             <button
               onClick={onClose}
-              className="rounded-full p-1 text-muted hover:text-foreground hover:bg-slate-800 transition-colors"
+              className="rounded-full p-1 text-muted hover:text-foreground hover:bg-surface-hover transition-colors"
             >
               <X size={20} />
             </button>
@@ -60,9 +60,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             <X size={16} />
           </button>
         )}
-        <div className={title ? 'mt-2' : ''}>
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );

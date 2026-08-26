@@ -43,6 +43,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import Link from 'next/link';
 
 interface DiscordProfileViewProps {
@@ -469,6 +470,22 @@ export function DiscordProfileView({ initialUser, initialProfile, logs }: Discor
                   </span>
                   <span>•</span>
                   <span>{initialUser?.email}</span>
+                </div>
+              </div>
+
+              {/* Global Theme & Appearance Mode */}
+              <div className="bg-slate-950/50 border border-slate-850 p-6 md:p-7 rounded-3xl space-y-4 shadow-xl relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2 tracking-wide">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>Interface Theme & Appearance</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Choose between Silver Nude, Midnight Dark, or automatically synchronize with your device OS.
+                    </p>
+                  </div>
+                  <ThemeToggle variant="segmented" size="md" showLabel={true} />
                 </div>
               </div>
 

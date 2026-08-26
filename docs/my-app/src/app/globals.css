@@ -1,40 +1,174 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
 @import "tailwindcss";
 
-:root {
-  /* Complete Silver-Greyish Nude Shade Theme */
-  --primary: #2563EB;             /* Vibrant Sapphire Inkish Blue */
+:root,
+[data-theme="silver"] {
+  /* Silver-Greyish Nude Signature Theme */
+  --theme-name: 'silver';
+  --primary: #2563EB;             /* Vibrant Sapphire Blue */
   --primary-hover: #1D4ED8;
+  --primary-light: rgba(37, 99, 235, 0.12);
   --secondary: #78716C;           /* Stone Silver Grey */
   --silver-accent: #A8A29E;       /* Brushed Silver Accent */
   --silver-highlight: #F5F1EB;    /* Warm Silver Pearl */
   
   --bg-color: #ECE7E1;            /* Warm Silver-Greyish Nude Base */
   --surface-color: #E2DDD5;        /* Silver-Greyish Nude Slate Surface */
+  --surface-hover: #D5CDC3;        /* Interactive Surface Hover */
+  --surface-active: #CCC3B8;
   --card-bg-color: #F6F2EC;       /* Soft Alabaster Silver Nude Card Surface */
   --card-border-color: #CEC7BD;   /* Brushed Silver Border */
   --card-shadow-style: 0 10px 30px -5px rgba(160, 150, 138, 0.18), 0 0 20px -2px rgba(200, 192, 180, 0.25);
   
   --text-primary: #1C1E24;        /* Deep Charcoal Ink (High Contrast) */
+  --text-secondary: #2B2D33;
   --text-muted: #6B655D;          /* Muted Silver-Stone Grey */
+  --text-subtle: #8C867D;
+  --border-subtle: #DDD7CE;
+  --border-strong: #CDC5B9;
+  
   --border-radius-card: 1.25rem;
   --font-heading-family: var(--font-outfit), sans-serif;
   --font-body-family: var(--font-plus-jakarta), sans-serif;
   
+  /* Ambient glow colors */
+  --glow-1: rgba(219, 212, 202, 0.7);
+  --glow-2: rgba(213, 205, 194, 0.6);
+  --glow-3: rgba(221, 214, 204, 0.6);
+
   /* Silver Greyish Nude Background Gradients */
   --bg-gradient: radial-gradient(circle at 15% 15%, rgba(220, 212, 202, 0.6), transparent 50%),
                  radial-gradient(circle at 85% 85%, rgba(205, 197, 187, 0.5), transparent 50%),
                  radial-gradient(circle at 50% 50%, rgba(228, 222, 214, 0.4), transparent 60%),
                  linear-gradient(135deg, #EFEAE3 0%, #E6E1D9 50%, #ECE7E2 100%);
+  
+  /* Reader Theme Tokens */
+  --reader-bg: #EAE5DE;
+  --reader-header-bg: rgba(226, 221, 213, 0.95);
+  --reader-card-bg: #F4EFEA;
+  --reader-input-bg: #F4EFEA;
+  --reader-button-bg: #DDD7CE;
+  --reader-button-hover: #D5CDC3;
+  --reader-border: #CDC5B9;
+  --reader-text: #23252A;
+  --reader-muted: #6C665F;
+}
+
+[data-theme="dark"],
+.dark {
+  /* Midnight Ink Dark Theme */
+  --theme-name: 'dark';
+  --primary: #3B82F6;             /* Electric Blue */
+  --primary-hover: #2563EB;
+  --primary-light: rgba(59, 130, 246, 0.18);
+  --secondary: #94A3B8;           /* Cool Slate Silver */
+  --silver-accent: #64748B;
+  --silver-highlight: #1E293B;
+  
+  --bg-color: #070D1E;            /* Midnight Deep Ink Navy */
+  --surface-color: #0E162B;        /* Obsidian Slate Surface */
+  --surface-hover: #16223E;        /* Dark Surface Hover */
+  --surface-active: #1D2D52;
+  --card-bg-color: #121C35;       /* Midnight Navy Card Surface */
+  --card-border-color: #1E2E4E;   /* Polished Steel Border */
+  --card-shadow-style: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 20px -2px rgba(37, 99, 235, 0.15);
+  
+  --text-primary: #F8FAFC;        /* Luminescent Silver White */
+  --text-secondary: #E2E8F0;      /* Light Slate */
+  --text-muted: #94A3B8;          /* Muted Silver Slate */
+  --text-subtle: #64748B;
+  --border-subtle: #17243F;
+  --border-strong: #273A60;
+  
+  --border-radius-card: 1.25rem;
+  --font-heading-family: var(--font-outfit), sans-serif;
+  --font-body-family: var(--font-plus-jakarta), sans-serif;
+  
+  /* Ambient glow colors */
+  --glow-1: rgba(30, 58, 138, 0.4);
+  --glow-2: rgba(37, 99, 235, 0.25);
+  --glow-3: rgba(67, 56, 202, 0.3);
+
+  /* Deep Midnight Gradients */
+  --bg-gradient: radial-gradient(circle at 15% 15%, rgba(30, 58, 138, 0.35), transparent 50%),
+                 radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.25), transparent 50%),
+                 radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8), transparent 60%),
+                 linear-gradient(135deg, #070D1E 0%, #0B132B 50%, #070D1E 100%);
+  
+  /* Reader Theme Tokens */
+  --reader-bg: #0B1120;
+  --reader-header-bg: rgba(14, 22, 43, 0.95);
+  --reader-card-bg: #121C35;
+  --reader-input-bg: #0E162B;
+  --reader-button-bg: #1A2744;
+  --reader-button-hover: #223258;
+  --reader-border: #1E2E4E;
+  --reader-text: #F1F5F9;
+  --reader-muted: #94A3B8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="silver"]):not([data-theme="dark"]) {
+    /* System default when OS prefers dark */
+    --theme-name: 'dark';
+    --primary: #3B82F6;
+    --primary-hover: #2563EB;
+    --primary-light: rgba(59, 130, 246, 0.18);
+    --secondary: #94A3B8;
+    --silver-accent: #64748B;
+    --silver-highlight: #1E293B;
+    
+    --bg-color: #070D1E;
+    --surface-color: #0E162B;
+    --surface-hover: #16223E;
+    --surface-active: #1D2D52;
+    --card-bg-color: #121C35;
+    --card-border-color: #1E2E4E;
+    --card-shadow-style: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 20px -2px rgba(37, 99, 235, 0.15);
+    
+    --text-primary: #F8FAFC;
+    --text-secondary: #E2E8F0;
+    --text-muted: #94A3B8;
+    --text-subtle: #64748B;
+    --border-subtle: #17243F;
+    --border-strong: #273A60;
+    
+    --glow-1: rgba(30, 58, 138, 0.4);
+    --glow-2: rgba(37, 99, 235, 0.25);
+    --glow-3: rgba(67, 56, 202, 0.3);
+
+    --bg-gradient: radial-gradient(circle at 15% 15%, rgba(30, 58, 138, 0.35), transparent 50%),
+                   radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.25), transparent 50%),
+                   radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8), transparent 60%),
+                   linear-gradient(135deg, #070D1E 0%, #0B132B 50%, #070D1E 100%);
+    
+    --reader-bg: #0B1120;
+    --reader-header-bg: rgba(14, 22, 43, 0.95);
+    --reader-card-bg: #121C35;
+    --reader-input-bg: #0E162B;
+    --reader-button-bg: #1A2744;
+    --reader-button-hover: #223258;
+    --reader-border: #1E2E4E;
+    --reader-text: #F1F5F9;
+    --reader-muted: #94A3B8;
+  }
 }
 
 @theme {
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-background: var(--bg-color);
   --color-surface: var(--surface-color);
+  --color-surface-hover: var(--surface-hover);
   --color-card: var(--card-bg-color);
   --color-card-border: var(--card-border-color);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
   
   --font-sans: var(--font-body-family);
   --font-display: var(--font-heading-family);
@@ -52,40 +186,43 @@
     color: var(--text-primary);
     font-family: var(--font-body-family);
     min-height: 100vh;
-    transition: background 0.3s ease, color 0.3s ease;
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading-family);
     letter-spacing: -0.02em;
-    color: #1C1E24;
+    color: var(--text-primary);
+    transition: color 0.3s ease;
   }
 }
 
 /* Polished Silver and Inkish Gradient Utilities */
 .silver-gradient-text {
-  background: linear-gradient(135deg, #1C1E24 0%, #475569 50%, #64748B 100%);
+  background: linear-gradient(135deg, var(--text-primary) 0%, #475569 50%, #94A3B8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .ink-gradient-text {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #0F172A 100%);
+  background: linear-gradient(135deg, #2563EB 0%, #3B82F6 50%, #60A5FA 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .silver-ink-card {
-  background: #F6F2EC;
-  border: 1px solid #CEC7BD;
-  box-shadow: 0 10px 30px -5px rgba(160, 150, 138, 0.18), 0 0 20px -2px rgba(200, 192, 180, 0.2);
+  background: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  box-shadow: var(--card-shadow-style);
+  transition: all 0.3s ease;
 }
 
 /* Glassmorphism utilities */
 .glass-blur-panel {
-  background: rgba(230, 224, 216, 0.7);
+  background: var(--surface-color);
   backdrop-filter: blur(16px);
-  border: 1px solid #CEC7BD;
+  border: 1px solid var(--card-border-color);
+  transition: all 0.3s ease;
 }
 
 /* Theme sensitive buttons and cards */

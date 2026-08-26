@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 import { getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
+import { useTheme } from '@/components/ThemeProvider';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface LocationStart {
   index: number;
@@ -20,19 +22,40 @@ interface EpubLocation {
   start: LocationStart;
 }
 
-// Single Dedicated Silver Greyish Nude Theme
+// 1. Signature Silver Greyish Nude Reader Theme
 const SILVER_NUDE_THEME = {
-  bg: 'bg-[#EAE5DE]',
-  text: 'text-[#23252A]',
+  bg: 'bg-[#ECE7E1]',
+  text: 'text-[#1C1E24]',
   headerBg: 'bg-[#E2DDD5]/95',
-  cardBg: 'bg-[#F4EFEA]',
+  cardBg: 'bg-[#F6F2EC]',
+  paperBg: 'bg-[#F4EFEA]',
   border: 'border-[#CEC7BD]',
   innerBorder: 'border-[#DDD6CB]',
   mutedText: 'text-[#6C665F]',
   accentText: 'text-[#2563EB]',
-  rawBg: '#EAE5DE',
-  rawText: '#23252A',
+  buttonBg: 'bg-[#DDD7CE]',
+  buttonBorder: 'border-[#CDC5B9]',
+  rawBg: '#ECE7E1',
+  rawText: '#1C1E24',
   rawPaperBg: '#F4EFEA'
+};
+
+// 2. Midnight Deep Ink Dark Reader Theme
+const DARK_INK_THEME = {
+  bg: 'bg-[#070D1E]',
+  text: 'text-[#F8FAFC]',
+  headerBg: 'bg-[#0E162B]/95',
+  cardBg: 'bg-[#121C35]',
+  paperBg: 'bg-[#0B132B]',
+  border: 'border-[#1E2E4E]',
+  innerBorder: 'border-[#273A60]',
+  mutedText: 'text-[#94A3B8]',
+  accentText: 'text-[#3B82F6]',
+  buttonBg: 'bg-[#16223E]',
+  buttonBorder: 'border-[#1E2E4E]',
+  rawBg: '#070D1E',
+  rawText: '#F8FAFC',
+  rawPaperBg: '#0B132B'
 };
 
 const READER_FONTS = [
@@ -523,7 +546,8 @@ export default function Reader({
     return matches;
   }, [searchQuery, activeChapters]);
 
-  const styles = SILVER_NUDE_THEME;
+  const { resolvedTheme } = useTheme();
+  const styles = resolvedTheme === 'dark' ? DARK_INK_THEME : SILVER_NUDE_THEME;
   const currentTransData = translationCache[`${fallbackPage - 1}::${targetLang}`];
   const totalWords = useMemo(() => activeChapters.reduce((acc, c) => acc + (c.text?.split(/\s+/).length || 0), 0), [activeChapters]);
   const estimatedReadTimeMins = Math.max(1, Math.round(totalWords / 200));
@@ -533,8 +557,8 @@ export default function Reader({
       {/* Global Fonts Inject */}
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap" />
 
-      {/* Silver Greyish Nude Header Bar */}
-      <div className={`h-16 ${styles.headerBg} backdrop-blur-md border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 flex-shrink-0 gap-2 text-[#23252A]`}>
+      {/* Reader Header Bar */}
+      <div className={`h-16 ${styles.headerBg} backdrop-blur-md border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 flex-shrink-0 gap-2 ${styles.text}`}>
         
         {/* Left: Book Meta & Table of Contents Button */}
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -707,10 +731,13 @@ export default function Reader({
             </div>
           )}
 
+          {/* Theme Switcher */}
+          <ThemeToggle variant="dropdown" size="sm" showLabel={false} className="shrink-0" />
+
           {/* Fullscreen button */}
           <button 
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-xl bg-[#DDD7CE] border border-[#CDC5B9] text-[#5C5852] hover:text-[#1E2024] hidden sm:block"
+            className="p-1.5 rounded-xl bg-surface border border-card-border text-muted hover:text-foreground hidden sm:block"
             title="Toggle Fullscreen"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -720,22 +747,22 @@ export default function Reader({
 
       {/* Slide-out In-Book Search Bar */}
       {isSearchOpen && (
-        <div className="bg-[#E2DDD5] border-b border-[#CEC7BD] p-4 z-20 space-y-3 animate-in slide-in-from-top-2">
+        <div className={`${styles.headerBg} border-b ${styles.border} p-4 z-20 space-y-3 animate-in slide-in-from-top-2`}>
           <div className="max-w-2xl mx-auto flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#736E67]" />
+              <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${styles.mutedText}`} />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search words, names, or quotes across entire book..."
-                className="w-full bg-[#F4EFEA] border border-[#CEC7BD] text-[#23252A] placeholder-[#8C867D] rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-[#2563EB]"
+                className={`w-full ${styles.cardBg} border ${styles.border} ${styles.text} rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-primary`}
                 autoFocus
               />
             </div>
             <button 
               onClick={() => setIsSearchOpen(false)}
-              className="p-2 rounded-xl text-[#736E67] hover:text-[#1E2024] hover:bg-[#DDD7CE]"
+              className={`p-2 rounded-xl ${styles.mutedText} hover:${styles.text} hover:${styles.buttonBg}`}
             >
               <X className="w-4 h-4" />
             </button>
@@ -743,7 +770,7 @@ export default function Reader({
 
           {searchQuery && (
             <div className="max-w-2xl mx-auto max-h-48 overflow-y-auto space-y-2 pr-2">
-              <p className="text-[11px] text-[#736E67] font-mono">Found {searchResults.length} matches across chapters:</p>
+              <p className={`text-[11px] ${styles.mutedText} font-mono`}>Found {searchResults.length} matches across chapters:</p>
               {searchResults.map((res, i) => (
                 <div 
                   key={`res-${i}`}
@@ -751,10 +778,10 @@ export default function Reader({
                     setFallbackPage(res.chapterIdx);
                     setIsSearchOpen(false);
                   }}
-                  className="p-2.5 rounded-xl bg-[#F4EFEA] border border-[#CEC7BD] hover:border-[#2563EB]/60 cursor-pointer transition text-left"
+                  className={`p-2.5 rounded-xl ${styles.cardBg} border ${styles.border} hover:border-primary/60 cursor-pointer transition text-left`}
                 >
-                  <span className="text-[10px] text-[#2563EB] font-bold uppercase tracking-wider block">{res.chapterTitle}</span>
-                  <p className="text-xs text-[#423E38] line-clamp-1 mt-0.5">{res.snippet}</p>
+                  <span className="text-[10px] text-primary font-bold uppercase tracking-wider block">{res.chapterTitle}</span>
+                  <p className={`text-xs ${styles.text} line-clamp-1 mt-0.5`}>{res.snippet}</p>
                 </div>
               ))}
             </div>
@@ -764,16 +791,16 @@ export default function Reader({
 
       {/* Slide-out Table of Contents (TOC) Drawer */}
       {isTocOpen && (
-        <div className="absolute inset-y-16 left-0 w-80 md:w-96 bg-[#E8E3DB]/98 border-r border-[#CEC7BD] z-30 flex flex-col p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-left duration-200 text-[#23252A]">
-          <div className="flex items-center justify-between pb-3 border-b border-[#CEC7BD]">
+        <div className={`absolute inset-y-16 left-0 w-80 md:w-96 ${styles.headerBg} border-r ${styles.border} z-30 flex flex-col p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-left duration-200 ${styles.text}`}>
+          <div className={`flex items-center justify-between pb-3 border-b ${styles.border}`}>
             <div>
-              <h3 className="font-extrabold text-sm text-[#1E2024] flex items-center gap-1.5">
-                <List className="w-4 h-4 text-[#2563EB]" />
+              <h3 className={`font-extrabold text-sm ${styles.text} flex items-center gap-1.5`}>
+                <List className="w-4 h-4 text-primary" />
                 <span>Table of Contents</span>
               </h3>
-              <p className="text-[10px] text-[#736E67] font-mono">{activeChapters.length} Chapters | ~{estimatedReadTimeMins}m read</p>
+              <p className={`text-[10px] ${styles.mutedText} font-mono`}>{activeChapters.length} Chapters | ~{estimatedReadTimeMins}m read</p>
             </div>
-            <button onClick={() => setIsTocOpen(false)} className="p-1 rounded-lg text-[#736E67] hover:text-[#1E2024] hover:bg-[#DDD7CE]">
+            <button onClick={() => setIsTocOpen(false)} className={`p-1 rounded-lg ${styles.mutedText} hover:${styles.text} hover:${styles.buttonBg}`}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -792,15 +819,15 @@ export default function Reader({
                   }}
                   className={`w-full text-left p-3 rounded-xl transition flex items-center justify-between gap-3 ${
                     isSelected 
-                      ? 'bg-[#2563EB]/15 text-[#1E2024] border border-[#2563EB]/40 font-bold shadow-sm' 
-                      : 'hover:bg-[#DDD7CE]/80 text-[#5C5852] hover:text-[#1E2024] border border-transparent'
+                      ? 'bg-primary/15 border border-primary/40 font-bold shadow-sm' 
+                      : `hover:${styles.buttonBg}/80 ${styles.mutedText} hover:${styles.text} border border-transparent`
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="text-[10px] text-[#8C867D] font-mono block">Section {idx + 1}</span>
-                    <p className="text-xs truncate font-medium text-[#23252A]">{ch.chapter}</p>
+                    <span className={`text-[10px] ${styles.mutedText} font-mono block`}>Section {idx + 1}</span>
+                    <p className={`text-xs truncate font-medium ${styles.text}`}>{ch.chapter}</p>
                   </div>
-                  <span className="text-[10px] text-[#8C867D] font-mono shrink-0">~{Math.max(1, Math.round(wordCount / 200))}m</span>
+                  <span className={`text-[10px] ${styles.mutedText} font-mono shrink-0`}>~{Math.max(1, Math.round(wordCount / 200))}m</span>
                 </button>
               );
             })}

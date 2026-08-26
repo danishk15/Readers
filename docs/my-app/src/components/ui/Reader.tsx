@@ -20,16 +20,19 @@ interface EpubLocation {
   start: LocationStart;
 }
 
-const READER_THEMES: Record<string, { bg: string, text: string, cardBg: string, border: string, rawBg: string, rawText: string, accent: string }> = {
-  dark: { bg: 'bg-[#060B18]', text: 'text-[#E2E8F0]', cardBg: 'bg-slate-900/60', border: 'border-slate-800/80', rawBg: '#060B18', rawText: '#E2E8F0', accent: '#5B6CFF' },
-  ink: { bg: 'bg-[#050814]', text: 'text-[#F8FAFC]', cardBg: 'bg-[#0b1026]/70', border: 'border-slate-700/80', rawBg: '#050814', rawText: '#F8FAFC', accent: '#38BDF8' },
-  midnight: { bg: 'bg-[#0B132B]', text: 'text-[#F1F5F9]', cardBg: 'bg-[#1C2541]/70', border: 'border-slate-700', rawBg: '#0B132B', rawText: '#F1F5F9', accent: '#60A5FA' },
-  sepia: { bg: 'bg-[#f7f2e8]', text: 'text-[#433422]', cardBg: 'bg-[#ede5d5]/80', border: 'border-[#ebdcc5]', rawBg: '#f7f2e8', rawText: '#433422', accent: '#8C5E32' },
-  light: { bg: 'bg-[#ffffff]', text: 'text-[#0f172a]', cardBg: 'bg-slate-50', border: 'border-slate-200', rawBg: '#ffffff', rawText: '#0f172a', accent: '#2563EB' },
-  emerald: { bg: 'bg-[#051b11]', text: 'text-[#d2e7d6]', cardBg: 'bg-[#0a2e1e]/60', border: 'border-emerald-950', rawBg: '#051b11', rawText: '#d2e7d6', accent: '#34D399' },
-  amethyst: { bg: 'bg-[#1a0f2e]', text: 'text-[#f3e8ff]', cardBg: 'bg-[#2a1b47]/60', border: 'border-purple-950', rawBg: '#1a0f2e', rawText: '#f3e8ff', accent: '#C084FC' },
-  sand: { bg: 'bg-[#f4efe6]', text: 'text-[#2b261f]', cardBg: 'bg-[#e8dfcf]/70', border: 'border-amber-900/10', rawBg: '#f4efe6', rawText: '#2b261f', accent: '#D97706' },
-  nordic: { bg: 'bg-[#eef2f7]', text: 'text-[#1e293b]', cardBg: 'bg-white/80', border: 'border-slate-300', rawBg: '#eef2f7', rawText: '#1e293b', accent: '#0284C7' }
+// Single Dedicated Silver Greyish Nude Theme
+const SILVER_NUDE_THEME = {
+  bg: 'bg-[#EAE5DE]',
+  text: 'text-[#23252A]',
+  headerBg: 'bg-[#E2DDD5]/95',
+  cardBg: 'bg-[#F4EFEA]',
+  border: 'border-[#CEC7BD]',
+  innerBorder: 'border-[#DDD6CB]',
+  mutedText: 'text-[#6C665F]',
+  accentText: 'text-[#2563EB]',
+  rawBg: '#EAE5DE',
+  rawText: '#23252A',
+  rawPaperBg: '#F4EFEA'
 };
 
 const READER_FONTS = [
@@ -128,7 +131,6 @@ export default function Reader({
   // Reflowable / Typography states
   const [fontSize, setFontSize] = useState(17);
   const [fontFamily, setFontFamily] = useState('Georgia, serif');
-  const [theme, setTheme] = useState<keyof typeof READER_THEMES>('dark');
   
   // Persistent Chapter Page
   const [fallbackPage, setFallbackPage] = useState(() => {
@@ -324,14 +326,13 @@ export default function Reader({
         renditionRef.current = rendition;
         await rendition.display();
         
-        const activeTheme = READER_THEMES[theme] || READER_THEMES.dark;
         rendition.themes.default({
           body: { 
-            background: activeTheme.rawBg, 
-            color: activeTheme.rawText, 
+            background: SILVER_NUDE_THEME.rawBg, 
+            color: SILVER_NUDE_THEME.rawText, 
             'font-family': fontFamily,
             'font-size': `${fontSize}px`,
-            'line-height': '1.8'
+            'line-height': '1.85'
           }
         });
 
@@ -352,7 +353,7 @@ export default function Reader({
         try { book.destroy(); } catch {}
       }
     };
-  }, [resolvedBookUrl, isPdf, currentViewMode, theme, fontFamily, fontSize]);
+  }, [resolvedBookUrl, isPdf, currentViewMode, fontFamily, fontSize]);
 
   // Real-time Translation Fetcher
   const translateCurrentChapter = useCallback(async (target: string) => {
@@ -522,18 +523,18 @@ export default function Reader({
     return matches;
   }, [searchQuery, activeChapters]);
 
-  const styles = READER_THEMES[theme] || READER_THEMES.dark;
+  const styles = SILVER_NUDE_THEME;
   const currentTransData = translationCache[`${fallbackPage - 1}::${targetLang}`];
   const totalWords = useMemo(() => activeChapters.reduce((acc, c) => acc + (c.text?.split(/\s+/).length || 0), 0), [activeChapters]);
   const estimatedReadTimeMins = Math.max(1, Math.round(totalWords / 200));
 
   return (
-    <div className={`flex flex-col h-full ${styles.bg} ${styles.text} border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300`}>
+    <div className={`flex flex-col h-full ${styles.bg} ${styles.text} border ${styles.border} rounded-3xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300`}>
       {/* Global Fonts Inject */}
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fira+Code&family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;700&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap" />
 
-      {/* Main Top Header Bar */}
-      <div className={`h-16 ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'bg-white/95 border-slate-200/80 text-slate-900' : 'bg-slate-950/90 border-slate-800/60 text-white'} backdrop-blur-md border-b flex items-center justify-between px-3 md:px-6 z-20 flex-shrink-0 gap-2`}>
+      {/* Silver Greyish Nude Header Bar */}
+      <div className={`h-16 ${styles.headerBg} backdrop-blur-md border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 flex-shrink-0 gap-2 text-[#23252A]`}>
         
         {/* Left: Book Meta & Table of Contents Button */}
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
@@ -541,34 +542,34 @@ export default function Reader({
             onClick={() => setIsTocOpen(!isTocOpen)} 
             variant="secondary" 
             size="sm" 
-            className="px-2.5 py-1.5 text-xs font-bold gap-1.5 flex items-center shrink-0 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+            className="px-2.5 py-1.5 text-xs font-bold gap-1.5 flex items-center shrink-0 bg-[#DDD7CE] hover:bg-[#D4CD22]/20 text-[#23252A] border border-[#CDC5B9]"
             title="Table of Contents & Chapters"
           >
-            <List className="w-3.5 h-3.5" />
+            <List className="w-3.5 h-3.5 text-[#2563EB]" />
             <span className="hidden sm:inline">Chapters ({activeChapters.length})</span>
           </Button>
 
           <div className="min-w-0">
-            <div className={`font-extrabold text-xs md:text-sm truncate max-w-[120px] sm:max-w-[180px] md:max-w-xs ${theme === 'light' || theme === 'sand' || theme === 'nordic' ? 'text-slate-900' : 'text-white'}`}>
+            <div className="font-extrabold text-xs md:text-sm truncate max-w-[120px] sm:max-w-[180px] md:max-w-xs text-[#1E2024]">
               {title || 'QuillHawk Book'}
             </div>
-            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 truncate">
+            <div className="text-[10px] text-[#736E67] font-medium flex items-center gap-1.5 truncate">
               <span>Time:</span>
-              <span className="text-warning font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
-              <span className="text-slate-600">|</span>
+              <span className="text-[#2563EB] font-semibold font-mono">{Math.floor(timeSpent / 60)}m</span>
+              <span className="text-[#AAA399]">|</span>
               <span>{estimatedReadTimeMins}m read</span>
             </div>
           </div>
         </div>
 
         {/* Center: Mode Switching Pills */}
-        <div className="hidden lg:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-800/70">
+        <div className="hidden lg:flex items-center gap-1 bg-[#DDD7CE]/80 p-1 rounded-xl border border-[#CDC5B9]">
           <button
             onClick={() => setCurrentViewMode('reader')}
             className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
               currentViewMode === 'reader' 
-                ? 'bg-primary text-white shadow' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#2563EB] text-white shadow' 
+                : 'text-[#5C5852] hover:text-[#1E2024]'
             }`}
           >
             📖 Full Book Text
@@ -578,8 +579,8 @@ export default function Reader({
             onClick={() => setCurrentViewMode('bilingual')}
             className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
               currentViewMode === 'bilingual' 
-                ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow' 
-                : 'text-indigo-400 hover:text-indigo-200'
+                ? 'bg-[#2563EB] text-white shadow' 
+                : 'text-[#5C5852] hover:text-[#1E2024]'
             }`}
           >
             <Languages className="w-3 h-3" />
@@ -590,8 +591,8 @@ export default function Reader({
             onClick={() => setCurrentViewMode('translated')}
             className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
               currentViewMode === 'translated' 
-                ? 'bg-emerald-600 text-white shadow' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#2563EB] text-white shadow' 
+                : 'text-[#5C5852] hover:text-[#1E2024]'
             }`}
           >
             <Globe className="w-3 h-3" />
@@ -603,8 +604,8 @@ export default function Reader({
               onClick={() => setCurrentViewMode('epub')}
               className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
                 currentViewMode === 'epub' 
-                  ? 'bg-primary text-white shadow' 
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2563EB] text-white shadow' 
+                  : 'text-[#5C5852] hover:text-[#1E2024]'
               }`}
             >
               📄 Original EPUB
@@ -616,8 +617,8 @@ export default function Reader({
               onClick={() => setCurrentViewMode('archive')}
               className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
                 currentViewMode === 'archive' 
-                  ? 'bg-primary text-white shadow' 
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#2563EB] text-white shadow' 
+                : 'text-[#5C5852] hover:text-[#1E2024]'
               }`}
             >
               🏛️ Archive
@@ -630,15 +631,15 @@ export default function Reader({
           
           {/* Translation selector */}
           {(currentViewMode === 'bilingual' || currentViewMode === 'translated') && (
-            <div className="flex items-center gap-1 bg-indigo-950/40 border border-indigo-500/30 px-2 py-1 rounded-xl">
-              <Globe className="w-3 h-3 text-cyan-400 shrink-0" />
+            <div className="flex items-center gap-1 bg-[#DDD7CE] border border-[#CDC5B9] px-2 py-1 rounded-xl">
+              <Globe className="w-3 h-3 text-[#2563EB] shrink-0" />
               <select
                 value={targetLang}
                 onChange={(e) => setTargetLang(e.target.value)}
-                className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer border-0 p-0"
+                className="bg-transparent text-[#23252A] font-bold text-xs focus:outline-none cursor-pointer border-0 p-0"
               >
                 {TRANSLATE_LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code} className="bg-slate-900 text-white">
+                  <option key={l.code} value={l.code} className="bg-[#EAE5DE] text-[#23252A]">
                     {l.name}
                   </option>
                 ))}
@@ -649,7 +650,7 @@ export default function Reader({
           {/* Search button */}
           <button 
             onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className={`p-1.5 rounded-xl border transition ${isSearchOpen ? 'bg-primary text-white border-primary' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'}`}
+            className={`p-1.5 rounded-xl border transition ${isSearchOpen ? 'bg-[#2563EB] text-white border-[#2563EB]' : 'bg-[#DDD7CE] border-[#CDC5B9] text-[#5C5852] hover:text-[#1E2024]'}`}
             title="Search inside book"
           >
             <Search className="w-4 h-4" />
@@ -659,7 +660,7 @@ export default function Reader({
           {currentViewMode === 'reader' && (
             <button
               onClick={() => setScrollMode(scrollMode === 'paginated' ? 'continuous' : 'paginated')}
-              className={`p-1.5 rounded-xl border text-[10px] font-bold hidden sm:flex items-center gap-1 ${scrollMode === 'continuous' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'}`}
+              className={`p-1.5 rounded-xl border text-[10px] font-bold hidden sm:flex items-center gap-1 ${scrollMode === 'continuous' ? 'bg-[#2563EB] text-white border-[#2563EB]' : 'bg-[#DDD7CE] border-[#CDC5B9] text-[#5C5852] hover:text-[#1E2024]'}`}
               title={scrollMode === 'paginated' ? 'Switch to Continuous Scroll' : 'Switch to Paginated'}
             >
               <AlignJustify className="w-3.5 h-3.5" />
@@ -672,55 +673,44 @@ export default function Reader({
             variant="secondary" 
             size="sm" 
             onClick={() => handleToggleSpeak(currentTransData?.text || currentChapterObj.text, isTargetRtl ? targetLang : (isBookRtl ? 'ur' : 'en'))}
-            className="text-xs font-bold px-2.5 py-1 gap-1"
+            className="text-xs font-bold px-2.5 py-1 gap-1 bg-[#DDD7CE] hover:bg-[#D4CD22]/20 text-[#23252A] border border-[#CDC5B9]"
             title="Listen to chapter"
           >
-            {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-rose-400 animate-pulse" /> : <Volume2 className="w-3.5 h-3.5 text-indigo-400" />}
+            {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> : <Volume2 className="w-3.5 h-3.5 text-[#2563EB]" />}
             <span className="hidden md:inline">{isSpeaking ? 'Stop' : 'Listen'}</span>
           </Button>
 
-          {/* Font & Theme Selector */}
-          <div className="hidden xl:flex items-center gap-2 text-[11px] bg-slate-900/40 border border-slate-800/60 px-2.5 py-1 rounded-xl shadow-inner">
+          {/* Font Selector & Size Adjuster */}
+          <div className="hidden xl:flex items-center gap-2 text-[11px] bg-[#DDD7CE]/90 border border-[#CDC5B9] px-2.5 py-1 rounded-xl shadow-inner">
             <select 
               value={fontFamily} 
               onChange={(e) => setFontFamily(e.target.value)} 
-              className="bg-transparent text-slate-300 focus:outline-none cursor-pointer font-bold border-0 p-0 max-w-[120px] truncate"
+              className="bg-transparent text-[#23252A] focus:outline-none cursor-pointer font-bold border-0 p-0 max-w-[130px] truncate"
             >
               {READER_FONTS.map(f => (
-                <option key={f.value} value={f.value} className="bg-slate-900 text-slate-200">{f.label}</option>
+                <option key={f.value} value={f.value} className="bg-[#EAE5DE] text-[#23252A]">{f.label}</option>
               ))}
             </select>
             
-            <div className="flex items-center gap-1 border-l border-slate-800 pl-1.5">
-              <button onClick={() => setFontSize(p => Math.max(12, p - 2))} className="hover:text-primary font-black px-1 text-xs">-</button>
-              <span className="font-bold font-mono text-[10px] text-slate-300">{fontSize}px</span>
-              <button onClick={() => setFontSize(p => Math.min(32, p + 2))} className="hover:text-primary font-black px-1 text-xs">+</button>
-            </div>
-
-            <div className="flex items-center gap-1 border-l border-slate-800 pl-1.5">
-              {Object.entries(READER_THEMES).slice(0, 5).map(([name, themeObj]) => (
-                <button 
-                  key={name}
-                  onClick={() => setTheme(name as any)} 
-                  className={`w-3 h-3 rounded-full border transition-all ${themeObj.bg} ${themeObj.border} ${theme === name ? 'ring-2 ring-primary scale-110' : 'hover:border-slate-400'}`} 
-                  title={name}
-                />
-              ))}
+            <div className="flex items-center gap-1 border-l border-[#CDC5B9] pl-1.5">
+              <button onClick={() => setFontSize(p => Math.max(12, p - 2))} className="hover:text-[#2563EB] font-black px-1 text-xs">-</button>
+              <span className="font-bold font-mono text-[10px] text-[#23252A]">{fontSize}px</span>
+              <button onClick={() => setFontSize(p => Math.min(32, p + 2))} className="hover:text-[#2563EB] font-black px-1 text-xs">+</button>
             </div>
           </div>
 
           {/* Previous / Next buttons */}
           {(currentViewMode === 'reader' || currentViewMode === 'bilingual' || currentViewMode === 'translated') && (
             <div className="flex items-center gap-1">
-              <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs px-2">←</Button>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs px-2">→</Button>
+              <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs px-2 bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">←</Button>
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs px-2 bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">→</Button>
             </div>
           )}
 
           {/* Fullscreen button */}
           <button 
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white hidden sm:block"
+            className="p-1.5 rounded-xl bg-[#DDD7CE] border border-[#CDC5B9] text-[#5C5852] hover:text-[#1E2024] hidden sm:block"
             title="Toggle Fullscreen"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -730,22 +720,22 @@ export default function Reader({
 
       {/* Slide-out In-Book Search Bar */}
       {isSearchOpen && (
-        <div className="bg-slate-950/95 border-b border-slate-800 p-4 z-20 space-y-3 animate-in slide-in-from-top-2">
+        <div className="bg-[#E2DDD5] border-b border-[#CEC7BD] p-4 z-20 space-y-3 animate-in slide-in-from-top-2">
           <div className="max-w-2xl mx-auto flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#736E67]" />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search words, names, or quotes across entire book..."
-                className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-primary"
+                className="w-full bg-[#F4EFEA] border border-[#CEC7BD] text-[#23252A] placeholder-[#8C867D] rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-[#2563EB]"
                 autoFocus
               />
             </div>
             <button 
               onClick={() => setIsSearchOpen(false)}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900"
+              className="p-2 rounded-xl text-[#736E67] hover:text-[#1E2024] hover:bg-[#DDD7CE]"
             >
               <X className="w-4 h-4" />
             </button>
@@ -753,7 +743,7 @@ export default function Reader({
 
           {searchQuery && (
             <div className="max-w-2xl mx-auto max-h-48 overflow-y-auto space-y-2 pr-2">
-              <p className="text-[11px] text-slate-400 font-mono">Found {searchResults.length} matches across chapters:</p>
+              <p className="text-[11px] text-[#736E67] font-mono">Found {searchResults.length} matches across chapters:</p>
               {searchResults.map((res, i) => (
                 <div 
                   key={`res-${i}`}
@@ -761,10 +751,10 @@ export default function Reader({
                     setFallbackPage(res.chapterIdx);
                     setIsSearchOpen(false);
                   }}
-                  className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-primary/50 cursor-pointer transition text-left"
+                  className="p-2.5 rounded-xl bg-[#F4EFEA] border border-[#CEC7BD] hover:border-[#2563EB]/60 cursor-pointer transition text-left"
                 >
-                  <span className="text-[10px] text-primary font-bold uppercase tracking-wider block">{res.chapterTitle}</span>
-                  <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">{res.snippet}</p>
+                  <span className="text-[10px] text-[#2563EB] font-bold uppercase tracking-wider block">{res.chapterTitle}</span>
+                  <p className="text-xs text-[#423E38] line-clamp-1 mt-0.5">{res.snippet}</p>
                 </div>
               ))}
             </div>
@@ -774,16 +764,16 @@ export default function Reader({
 
       {/* Slide-out Table of Contents (TOC) Drawer */}
       {isTocOpen && (
-        <div className="absolute inset-y-16 left-0 w-80 md:w-96 bg-slate-950/95 border-r border-slate-800 z-30 flex flex-col p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-left duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="absolute inset-y-16 left-0 w-80 md:w-96 bg-[#E8E3DB]/98 border-r border-[#CEC7BD] z-30 flex flex-col p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-left duration-200 text-[#23252A]">
+          <div className="flex items-center justify-between pb-3 border-b border-[#CEC7BD]">
             <div>
-              <h3 className="font-extrabold text-sm text-white flex items-center gap-1.5">
-                <List className="w-4 h-4 text-primary" />
+              <h3 className="font-extrabold text-sm text-[#1E2024] flex items-center gap-1.5">
+                <List className="w-4 h-4 text-[#2563EB]" />
                 <span>Table of Contents</span>
               </h3>
-              <p className="text-[10px] text-slate-500 font-mono">{activeChapters.length} Chapters | ~{estimatedReadTimeMins}m read</p>
+              <p className="text-[10px] text-[#736E67] font-mono">{activeChapters.length} Chapters | ~{estimatedReadTimeMins}m read</p>
             </div>
-            <button onClick={() => setIsTocOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900">
+            <button onClick={() => setIsTocOpen(false)} className="p-1 rounded-lg text-[#736E67] hover:text-[#1E2024] hover:bg-[#DDD7CE]">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -802,15 +792,15 @@ export default function Reader({
                   }}
                   className={`w-full text-left p-3 rounded-xl transition flex items-center justify-between gap-3 ${
                     isSelected 
-                      ? 'bg-primary/20 text-white border border-primary/40 font-bold shadow' 
-                      : 'hover:bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-transparent'
+                      ? 'bg-[#2563EB]/15 text-[#1E2024] border border-[#2563EB]/40 font-bold shadow-sm' 
+                      : 'hover:bg-[#DDD7CE]/80 text-[#5C5852] hover:text-[#1E2024] border border-transparent'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="text-[10px] text-slate-500 font-mono block">Section {idx + 1}</span>
-                    <p className="text-xs truncate font-medium text-slate-200">{ch.chapter}</p>
+                    <span className="text-[10px] text-[#8C867D] font-mono block">Section {idx + 1}</span>
+                    <p className="text-xs truncate font-medium text-[#23252A]">{ch.chapter}</p>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono shrink-0">~{Math.max(1, Math.round(wordCount / 200))}m</span>
+                  <span className="text-[10px] text-[#8C867D] font-mono shrink-0">~{Math.max(1, Math.round(wordCount / 200))}m</span>
                 </button>
               );
             })}
@@ -825,8 +815,8 @@ export default function Reader({
       >
         {loading && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center ${styles.bg} z-20 space-y-4`}>
-            <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-            <p className="text-xs text-slate-400 animate-pulse font-medium">Opening authentic multi-chapter edition...</p>
+            <div className="animate-spin w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full" />
+            <p className="text-xs text-[#6C665F] animate-pulse font-medium">Opening authentic multi-chapter edition...</p>
           </div>
         )}
 
@@ -834,28 +824,28 @@ export default function Reader({
         {currentViewMode === 'archive' && iaId ? (
           <iframe 
             src={`https://archive.org/embed/${iaId}?js=1`} 
-            className="w-full h-full border-0 bg-slate-950 min-h-[600px]" 
+            className="w-full h-full border-0 bg-[#EAE5DE] min-h-[600px]" 
             title={title || "Internet Archive Reader"} 
             allowFullScreen
           />
         ) : isPdf ? (
           <iframe 
             src={resolvedBookUrl} 
-            className="w-full h-full border-0 bg-slate-900" 
+            className="w-full h-full border-0 bg-[#EAE5DE]" 
             title={title || "PDF Reader"} 
           />
         ) : currentViewMode === 'bilingual' ? (
           /* 2. Side-by-Side Bilingual Dual-Language Parallel Reading */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-8 px-4 md:px-10 flex flex-col space-y-6`}>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-800/40 pb-4 max-w-6xl mx-auto w-full">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-[#CEC7BD] pb-4 max-w-6xl mx-auto w-full">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500/15 to-cyan-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-bold">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DDD7CE] border border-[#CDC5B9] text-[#23252A] text-xs font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>AI Parallel Dual-Language View</span>
                 </span>
                 {isTranslating && (
-                  <span className="text-[11px] text-cyan-400 font-medium flex items-center gap-1.5 animate-pulse">
-                    <span className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full block animate-spin" />
+                  <span className="text-[11px] text-[#2563EB] font-medium flex items-center gap-1.5 animate-pulse">
+                    <span className="w-3 h-3 border-2 border-[#2563EB] border-t-transparent rounded-full block animate-spin" />
                     Translating section...
                   </span>
                 )}
@@ -865,10 +855,10 @@ export default function Reader({
                 <select
                   value={fallbackPage}
                   onChange={(e) => setFallbackPage(Number(e.target.value))}
-                  className="text-xs bg-slate-900/80 border border-slate-800 text-slate-200 rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[200px] truncate"
+                  className="text-xs bg-[#DDD7CE] border border-[#CDC5B9] text-[#23252A] rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[200px] truncate"
                 >
                   {activeChapters.map((ch, idx) => (
-                    <option key={`ch-bilingual-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                    <option key={`ch-bilingual-${idx}`} value={idx + 1} className="bg-[#EAE5DE] text-[#23252A]">
                       {ch.chapter || `Chapter ${idx + 1}`}
                     </option>
                   ))}
@@ -878,9 +868,9 @@ export default function Reader({
                   variant="secondary" 
                   size="sm" 
                   onClick={() => handleCopyText(currentTransData?.text || currentChapterObj.text)}
-                  className="text-xs font-bold gap-1"
+                  className="text-xs font-bold gap-1 bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Copied' : 'Copy'}</span>
                 </Button>
               </div>
@@ -889,15 +879,15 @@ export default function Reader({
             {/* Bilingual Dual Column Grid */}
             <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
               {/* Left: Original Text */}
-              <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800/80 space-y-6 shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+              <div className="p-6 rounded-2xl bg-[#F4EFEA] border border-[#DDD6CB] space-y-6 shadow-sm">
+                <div className="flex items-center justify-between border-b border-[#CEC7BD] pb-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#2563EB] flex items-center gap-1.5">
                     <span>📜 Original Text</span>
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono font-bold">Section {fallbackPage}</span>
+                  <span className="text-[10px] text-[#736E67] font-mono font-bold">Section {fallbackPage}</span>
                 </div>
 
-                <h3 className="text-lg md:text-xl font-extrabold text-white tracking-tight" style={{ fontFamily }}>
+                <h3 className="text-lg md:text-xl font-extrabold text-[#1E2024] tracking-tight" style={{ fontFamily }}>
                   {currentChapterObj.chapter}
                 </h3>
 
@@ -912,7 +902,7 @@ export default function Reader({
                 >
                   {currentTransData?.paragraphs?.length ? (
                     currentTransData.paragraphs.map((p, idx) => (
-                      <p key={`orig-p-${idx}`} className="p-2 rounded-lg hover:bg-slate-900/50 transition-colors">
+                      <p key={`orig-p-${idx}`} className="p-2 rounded-lg hover:bg-[#EAE5DE] transition-colors">
                         {p.original}
                       </p>
                     ))
@@ -923,17 +913,17 @@ export default function Reader({
               </div>
 
               {/* Right: Translated Text */}
-              <div className="p-6 rounded-2xl bg-indigo-950/15 border border-indigo-500/25 space-y-6 shadow-xl relative">
-                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3">
-                  <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+              <div className="p-6 rounded-2xl bg-[#EFEAE2] border border-[#DDD6CB] space-y-6 shadow-sm relative">
+                <div className="flex items-center justify-between border-b border-[#CEC7BD] pb-3">
+                  <span className="text-xs font-black uppercase tracking-wider text-[#2563EB] flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5" />
                     <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
                   </span>
-                  <span className="text-[10px] text-indigo-400 font-mono font-bold">Live AI Translation</span>
+                  <span className="text-[10px] text-[#736E67] font-mono font-bold">Live AI Translation</span>
                 </div>
 
                 <h3 
-                  className={`text-lg md:text-xl font-extrabold text-cyan-200 tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
+                  className={`text-lg md:text-xl font-extrabold text-[#1E2024] tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
                   dir={isTargetRtl ? 'rtl' : 'ltr'}
                   style={{ 
                     fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
@@ -953,12 +943,12 @@ export default function Reader({
                 >
                   {isTranslating && !currentTransData ? (
                     <div className="py-12 flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full" />
-                      <p className="text-xs text-cyan-300 animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                      <div className="animate-spin w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full" />
+                      <p className="text-xs text-[#2563EB] animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
                     </div>
                   ) : currentTransData?.paragraphs?.length ? (
                     currentTransData.paragraphs.map((p, idx) => (
-                      <p key={`trans-p-${idx}`} className="p-2 rounded-lg bg-indigo-950/25 hover:bg-indigo-900/30 transition-colors border border-indigo-500/10">
+                      <p key={`trans-p-${idx}`} className="p-2 rounded-lg bg-[#E6E0D7] hover:bg-[#DDD6CB] transition-colors border border-[#DDD6CB]">
                         {p.translated}
                       </p>
                     ))
@@ -970,12 +960,12 @@ export default function Reader({
             </div>
 
             {/* Pagination Footer */}
-            <div className="max-w-6xl mx-auto w-full text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/40 pt-6 flex justify-between items-center">
-              <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs">
+            <div className="max-w-6xl mx-auto w-full text-center text-xs text-[#736E67] font-semibold font-mono border-t border-[#CEC7BD] pt-6 flex justify-between items-center">
+              <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                 ← Previous Section
               </Button>
               <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs">
+              <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                 Next Section →
               </Button>
             </div>
@@ -984,14 +974,14 @@ export default function Reader({
           /* 3. Full Translated Single Language Edition */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-500 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
-              <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
+              <div className="flex items-center justify-between border-b border-[#CEC7BD] pb-3">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#2563EB] flex items-center gap-1 mb-1">
                     <Globe className="w-3 h-3" />
                     <span>{TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name} Translation</span>
                   </span>
                   <h2 
-                    className="text-xl md:text-2xl font-black tracking-tight"
+                    className="text-xl md:text-2xl font-black tracking-tight text-[#1E2024]"
                     dir={isTargetRtl ? 'rtl' : 'ltr'}
                     style={{ fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
                   >
@@ -1002,10 +992,10 @@ export default function Reader({
                 <select
                   value={fallbackPage}
                   onChange={(e) => setFallbackPage(Number(e.target.value))}
-                  className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[200px] truncate"
+                  className="text-xs bg-[#DDD7CE] border border-[#CDC5B9] text-[#23252A] rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[200px] truncate"
                 >
                   {activeChapters.map((ch, idx) => (
-                    <option key={`opt-trans-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                    <option key={`opt-trans-${idx}`} value={idx + 1} className="bg-[#EAE5DE] text-[#23252A]">
                       {ch.chapter || `Chapter ${idx + 1}`}
                     </option>
                   ))}
@@ -1023,20 +1013,20 @@ export default function Reader({
               >
                 {isTranslating && !currentTransData ? (
                   <div className="py-20 flex flex-col items-center justify-center space-y-3">
-                    <div className="animate-spin w-8 h-8 border-3 border-emerald-400 border-t-transparent rounded-full" />
-                    <p className="text-xs text-emerald-400 animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                    <div className="animate-spin w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full" />
+                    <p className="text-xs text-[#2563EB] animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
                   </div>
                 ) : (
                   currentTransData?.text || currentChapterObj.text
                 )}
               </div>
 
-              <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
-                <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs">
+              <div className="text-center text-xs text-[#736E67] font-semibold font-mono border-t border-[#CEC7BD] pt-4 flex justify-between items-center">
+                <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                   ← Previous Section
                 </Button>
                 <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
-                <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs">
+                <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                   Next Section →
                 </Button>
               </div>
@@ -1046,7 +1036,7 @@ export default function Reader({
           /* 4. Original EPUB View */
           <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         ) : (
-          /* 5. Default Reflowable Full Book View (Paginated & Continuous Scroll Modes) */
+          /* 5. Default Reflowable Full Book View (Silver Greyish Nude Paper Surface) */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-10 px-4 md:px-12 flex flex-col transition-colors duration-300 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
               
@@ -1054,14 +1044,14 @@ export default function Reader({
                 /* Continuous Scroll View (All Chapters Sequentially) */
                 <div className="space-y-16">
                   {activeChapters.map((ch, idx) => (
-                    <div key={`cont-ch-${idx}`} className="space-y-6 border-b border-slate-800/40 pb-12">
-                      <div className="flex items-center justify-between border-b border-slate-800/20 pb-3">
-                        <span className="text-[10px] text-primary font-black uppercase tracking-widest font-mono">Chapter {idx + 1}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">~{Math.max(1, Math.round((ch.text?.split(/\s+/).length || 0) / 200))} min</span>
+                    <div key={`cont-ch-${idx}`} className="space-y-6 border-b border-[#CEC7BD] pb-12">
+                      <div className="flex items-center justify-between border-b border-[#DDD6CB] pb-3">
+                        <span className="text-[10px] text-[#2563EB] font-black uppercase tracking-widest font-mono">Chapter {idx + 1}</span>
+                        <span className="text-[10px] text-[#736E67] font-mono">~{Math.max(1, Math.round((ch.text?.split(/\s+/).length || 0) / 200))} min</span>
                       </div>
 
                       <h2 
-                        className="text-2xl md:text-3xl font-black tracking-tight text-white"
+                        className="text-2xl md:text-3xl font-black tracking-tight text-[#1E2024]"
                         dir={isBookRtl ? 'rtl' : 'ltr'}
                         style={{ fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
                       >
@@ -1083,11 +1073,11 @@ export default function Reader({
                   ))}
                 </div>
               ) : (
-                /* Paginated View (Single Chapter Focused) */
+                /* Paginated View (Single Chapter Focused on Silver Nude Canvas) */
                 <>
-                  <div className="flex items-center justify-between border-b border-slate-800/30 pb-3">
+                  <div className="flex items-center justify-between border-b border-[#CEC7BD] pb-3">
                     <h2 
-                      className="text-xl md:text-2xl font-black tracking-tight"
+                      className="text-xl md:text-2xl font-black tracking-tight text-[#1E2024]"
                       dir={isBookRtl ? 'rtl' : 'ltr'}
                       style={{ fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
                     >
@@ -1096,10 +1086,10 @@ export default function Reader({
                     <select
                       value={fallbackPage}
                       onChange={(e) => setFallbackPage(Number(e.target.value))}
-                      className="text-xs bg-slate-900/60 border border-slate-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate"
+                      className="text-xs bg-[#DDD7CE] border border-[#CDC5B9] text-[#23252A] rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate"
                     >
                       {activeChapters.map((ch, idx) => (
-                        <option key={`opt-${idx}`} value={idx + 1} className="bg-slate-900 text-slate-200">
+                        <option key={`opt-${idx}`} value={idx + 1} className="bg-[#EAE5DE] text-[#23252A]">
                           {ch.chapter || `Chapter ${idx + 1}`}
                         </option>
                       ))}
@@ -1118,12 +1108,12 @@ export default function Reader({
                     {currentChapterObj.text || "No content found in this section."}
                   </div>
 
-                  <div className="text-center text-xs text-slate-500 font-semibold font-mono border-t border-slate-800/30 pt-4 flex justify-between items-center">
-                    <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs">
+                  <div className="text-center text-xs text-[#736E67] font-semibold font-mono border-t border-[#CEC7BD] pt-4 flex justify-between items-center">
+                    <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                       ← Previous Section
                     </Button>
                     <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
-                    <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs">
+                    <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className="font-bold text-xs bg-[#DDD7CE] text-[#23252A] border border-[#CDC5B9]">
                       Next Section →
                     </Button>
                   </div>

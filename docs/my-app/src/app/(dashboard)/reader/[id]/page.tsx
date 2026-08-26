@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { AUTHENTIC_BOOK_REGISTRY } from '@/utils/authenticBookContent';
+import { stripHtml } from '@/utils/textSanitizer';
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -90,6 +91,15 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             title: formattedTitle,
             author: 'QuillHawk Library Edition',
             file_url: ''
+          };
+        }
+
+        if (loadedBook) {
+          loadedBook = {
+            ...loadedBook,
+            title: stripHtml(loadedBook.title),
+            author: stripHtml(loadedBook.author),
+            description: stripHtml(loadedBook.description)
           };
         }
 

@@ -14,6 +14,8 @@ import { getCachedBook } from '@/utils/offlineStorage';
 import { getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
 import { useTheme } from '@/components/ThemeProvider';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
+import { stripHtml } from '@/utils/textSanitizer';
 
 interface LocationStart {
   index: number;
@@ -127,9 +129,23 @@ export default function Reader({
   const [timeSpent, setTimeSpent] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
   const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
+
+  const resolvedGoogleId = useMemo(() => {
+    if (bookId && !bookId.startsWith('gutendex-') && !bookId.startsWith('ia-') && !bookId.startsWith('classic-') && !bookId.startsWith('ol-')) {
+      return bookId.replace('google-', '');
+    }
+    if (previewLink && previewLink.includes('id=')) {
+      const match = previewLink.match(/id=([^&]+)/);
+      if (match) return match[1];
+    }
+    if (source === 'Google Books' && bookId) {
+      return bookId.replace('google-', '');
+    }
+    return null;
+  }, [bookId, previewLink, source]);
   
-  // View Modes: 'reader' (Reflowable Full Text), 'bilingual' (Dual Column), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed)
-  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'bilingual' | 'translated' | 'epub' | 'archive'>(() => {
+  // View Modes: 'reader' (Reflowable Full Text), 'bilingual' (Dual Column), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed), 'google' (Google Books Viewer)
+  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'bilingual' | 'translated' | 'epub' | 'archive' | 'google'>(() => {
     if (iaId && (!bookUrl || readMode === 'archive')) return 'archive';
     return 'reader';
   });
@@ -258,9 +274,18 @@ export default function Reader({
 
   // Unified chapters array
   const chapters: AuthenticBookChapter[] = useMemo(() => {
-    if (customChapters && customChapters.length > 0) return customChapters;
-    if (apiFetchedChapters && apiFetchedChapters.length > 0) return apiFetchedChapters;
-    return getAuthenticBookChapters(bookId, title, author, description);
+    let raw: AuthenticBookChapter[] = [];
+    if (customChapters && customChapters.length > 0) {
+      raw = customChapters;
+    } else if (apiFetchedChapters && apiFetchedChapters.length > 0) {
+      raw = apiFetchedChapters;
+    } else {
+      raw = getAuthenticBookChapters(bookId, title, author, description);
+    }
+    return raw.map(ch => ({
+      chapter: stripHtml(ch.chapter),
+      text: stripHtml(ch.text)
+    }));
   }, [bookId, title, author, description, customChapters, apiFetchedChapters]);
 
   const activeChapters = extractedChapters.length > 0 ? extractedChapters : chapters;
@@ -642,10 +667,23 @@ export default function Reader({
               className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
                 currentViewMode === 'archive' 
                   ? 'bg-[#2563EB] text-white shadow' 
-                : 'text-[#5C5852] hover:text-[#1E2024]'
+                  : 'text-[#5C5852] hover:text-[#1E2024]'
               }`}
             >
               🏛️ Archive
+            </button>
+          )}
+
+          {resolvedGoogleId && (
+            <button
+              onClick={() => setCurrentViewMode('google')}
+              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+                currentViewMode === 'google' 
+                  ? 'bg-[#2563EB] text-white shadow' 
+                  : 'text-[#5C5852] hover:text-[#1E2024]'
+              }`}
+            >
+              🌐 Google Preview
             </button>
           )}
         </div>
@@ -847,8 +885,12 @@ export default function Reader({
           </div>
         )}
 
-        {/* 1. Internet Archive Viewer */}
-        {currentViewMode === 'archive' && iaId ? (
+        {/* 1. Google Book Preview Viewer */}
+        {currentViewMode === 'google' && resolvedGoogleId ? (
+          <div className="w-full h-full min-h-[600px] p-2 md:p-4">
+            <GoogleBookViewer bookId={resolvedGoogleId} />
+          </div>
+        ) : currentViewMode === 'archive' && iaId ? (
           <iframe 
             src={`https://archive.org/embed/${iaId}?js=1`} 
             className="w-full h-full border-0 bg-[#EAE5DE] min-h-[600px]" 

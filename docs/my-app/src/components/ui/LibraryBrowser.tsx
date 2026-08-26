@@ -8,11 +8,12 @@ import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { Modal } from '@/components/ui/Modal';
 import { Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, BookOpen, Star, Sparkle, LayoutGrid, Library, Download, CheckCircle2 } from 'lucide-react';
 import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllCachedBooks } from '@/utils/offlineStorage';
+import { stripHtml } from '@/utils/textSanitizer';
 
 function getOnlineBookReadParams(book: any) {
-  const title = book.volumeInfo?.title || book.title || 'Unknown Title';
-  const author = book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author';
-  const description = book.volumeInfo?.description || book.description || 'A curated literary work available in the QuillHawk catalog.';
+  const title = stripHtml(book.volumeInfo?.title || book.title || 'Unknown Title');
+  const author = stripHtml(book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author');
+  const description = stripHtml(book.volumeInfo?.description || book.description || 'A curated literary work available in the QuillHawk catalog.');
   const id = book.id || book.title;
   const iaId = book.accessInfo?.ia || (String(book.id || '').startsWith('ia-') ? String(book.id).replace('ia-', '') : undefined);
   const previewLink = book.volumeInfo?.previewLink || book.previewLink;
@@ -511,11 +512,11 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
   const handleStartReading = async (book: any) => {
     const isLocal = activeTab === 'local' || book.file_url !== undefined;
-    const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
-    const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
+    const title = stripHtml(isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title');
+    const author = stripHtml(isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author');
     const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
     const id = book.id || book.title;
-    const description = isLocal ? book.description : book.volumeInfo?.description || 'No description available.';
+    const description = stripHtml(isLocal ? book.description : book.volumeInfo?.description || 'No description available.');
 
     try {
       const cached = await getCachedBook(id);

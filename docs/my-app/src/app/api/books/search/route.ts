@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stripHtml } from '@/utils/textSanitizer';
 
 export interface UnifiedOnlineBook {
   id: string;
@@ -70,6 +71,14 @@ const LANG_MAP: Record<string, { iso1: string; iso2: string; name: string; nativ
 
 // Transliteration and alias expansions for high-precision search
 const SEARCH_ALIASES: Record<string, string[]> = {
+  'aashadh': ['aashadh ka ek din', 'aashadd ka ek din', 'ashadh ka ek din', 'आषाढ़ का एक दिन', 'mohan rakesh', 'मोहन राकेश'],
+  'aashadd': ['aashadh ka ek din', 'aashadd ka ek din', 'ashadh ka ek din', 'आषाढ़ का एक दिन', 'mohan rakesh', 'मोहन राकेश'],
+  'ashadh': ['aashadh ka ek din', 'ashadh ka ek din', 'आषाढ़ का एक दिन', 'mohan rakesh', 'मोहन राकेश'],
+  'aashadh ka ek din': ['aashadh ka ek din', 'aashadd ka ek din', 'ashadh ka ek din', 'आषाढ़ का एक दिन', 'mohan rakesh', 'मोहन राकेश'],
+  'aashadd ka ek din': ['aashadh ka ek din', 'aashadd ka ek din', 'ashadh ka ek din', 'आषाढ़ का एक दिन', 'mohan rakesh', 'मोहन राकेश'],
+  'आषाढ़ का एक दिन': ['आषाढ़ का एक दिन', 'Aashadh Ka Ek Din', 'Mohan Rakesh', 'मोहन राकेश'],
+  'mohan rakesh': ['mohan rakesh', 'मोहन राकेश', 'आषाढ़ का एक दिन', 'Aashadh Ka Ek Din', 'Lahron Ke Rajhans'],
+  'मोहन राकेश': ['मोहन राकेश', 'Mohan Rakesh', 'आषाढ़ का एक दिन', 'Aashadh Ka Ek Din'],
   'ghalib': ['ghalib', 'مرزا غالب', 'دیوان غالب', 'Deewan e Ghalib', 'Mirza Ghalib'],
   'مرزا غالب': ['غالب', 'Mirza Ghalib', 'Deewan e Ghalib', 'Ghalib Ghazals'],
   'دیوان غالب': ['Deewan e Ghalib', 'Diwan Ghalib', 'غالب', 'Mirza Ghalib'],
@@ -89,8 +98,18 @@ const SEARCH_ALIASES: Record<string, string[]> = {
   'آب حیات': ['Aab e Hayat', 'Muhammad Husain Azad', 'Umera Ahmed', 'عمیرہ احمد'],
   'faiz': ['faiz ahmed faiz', 'فیض احمد فیض', 'دست صبا', 'نسخہ ہائے وفا', 'Poems by Faiz'],
   'فیض احمد فیض': ['Faiz Ahmed Faiz', 'Dast e Saba', 'Nuskha Hai Wafa', 'Faiz'],
-  'premchand': ['premchand', 'پریم چند', 'گودان', 'Godan', 'Nirmala', 'Munshi Premchand', 'Bazar e Husn'],
-  'پریم چند': ['Munshi Premchand', 'Godan', 'Nirmala', 'پریم چند'],
+  'premchand': ['premchand', 'प्रीम चंद', 'मुंशी प्रेमचंद', 'गोदान', 'Godan', 'Nirmala', 'Munshi Premchand', 'Kafan', 'Mansarovar', 'Bazar e Husn'],
+  'प्रीम चंद': ['Munshi Premchand', 'Godan', 'Nirmala', 'प्रीम चंद', 'गोदान'],
+  'मुंशी प्रेमचंद': ['Munshi Premchand', 'Godan', 'Nirmala', 'गोदान', 'निर्मला', 'कफ़न'],
+  'godan': ['godan', 'गोदान', 'Premchand', 'मुंशी प्रेमचंद', 'Munshi Premchand'],
+  'गोदान': ['Godan', 'गोदान', 'Premchand', 'मुंशी प्रेमचंद'],
+  'nirmala': ['nirmala', 'निर्मला', 'Premchand', 'मुंशी प्रेमचंद'],
+  'gunahon ka devta': ['gunahon ka devta', 'गुनाहों का देवता', 'Dharamvir Bharati', 'धर्मवीर भारती'],
+  'गुनाहों का देवता': ['Gunahon Ka Devta', 'Dharamvir Bharati', 'धर्मवीर भारती'],
+  'madhushala': ['madhushala', 'मधुशाला', 'Harivansh Rai Bachchan', 'हरिवंश राय बच्चन'],
+  'मधुशाला': ['Madhushala', 'हरिवंश राय बच्चन', 'Harivansh Rai Bachchan'],
+  'rashmirathi': ['rashmirathi', 'रश्मिरथी', 'Ramdhari Singh Dinkar', 'रामधारी सिंह दिनकर'],
+  'रश्मिरथी': ['Rashmirathi', 'रामधारी सिंह दिनकर', 'Ramdhari Singh Dinkar'],
   'bagh o bahar': ['bagh o bahar', 'باغ و بہار', 'Mir Amman', 'میر امن', 'Four Dervishes'],
   'باغ و بہار': ['Bagh o Bahar', 'Mir Amman', 'Tale of the Four Darvesh'],
   'fasana e azad': ['fasana e azad', 'فسانہ آزاد', 'Ratan Nath Sarshar'],
@@ -98,7 +117,7 @@ const SEARCH_ALIASES: Record<string, string[]> = {
   'qissa hatim tai': ['qissa hatim tai', 'قصہ حاتم طائی', 'Hatim Tai'],
   'les miserables': ['les miserables', 'victor hugo', 'les misérables'],
   'don quixote': ['don quixote', 'don quijote', 'cervantes', 'miguel de cervantes'],
-  'war and peace': ['war and peace', 'leo tolstoy', 'война и мир'],
+  'war and peace': ['war and peace', 'leo tolstoy', 'войna и мир'],
   'faust': ['faust', 'goethe', 'johann wolfgang von goethe'],
   'thousand and one nights': ['thousand and one nights', 'arabian nights', 'ألف ليلة وليلة', 'alf layla wa layla']
 };
@@ -286,9 +305,9 @@ async function fetchInternetArchive(query: string, aliases: string[], lang?: str
         readMode: 'archive',
         file_url: epubUrl,
         volumeInfo: {
-          title: item.title || 'Archived Literary Work',
-          authors: item.creator ? (Array.isArray(item.creator) ? item.creator : [item.creator]) : ['Author / Scribe'],
-          description: item.description || 'Full-text digitized literary book preserved by Internet Archive global digital repository.',
+          title: stripHtml(item.title) || 'Archived Literary Work',
+          authors: item.creator ? (Array.isArray(item.creator) ? item.creator.map(stripHtml) : [stripHtml(item.creator)]) : ['Author / Scribe'],
+          description: stripHtml(item.description) || 'Full-text digitized literary book preserved by Internet Archive global digital repository.',
           imageLinks: { thumbnail: cover },
           infoLink: `https://archive.org/details/${identifier}`,
           previewLink: `https://archive.org/stream/${identifier}`,
@@ -340,9 +359,9 @@ async function fetchOpenLibrary(query: string, category: string, lang?: string):
         readMode: iaId ? 'archive' : 'interactive',
         file_url: iaId ? `https://archive.org/download/${iaId}/${iaId}.epub` : '',
         volumeInfo: {
-          title: doc.title || 'Untitled Literary Work',
-          authors: Array.isArray(doc.author_name) && doc.author_name.length > 0 ? doc.author_name : ['Unknown Author'],
-          description: doc.first_sentence ? (Array.isArray(doc.first_sentence) ? doc.first_sentence.join(' ') : String(doc.first_sentence)) : 'A classic literary work archived in the Open Library global catalog.',
+          title: stripHtml(doc.title) || 'Untitled Literary Work',
+          authors: Array.isArray(doc.author_name) && doc.author_name.length > 0 ? doc.author_name.map(stripHtml) : ['Unknown Author'],
+          description: stripHtml(doc.first_sentence ? (Array.isArray(doc.first_sentence) ? doc.first_sentence.join(' ') : String(doc.first_sentence)) : 'A classic literary work archived in the Open Library global catalog.'),
           imageLinks: cover ? { thumbnail: cover } : null,
           infoLink: doc.key ? `https://openlibrary.org${doc.key}` : '#',
           previewLink: doc.key ? `https://openlibrary.org${doc.key}` : '#',
@@ -393,8 +412,8 @@ async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnli
         readMode: 'epub',
         file_url: epubUrl,
         volumeInfo: {
-          title: b.title || 'Classic Literature',
-          authors: Array.isArray(b.authors) && b.authors.length > 0 ? b.authors.map((a: any) => a.name) : ['Classic Author'],
+          title: stripHtml(b.title) || 'Classic Literature',
+          authors: Array.isArray(b.authors) && b.authors.length > 0 ? b.authors.map((a: any) => stripHtml(a.name)) : ['Classic Author'],
           description: 'Public domain literature edition with full unabridged text hosted by Project Gutenberg.',
           imageLinks: cover ? { thumbnail: cover } : null,
           infoLink: `https://www.gutenberg.org/ebooks/${b.id}`,
@@ -463,9 +482,9 @@ async function fetchGoogleBooks(query: string, category: string, lang?: string):
         readMode: hasDirectFile ? 'epub' : (isEmbeddable ? 'google' : 'interactive'),
         file_url: directEpub || directPdf || '',
         volumeInfo: {
-          title: vol.title || 'Untitled Book',
-          authors: Array.isArray(vol.authors) && vol.authors.length > 0 ? vol.authors : ['Unknown Author'],
-          description: vol.description || 'A literary work available in the global digital catalogue.',
+          title: stripHtml(vol.title) || 'Untitled Book',
+          authors: Array.isArray(vol.authors) && vol.authors.length > 0 ? vol.authors.map(stripHtml) : ['Unknown Author'],
+          description: stripHtml(vol.description) || 'A literary work available in the global digital catalogue.',
           imageLinks: cover ? { thumbnail: cover } : null,
           infoLink: vol.infoLink || `https://books.google.com/books?id=${item.id}`,
           previewLink: vol.previewLink || `https://books.google.com/books?id=${item.id}`,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AUTHENTIC_BOOK_REGISTRY, getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
+import { stripHtml } from '@/utils/textSanitizer';
 
 // In-memory LRU cache for fetched & parsed book chapters
 const contentCache = new Map<string, { chapters: AuthenticBookChapter[]; title: string; author: string; language?: string }>();
@@ -8,11 +9,11 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id')?.trim() || '';
-    const title = searchParams.get('title')?.trim() || '';
-    const author = searchParams.get('author')?.trim() || '';
+    const title = stripHtml(searchParams.get('title')?.trim() || '');
+    const author = stripHtml(searchParams.get('author')?.trim() || '');
     const fileUrl = searchParams.get('file_url')?.trim() || '';
     const iaId = searchParams.get('iaId')?.trim() || '';
-    const description = searchParams.get('description')?.trim() || '';
+    const description = stripHtml(searchParams.get('description')?.trim() || '');
 
     const cacheKey = `${id}::${title}::${author}::${fileUrl}::${iaId}`;
     if (contentCache.has(cacheKey)) {
@@ -383,10 +384,5 @@ async function fetchAndParseInternetArchive(iaId: string, title?: string, author
 }
 
 function cleanBookText(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
+  return stripHtml(text);
 }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { ArrowLeft, BookOpen, Star, Languages, Award, BookMarked } from 'lucide-react';
 import Link from 'next/link';
 import { AUTHENTIC_BOOK_REGISTRY } from '@/utils/authenticBookContent';
+import { stripHtml } from '@/utils/textSanitizer';
 
 export default function BookDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -59,6 +60,15 @@ export default function BookDetailsPage({ params }: { params: Promise<{ id: stri
               language: matched.language
             };
           }
+        }
+
+        if (loaded) {
+          loaded = {
+            ...loaded,
+            title: stripHtml(loaded.title),
+            author: stripHtml(loaded.author),
+            description: stripHtml(loaded.description)
+          };
         }
 
         setBook(loaded);

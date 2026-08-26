@@ -47,6 +47,14 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
         }
 
         if (!loadedBook) {
+          const { CLASSIC_BOOKS } = await import('@/utils/supabase/client');
+          const classicFound = CLASSIC_BOOKS.find(b => b.id === id || b.title.toLowerCase() === id.toLowerCase());
+          if (classicFound) {
+            loadedBook = classicFound;
+          }
+        }
+
+        if (!loadedBook) {
           const cleanId = id.toLowerCase();
           const matched = AUTHENTIC_BOOK_REGISTRY.find(e => 
             e.matchKeys.some(k => cleanId.includes(k.toLowerCase()) || k.toLowerCase().includes(cleanId))

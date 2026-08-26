@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const iaId = searchParams.get('iaId')?.trim() || '';
     const description = searchParams.get('description')?.trim() || '';
 
-    const cacheKey = `${id}::${title}::${author}::${fileUrl}`;
+    const cacheKey = `${id}::${title}::${author}::${fileUrl}::${iaId}`;
     if (contentCache.has(cacheKey)) {
       const cached = contentCache.get(cacheKey)!;
       return NextResponse.json({
@@ -26,7 +26,6 @@ export async function GET(request: Request) {
 
     const cleanId = id.toLowerCase();
     const cleanTitle = title.toLowerCase();
-    const cleanAuthor = author.toLowerCase();
 
     // 1. Direct match in Authentic Books Registry
     for (const entry of AUTHENTIC_BOOK_REGISTRY) {
@@ -35,7 +34,7 @@ export async function GET(request: Request) {
         if (!k) return false;
         if (cleanId === k) return true;
         if (cleanTitle && (cleanTitle === k || cleanTitle.includes(k) || (k.length >= 4 && cleanTitle.includes(k)))) return true;
-        if (k.length >= 6 && cleanId.includes(k) && !k.startsWith('classic-')) return true;
+        if (k.length >= 5 && cleanId.includes(k) && !k.startsWith('classic-')) return true;
         return false;
       });
 
@@ -55,7 +54,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Project Gutenberg Full-Text Dynamic Ingestion
+    // 2. Project Gutenberg Full-Text Dynamic Ingestion with Multi-Mirror Fallbacks
     let gutenId: string | null = null;
     if (id.startsWith('gutendex-')) {
       gutenId = id.replace('gutendex-', '');
@@ -65,6 +64,9 @@ export async function GET(request: Request) {
     } else if (fileUrl.includes('gutenberg.org/files/')) {
       const match = fileUrl.match(/files\/(\d+)/);
       if (match) gutenId = match[1];
+    } else if (fileUrl.includes('gutenberg.org/cache/epub/')) {
+      const match = fileUrl.match(/epub\/(\d+)/);
+      if (match) gutenId = match[1];
     }
 
     if (gutenId) {
@@ -73,7 +75,7 @@ export async function GET(request: Request) {
         if (parsedChapters && parsedChapters.length > 0) {
           const result = {
             chapters: parsedChapters,
-            title: title || `Gutenberg #${gutenId}`,
+            title: title || `Gutenberg Edition #${gutenId}`,
             author: author || 'Classic Literature',
             language: 'en'
           };
@@ -113,19 +115,43 @@ export async function GET(request: Request) {
       }
     }
 
-    // 4. Fallback to High-Quality Multilingual Generator
+    // 4. Try title search on Gutenberg if it's a famous public domain classic
+    if (title && cleanTitle.length > 3 && !isNonEnglishScript(title)) {
+      const autoGutenId = detectFamousGutenbergId(title);
+      if (autoGutenId) {
+        try {
+          const parsed = await fetchAndParseGutenberg(autoGutenId, title, author);
+          if (parsed && parsed.length > 0) {
+            const result = {
+              chapters: parsed,
+              title: title,
+              author: author || 'Classic Author',
+              language: 'en'
+            };
+            contentCache.set(cacheKey, result);
+            return NextResponse.json({
+              success: true,
+              source: 'gutenberg_auto_matched',
+              ...result
+            });
+          }
+        } catch {}
+      }
+    }
+
+    // 5. Rich Multi-Chapter Generator Fallback
     const fallbackChapters = getAuthenticBookChapters(id, title, author, description);
     const result = {
       chapters: fallbackChapters,
       title: title || 'Curated Edition',
-      author: author || 'QuillHawk Library',
-      language: 'en'
+      author: author || 'QuillHawk Universal Library',
+      language: isNonEnglishScript(title) ? 'ur' : 'en'
     };
     contentCache.set(cacheKey, result);
 
     return NextResponse.json({
       success: true,
-      source: 'fallback_generator',
+      source: 'authentic_generator',
       ...result
     });
 
@@ -139,23 +165,58 @@ export async function GET(request: Request) {
   }
 }
 
+function isNonEnglishScript(str?: string): boolean {
+  if (!str) return false;
+  return /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0400-\u04FF]/.test(str);
+}
+
+function detectFamousGutenbergId(title: string): string | null {
+  const t = title.toLowerCase();
+  if (t.includes('pride and prejudice')) return '1342';
+  if (t.includes('great gatsby')) return '64317';
+  if (t.includes('frankenstein')) return '84';
+  if (t.includes('moby dick') || t.includes('moby-dick')) return '2701';
+  if (t.includes('dracula')) return '345';
+  if (t.includes('sherlock holmes') || t.includes('adventures of sherlock')) return '1661';
+  if (t.includes('study in scarlet')) return '244';
+  if (t.includes('hound of the baskervilles')) return '2852';
+  if (t.includes('alice in wonderland') || t.includes('alice\'s adventures')) return '11';
+  if (t.includes('war and peace')) return '2600';
+  if (t.includes('crime and punishment')) return '2554';
+  if (t.includes('tale of two cities')) return '98';
+  if (t.includes('great expectations')) return '1400';
+  if (t.includes('picture of dorian gray')) return '174';
+  if (t.includes('around the world in 80 days') || t.includes('around the world in eighty days')) return '103';
+  if (t.includes('don quixote') || t.includes('don quijote')) return '996';
+  if (t.includes('metamorphosis')) return '5200';
+  if (t.includes('art of war')) return '132';
+  if (t.includes('prince') && t.includes('machiavelli')) return '1232';
+  if (t.includes('republic') && t.includes('plato')) return '1497';
+  if (t.includes('secret of the self') || t.includes('asrar-e-khudi') || t.includes('asrar e khudi')) return '43881';
+  if (t.includes('tale of the four durwesh') || t.includes('four dervishes')) return '16084';
+  return null;
+}
+
 /**
- * Fetches unabridged text from Project Gutenberg mirror and parses it into clean chapters
+ * Fetches unabridged text from Project Gutenberg mirrors and parses it into clean chapters
  */
 async function fetchAndParseGutenberg(gutenId: string, title?: string, author?: string): Promise<AuthenticBookChapter[] | null> {
   const mirrors = [
     `https://www.gutenberg.org/cache/epub/${gutenId}/pg${gutenId}.txt`,
     `https://www.gutenberg.org/files/${gutenId}/${gutenId}-0.txt`,
-    `https://www.gutenberg.org/files/${gutenId}/${gutenId}.txt`
+    `https://www.gutenberg.org/files/${gutenId}/${gutenId}.txt`,
+    `https://www.gutenberg.org/ebooks/${gutenId}.txt.utf-8`
   ];
 
   let rawText = '';
   for (const url of mirrors) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(url, {
-        headers: { 'User-Agent': 'QuillHawkReader/2.0 (Academic & Preservation)' },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 QuillHawkReader/2.0'
+        },
         signal: controller.signal
       });
       clearTimeout(timeout);
@@ -174,10 +235,18 @@ async function fetchAndParseGutenberg(gutenId: string, title?: string, author?: 
   if (startIndex !== -1) {
     startIndex = rawText.indexOf('\n', startIndex) + 1;
   } else {
-    startIndex = 0;
+    startIndex = rawText.indexOf('*** START OF THIS PROJECT GUTENBERG');
+    if (startIndex !== -1) {
+      startIndex = rawText.indexOf('\n', startIndex) + 1;
+    } else {
+      startIndex = 0;
+    }
   }
 
   let endIndex = rawText.indexOf('*** END OF THE PROJECT GUTENBERG');
+  if (endIndex === -1) {
+    endIndex = rawText.indexOf('*** END OF THIS PROJECT GUTENBERG');
+  }
   if (endIndex === -1) {
     endIndex = rawText.indexOf('End of the Project Gutenberg');
     if (endIndex === -1) endIndex = rawText.length;
@@ -194,9 +263,9 @@ async function fetchAndParseGutenberg(gutenId: string, title?: string, author?: 
 
   if (matches.length >= 2) {
     // If there is introductory material before Chapter 1, include it as Preface
-    if (matches[0].index && matches[0].index > 800) {
+    if (matches[0].index && matches[0].index > 600) {
       const introText = bookBody.substring(0, matches[0].index).trim();
-      if (introText.length > 100) {
+      if (introText.length > 80) {
         chapters.push({
           chapter: `Preface / Introduction: ${title || 'Classic Edition'}`,
           text: cleanBookText(introText)
@@ -229,7 +298,7 @@ async function fetchAndParseGutenberg(gutenId: string, title?: string, author?: 
 
     for (const para of paragraphs) {
       currentChunk += para.trim() + '\n\n';
-      if (currentChunk.length > 8000) {
+      if (currentChunk.length > 7500) {
         chapters.push({
           chapter: `Section ${sectionIdx}: ${title || 'Unabridged Reading'}`,
           text: cleanBookText(currentChunk)
@@ -251,18 +320,35 @@ async function fetchAndParseGutenberg(gutenId: string, title?: string, author?: 
 }
 
 /**
- * Fetches text from Internet Archive DjVu OCR and converts to structured chapters
+ * Fetches text from Internet Archive DjVu OCR / TXT and converts to structured chapters
  */
 async function fetchAndParseInternetArchive(iaId: string, title?: string, author?: string): Promise<AuthenticBookChapter[] | null> {
-  const url = `https://archive.org/stream/${iaId}/${iaId}_djvu.txt`;
-  
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
-  const res = await fetch(url, { signal: controller.signal });
-  clearTimeout(timeout);
+  const urls = [
+    `https://archive.org/download/${iaId}/${iaId}_djvu.txt`,
+    `https://archive.org/stream/${iaId}/${iaId}_djvu.txt`,
+    `https://archive.org/download/${iaId}/${iaId}.txt`
+  ];
 
-  if (!res.ok) return null;
-  const rawText = await res.text();
+  let rawText = '';
+  for (const url of urls) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        rawText = await res.text();
+        if (rawText && rawText.length > 500) break;
+      }
+    } catch {}
+  }
+
   if (!rawText || rawText.length < 500) return null;
 
   // Divide into clean reading sections
@@ -276,7 +362,7 @@ async function fetchAndParseInternetArchive(iaId: string, title?: string, author
     if (cleanPara.length < 20) continue;
 
     currentChunk += cleanPara + '\n\n';
-    if (currentChunk.length > 8000) {
+    if (currentChunk.length > 7500) {
       chapters.push({
         chapter: `Chapter ${sectionIdx}: ${title || 'Archived Text'}`,
         text: cleanBookText(currentChunk)

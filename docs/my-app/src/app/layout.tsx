@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="antialiased dark">
+    <html lang="en" className="antialiased">
       <body className={`${plusJakartaSans.variable} ${outfit.variable} min-h-screen bg-background text-foreground font-sans`}>
         <AuthProvider>
           {children}

@@ -83,15 +83,8 @@ export default function InteractiveCard({
     setTilt({ x: 0, y: 0 });
   };
 
-  // Card theme-based custom classes (Inkish Blue + Greyish Silver palette)
-  let themeCardClass = 'bg-[#0D1733]/90 border border-slate-700/60 rounded-2xl shadow-lg';
-  if (activeTheme === 'glass') {
-    themeCardClass = 'bg-slate-900/40 backdrop-blur-2xl border border-slate-300/15 shadow-2xl rounded-[20px]';
-  } else if (activeTheme === 'neo') {
-    themeCardClass = 'bg-[#0F172A] shadow-[8px_8px_20px_#080C17,_-8px_-8px_20px_#16223D] border border-slate-700/30 rounded-[24px]';
-  } else if (activeTheme === 'brutalist') {
-    themeCardClass = 'bg-[#0C101C] border-3 border-slate-200 shadow-[6px_6px_0px_#38BDF8] rounded-none';
-  }
+  // Card theme-based custom classes (Silver Greyish Nude shade palette)
+  const themeCardClass = 'bg-[#F6F2EC] border border-[#CEC7BD] rounded-2xl shadow-sm text-[#1C1E24]';
 
   // Dynamic shadow glows for modern styles
   const shadowGlow = isHovered && activeTheme !== 'brutalist' && activeTheme !== 'neo'

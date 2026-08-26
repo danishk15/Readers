@@ -953,17 +953,17 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   if (activeReadingBook) {
     return (
       <div className="h-[calc(100vh-7rem)] w-full flex flex-col gap-4 relative animate-in fade-in duration-300">
-        <div className="flex justify-between items-center bg-[#070D1F]/90 backdrop-blur-md border border-slate-800 p-4 rounded-2xl shadow-xl">
+        <div className="flex justify-between items-center bg-[#E2DDD5]/95 backdrop-blur-md border border-[#CEC7BD] p-4 rounded-2xl shadow-md">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 bg-primary/20 text-primary rounded-xl flex items-center justify-center font-bold shrink-0 border border-primary/30">
+            <div className="w-9 h-9 bg-[#2563EB]/15 text-[#2563EB] rounded-xl flex items-center justify-center font-bold shrink-0 border border-[#2563EB]/30">
               <BookOpen className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-extrabold text-foreground truncate max-w-sm text-sm md:text-base">{activeReadingBook.title}</h2>
-              <p className="text-xs text-slate-400 truncate">{activeReadingBook.author || 'QuillHawk Literary Edition'}</p>
+              <h2 className="font-extrabold text-[#1C1E24] truncate max-w-sm text-sm md:text-base">{activeReadingBook.title}</h2>
+              <p className="text-xs text-[#6C665F] truncate">{activeReadingBook.author || 'QuillHawk Literary Edition'}</p>
             </div>
           </div>
-          <Button onClick={() => setActiveReadingBook(null)} variant="secondary" size="sm" className="px-5 font-bold">
+          <Button onClick={() => setActiveReadingBook(null)} variant="secondary" size="sm" className="px-5 font-bold bg-[#DDD7CE] text-[#1C1E24] border border-[#CDC5B9]">
             Exit Reader
           </Button>
         </div>
@@ -1876,15 +1876,15 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                 <p className="text-xs text-blue-300 font-medium">{info.authors?.[0] || 'Unknown Author'}</p>
               </div>
 
-              <div className="flex gap-4 items-center bg-[#070D1F]/80 p-4 border border-slate-800 rounded-2xl max-w-sm mx-auto shadow-inner">
+              <div className="flex gap-4 items-center bg-[#E2DDD5]/90 p-4 border border-[#CEC7BD] rounded-2xl max-w-sm mx-auto shadow-sm">
                 {thumbnail ? (
-                  <img src={thumbnail} alt={info.title} className="w-16 h-24 object-cover rounded shadow shadow-black/60 shrink-0" />
+                  <img src={thumbnail} alt={info.title} className="w-16 h-24 object-cover rounded shadow shadow-black/10 shrink-0" />
                 ) : (
-                  <div className="w-16 h-24 bg-slate-900 flex items-center justify-center text-xs p-1 text-center font-bold text-slate-600 rounded shrink-0 border border-slate-800">No Cover</div>
+                  <div className="w-16 h-24 bg-[#DDD7CE] flex items-center justify-center text-xs p-1 text-center font-bold text-[#6C665F] rounded shrink-0 border border-[#CDC5B9]">No Cover</div>
                 )}
                 <div className="text-left flex-1 space-y-1.5 overflow-hidden">
-                  <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{info.description || 'Public archive literary work accessible for all QuillHawk readers.'}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">Archive: {selectedStoreBook.source || 'Global Catalog'}</p>
+                  <p className="text-[11px] text-[#5C5852] line-clamp-3 leading-relaxed">{info.description || 'Public archive literary work accessible for all QuillHawk readers.'}</p>
+                  <p className="text-[10px] text-[#78716C] font-mono">Archive: {selectedStoreBook.source || 'Global Catalog'}</p>
                 </div>
               </div>
 

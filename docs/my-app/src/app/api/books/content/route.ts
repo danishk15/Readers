@@ -28,12 +28,33 @@ export async function GET(request: Request) {
     const cleanId = id.toLowerCase();
     const cleanTitle = title.toLowerCase();
 
-    // 1. Direct match in Authentic Books Registry
+    // 1. Direct Exact ID match in Authentic Books Registry
+    if (cleanId) {
+      for (const entry of AUTHENTIC_BOOK_REGISTRY) {
+        if (entry.matchKeys.some(k => cleanId === k.toLowerCase().trim())) {
+          if (entry.chapters && entry.chapters.length > 0) {
+            const result = {
+              chapters: entry.chapters,
+              title: entry.title,
+              author: entry.author,
+              language: entry.language
+            };
+            contentCache.set(cacheKey, result);
+            return NextResponse.json({
+              success: true,
+              source: 'authentic_registry',
+              ...result
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Direct Title / Author match in Authentic Books Registry
     for (const entry of AUTHENTIC_BOOK_REGISTRY) {
       const isMatched = entry.matchKeys.some(key => {
         const k = key.toLowerCase().trim();
         if (!k) return false;
-        if (cleanId === k) return true;
         if (cleanTitle && (cleanTitle === k || cleanTitle.includes(k) || (k.length >= 4 && cleanTitle.includes(k)))) return true;
         if (k.length >= 5 && cleanId.includes(k) && !k.startsWith('classic-')) return true;
         return false;

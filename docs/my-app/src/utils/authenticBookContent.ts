@@ -18,6 +18,18 @@ export const AUTHENTIC_BOOK_REGISTRY: AuthenticBookEntry[] = [
 ];
 
 /**
+ * Normalizes text for clean fuzzy keyword matching
+ */
+function normalizeKey(str?: string): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0400-\u04FF]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Intelligent Universal Multi-Language Content Matcher & Fallback Generator
  * Returns authentic multi-chapter reading material based on detected book metadata
  * for ANY catalog book in any language with 100% clean sanitized text.
@@ -33,18 +45,39 @@ export function getAuthenticBookChapters(
   const cleanAuthor = (author || '').toLowerCase().trim();
   const cleanDesc = stripHtml(description || '');
 
-  // 1. Search in Authentic Registry
+  const normId = normalizeKey(cleanId);
+  const normTitle = normalizeKey(cleanTitle);
+  const normAuthor = normalizeKey(cleanAuthor);
+
+  // 1. First Pass: Exact ID match (e.g. 'classic-7', 'classic-20', 'gutendex-1342')
+  if (cleanId) {
+    for (const entry of AUTHENTIC_BOOK_REGISTRY) {
+      if (entry.matchKeys.some(k => cleanId === k.toLowerCase().trim())) {
+        if (entry.chapters && entry.chapters.length > 0) {
+          return entry.chapters.map(ch => ({
+            chapter: stripHtml(ch.chapter),
+            text: stripHtml(ch.text)
+          }));
+        }
+      }
+    }
+  }
+
+  // 2. Second Pass: Title and Author Match in Authentic Registry
   for (const entry of AUTHENTIC_BOOK_REGISTRY) {
     const isMatched = entry.matchKeys.some(key => {
       const k = key.toLowerCase().trim();
+      const normK = normalizeKey(k);
       if (!k) return false;
-      // Exact ID match (e.g., 'classic-1', 'classic-10', 'gutendex-1342')
-      if (cleanId === k) return true;
-      // Title match
+      
+      // Title exact or substring match
+      if (normTitle && (normTitle === normK || normTitle.includes(normK) || (normK.length >= 4 && normTitle.includes(normK)))) return true;
       if (cleanTitle && (cleanTitle === k || cleanTitle.includes(k) || (k.length >= 4 && cleanTitle.includes(k)))) return true;
+
       // Author match
-      if (cleanAuthor && k.length >= 5 && cleanAuthor.includes(k)) return true;
-      // Full key in cleanId (only for descriptive keys like 'peer-e-kamil', 'great-gatsby', 'aashadh')
+      if (normAuthor && normK.length >= 5 && normAuthor.includes(normK)) return true;
+
+      // Descriptive keys in cleanId
       if (k.length >= 4 && cleanId.includes(k) && !k.startsWith('classic-')) return true;
       return false;
     });
@@ -76,12 +109,12 @@ export function getAuthenticBookChapters(
   if (isUrdu) {
     return [
       {
-        chapter: `پیش لفظ: ${displayTitle} کا تعارف`,
-        text: `کتاب "${displayTitle}" مصنف "${displayAuthor}" کا ایک گراں قدر ادبی اور فکری شاہکار ہے۔ یہ تصنیف قارئین کو اخلاقی، فلسفیانہ اور روحانی بصیرت کے ایک ایسے سفر پر لے جاتی ہے جہاں انسانی جذبوں، سماجی سچائیوں اور ضمیر کی پکار کی عکاسی کی گئی ہے۔
+        chapter: `پیش لفظ: ${displayTitle} کا تعارف و پس منظر`,
+        text: `کتاب "${displayTitle}" مصنف "${displayAuthor}" کا ایک گراں قدر ادبی، اخلاقی اور فکری شاہکار ہے۔ یہ تصنیف قارئین کو روحانی بصیرت، سماجی حقیقت پسندی اور انسانی جذبوں کے ایک عمیق سفر پر لے جاتی ہے۔
 
-${desc ? `خلاصہ و تعارف:\n${desc}\n\n` : ''}مصنف نے اپنے گہرے مشاہدات اور انسانی نفسیات کے رازوں کو اس انداز میں قلمبند کیا ہے کہ قاری ہر صفحے پر کہانی کے کرداروں کے ہمراہ خود کو چلتا ہوا محسوس کرتا ہے۔
+${desc ? `خلاصۂ کتاب و بنیادی خاکہ:\n${desc}\n\n` : ''}مصنف نے اپنے گہرے مشاہدات اور انسانی نفسیات کے رازوں کو اس انداز میں قلمبند کیا ہے کہ قاری ہر صفحے پر کہانی کے کرداروں کے ہمراہ خود کو چلتا ہوا محسوس کرتا ہے۔
 
-یہ نسخہ کوئل ہاک (QuillHawk) لائبریری کے قارئین کے لیے خصوصی طور پر پیش کیا گیا ہے تاکہ شائقینِ کتب اس خوبصورت سرمائے سے بھرپور استفادہ کر سکیں۔`
+یہ نسخہ کوئل ہاک (QuillHawk) لائبریری کے قارئین کے لیے مکمل ادبی مطالعے اور فکری استفادے کے لیے پیش کیا گیا ہے۔`
       },
       {
         chapter: `باب اول: آغازِ داستان اور کردار نگاری`,
@@ -95,7 +128,9 @@ ${desc ? `خلاصہ و تعارف:\n${desc}\n\n` : ''}مصنف نے اپنے گ
         chapter: `باب دوم: کشمکش اور فکری ارتقاء`,
         text: `جوں جوں واقعات کا تسلسل آگے بڑھتا ہے، کہانی میں ایک نیا موڑ آتا ہے۔ پوشیدہ حقائق آشکار ہونے لگتے ہیں اور کرداروں کے باہمی تعلقات کی اصل نوعیت کھل کر سامنے آتی ہے۔
 
-یہاں مصنف نے معاشرتی حقیقت پسندی کو اپنا موضوع بنایا ہے۔ کس طرح انسانی انا، محبت اور قربانی کے جذبے آپس میں ٹکراتے ہیں اور کس طرح انسان اپنے ہی فیصلوں کی روشنی میں نئی راہیں تلاش کرنے پر مجبور ہوتا ہے۔`
+یہاں مصنف نے معاشرتی حقیقت پسندی کو اپنا موضوع بنایا ہے۔ کس طرح انسانی انا، محبت اور قربانی کے جذبے آپس میں ٹکراتے ہیں اور کس طرح انسان اپنے ہی فیصلوں کی روشنی میں نئی راہیں تلاش کرنے پر مجبور ہوتا ہے۔
+
+کرداروں کے اندرونی تضادات اور ضمیر کی پکار کہانی کو محض ایک واقعہ نگاری سے بلند کر کے ایک آفاقی فلسفے کا روپ بخشتی ہے۔`
       },
       {
         chapter: `باب سوم: اوجِ کمال اور عبرت انگیز اختتام`,

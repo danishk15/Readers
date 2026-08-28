@@ -360,11 +360,11 @@ Just as the red disc of the sun sank beneath the mountain rim, Jonathan Harker's
     ]
   },
 
-  // 6. Don Quixote
+  // 6. Don Quixote (Original Spanish)
   {
-    matchKeys: ['don quijote', 'don quixote', 'cervantes', 'miguel de cervantes', 'classic-19', 'classic-20', 'gutendex-2000', 'gutendex-996'],
+    matchKeys: ['don quijote', 'don quixote', 'cervantes', 'miguel de cervantes', 'classic-19', 'gutendex-2000'],
     language: 'es',
-    title: 'El ingenioso hidalgo Don Quijote de la Mancha',
+    title: 'Don Quijote de la Mancha (Original Español)',
     author: 'Miguel de Cervantes Saavedra',
     chapters: [
       {
@@ -406,12 +406,58 @@ Hizo su testamento con plena lucidez y entregó su alma en brazos de la paz cris
     ]
   },
 
-  // 7. Around the World in 80 Days
+  // 7. Don Quixote (English Translation)
   {
-    matchKeys: ['around the world in 80 days', 'around the world in eighty days', 'le tour du monde', 'jules verne', 'verne', 'classic-21', 'classic-22', 'gutendex-800', 'gutendex-103'],
+    matchKeys: ['don quixote english', 'don quixote (english translation)', 'classic-20', 'gutendex-996', 'john ormsby'],
     language: 'en',
-    title: 'Around the World in Eighty Days',
-    author: 'Jules Verne',
+    title: 'Don Quixote (English Translation)',
+    author: 'Miguel de Cervantes (Trans. John Ormsby)',
+    chapters: [
+      {
+        chapter: 'Chapter I: The Knight of the Sorrowful Countenance',
+        text: `In a village of La Mancha, the name of which I have no desire to call to mind, there lived not long since one of those gentlemen that keep a lance in the lance-rack, an old buckler, a lean hack, and a greyhound for coursing.
+
+The age of this gentleman bordered upon fifty years; he was of a hardy habit, spare, gaunt-featured, a very early riser and a great sportsman. You must know, then, that above-mentioned gentleman, whenever he was at leisure (which was mostly all the year round), gave himself up to reading books of chivalry with such ardour and avidity that he almost entirely neglected the pursuit of his field-sports, and even the management of his property.
+
+In short, his wits being quite gone, he hit upon the strangest notion that ever madman in this world hit upon, and that was that he fancied it was right and requisite, as well for the support of his own honour as for the service of his country, that he should make a knight-errant of himself, roaming the world over in full armour and on horseback in quest of adventures.`
+      },
+      {
+        chapter: 'Chapter II: The Adventure of the Windmills',
+        text: `At this point they came in sight of thirty or forty windmills that there are on that plain, and as soon as Don Quixote saw them he said to his squire:
+
+"Fortune is directing our affairs better than we could have wished; for see there, friend Sancho Panza, where thirty or more monstrous giants present themselves, all of whom I mean to engage in battle and slay, and with whose spoils we shall begin to make our fortunes; for this is righteous warfare, and it is God's good service to sweep so evil a breed from off the face of the earth."
+
+"What giants?" said Sancho Panza.
+
+"Those thou seest there," answered his master, "with the long arms, and some have them nearly two leagues long."
+
+"Look, your worship," said Sancho; "what we see there are not giants but windmills, and what seem to be their arms are the sails that turned by the wind make the millstone go."
+
+"It is easy to see," replied Don Quixote, "that thou art not used to this business of adventures; those are giants; and if thou art afraid, away with thee out of this and betake thee to prayer while I engage them in fierce and unequal combat."`
+      },
+      {
+        chapter: 'Chapter III: Sancho Panza’s Governorship of Barataria',
+        text: `Sancho Panza entered upon the government of his island of Barataria. Arrayed in robes of state, he sat in the judgement seat, solving disputes and dispensing equity with such innate wisdom and peasant shrewdness that the tricksters who sought to mock him were put to shame.
+
+He declared: "Naked came I into this government, and naked I go out of it; I have neither lost nor won; I leave without a penny in my purse, and with a clear conscience before God and man."`
+      },
+      {
+        chapter: 'Chapter IV: The Recovery of Reason and Christian Passing',
+        text: `Overcome in combat on the strand of Barcelona by the Knight of the White Moon, Don Quixote laid down his arms and returned to his native hamlet. A burning fever took hold of his frame.
+
+Waking from a profound sleep of six hours, he cried out: "Blessed be Almighty God, who hath vouchsafed me so great a blessing! My reason is restored, free and clear, untroubled by the dark shadows of ignorance wherewith those detestable books of chivalry had enveloped it. I am no longer Don Quixote of La Mancha, but Alonso Quijano the Good!"
+
+Surrounded by the tears of his faithful niece and Sancho Panza, he dictated his last will and testament, and expired with serene tranquility.`
+      }
+    ]
+  },
+
+  // 8. Around the World in Eighty Days (English Translation)
+  {
+    matchKeys: ['around the world in 80 days', 'around the world in eighty days', 'jules verne', 'verne', 'classic-22', 'gutendex-103'],
+    language: 'en',
+    title: 'Around the World in 80 Days (English Translation)',
+    author: 'Jules Verne (Trans. George Makepeace Towle)',
     chapters: [
       {
         chapter: 'Chapter I: Phileas Fogg and Passepartout at the Reform Club',
@@ -441,7 +487,346 @@ At twenty-five seconds to nine, Phileas Fogg walked into the Reform Club lounge:
     ]
   },
 
-  // 8. 1984
+  // 9. Le Tour du monde en 80 jours (Original French)
+  {
+    matchKeys: ['le tour du monde en 80 jours', 'le tour du monde', 'tour du monde', 'classic-21', 'gutendex-800'],
+    language: 'fr',
+    title: 'Le Tour du monde en 80 jours (Original Français)',
+    author: 'Jules Verne',
+    chapters: [
+      {
+        chapter: 'Chapitre I: Dans lequel Phileas Fogg et Passepartout s’acceptent réciproquement',
+        text: `En l'année 1872, la maison portant le numéro 7 de Saville-row, Burlington Gardens—maison dans laquelle Sheridan mourut en 1814—était habitée par Phileas Fogg, esq., l'un des membres les plus singuliers et les plus remarqués du Reform-Club de Londres.
+
+Phileas Fogg était un personnage énigmatique, dont on ne savait rien, sinon que c'était un fort galant homme et l'un des plus beaux gentlemen de la haute société anglaise.
+
+Au Reform-Club, une discussion s'engagea sur un article du Morning Chronicle, relatif au vol de cinquante-cinq mille livres commis à la Banque d'Angleterre.
+« La terre a diminué, » dit Phileas Fogg. « Un homme peut en faire le tour en quatre-vingts jours. »
+« Je parie vingt mille livres que vous ne le ferez pas ! » s'écria Andrew Stuart.
+« Vingt mille livres, » répondit Phileas Fogg. « Je ferai le tour du monde en quatre-vingts jours ou moins. J'accepte le pari. »`
+      },
+      {
+        chapter: 'Chapitre II: Dans lequel Passepartout accomplit un sauvetage héroïque en Inde',
+        text: `Accompagné de Passepartout, Fogg traversa les Indes. Trouvant la voie ferrée interrompue entre Kholby et Allahabad, il acheta sans hésiter un éléphant nommé Kiouni pour deux mille livres.
+
+Dans les forêts sacrées du Bundelkhand, ils découvrirent le cortège funèbre du rajah, où la jeune et belle veuve parsie Aouda allait être brûlée vive lors du suttee. À la nuit tombante, Passepartout se glissa audacieusement sur le bûcher et prit la place du cadavre. Au milieu des flammes naissantes, il se dressa comme un spectre et enleva Aouda dans ses bras, semant l'épouvante parmi les fanatiques.`
+      },
+      {
+        chapter: 'Chapitre III: La découverte du jour gagné et le triomphe de Phileas Fogg',
+        text: `Revenu à Londres, Fogg croyait avoir dépassé le délai fatal de cinq minutes. Mais Passepartout découvrit l'inexprimable vérité : en marchant vers l'est, au-devant du soleil, ils avaient gagné vingt-quatre heures sur leur itinéraire !
+
+À huit heures quarante-cinq moins vingt-cinq secondes, la porte du salon du Reform-Club s'ouvrit :
+« Me voici, messieurs ! » dit Phileas Fogg d'une voix calme.
+
+Phileas Fogg avait gagné son pari. Il avait accompli ce mémorable voyage autour du monde, et surtout, il avait trouvé en chemin la femme qui devait faire son bonheur.`
+      }
+    ]
+  },
+
+  // 10. Faust: Eine Tragödie (Original Deutsch)
+  {
+    matchKeys: ['faust: eine tragödie', 'faust', 'goethe', 'johann wolfgang von goethe', 'classic-23', 'gutendex-2229'],
+    language: 'de',
+    title: 'Faust: Eine Tragödie (Original Deutsch)',
+    author: 'Johann Wolfgang von Goethe',
+    chapters: [
+      {
+        chapter: 'Prolog im Himmel: Die Wette zwischen dem Herrn und Mephistopheles',
+        text: `Der Herr und die himmlischen Heerscharen. Mephistopheles tritt vor.
+
+MEPHISTOPHELES:
+Da du, o Herr, dich einmal wieder nahst
+Und fragst, wie alles sich bei uns befinde,
+Und du mich sonst gewöhnlich gerne sahst,
+So siehst du mich auch unter dem Gesinde.
+Von Sonn' und Welten weiß ich nichts zu sagen,
+Ich sehe nur, wie sich die Menschen plagen.
+Der kleine Gott der Welt bleibt stets von gleichem Schlag,
+Und ist so wunderlich als wie am ersten Tag.
+
+DER HERR:
+Kennst du den Faust?
+
+MEPHISTOPHELES:
+Den Doktor?
+
+DER HERR:
+Meinen Knecht!
+
+MEPHISTOPHELES:
+Fürwahr! er dient euch auf besondre Weise.
+Nicht irdisch ist des Toren Trank noch Speise.
+Ihn treibt die Gärung in die Ferne,
+Er ist sich seiner Tollheit halb bewusst;
+Vom Himmel fordert er die schönsten Sterne,
+Und von der Erde jede höchste Lust,
+Und alle Näh' und alle Ferne
+Befriedigt nicht die tiefbewegte Brust.
+Was wettet ihr? den sollt ihr noch verlieren,
+Wenn du mir die Erlaubnis gibst,
+Ihn meine Straße sacht zu führen!
+
+DER HERR:
+Solang' er auf der Erde lebt,
+Solange sei dir's nicht verboten.
+Es irrt der Mensch, solang' er strebt.`
+      },
+      {
+        chapter: 'Nacht im Studierzimmer: Der Pakt des Dr. Faust',
+        text: `In einem hochgewölbten, engen gotischen Zimmer sitzt Faust unruhig an seinem Pult.
+
+FAUST:
+Habe nun, ach! Philosophie,
+Juristerei und Medizin,
+Und leider auch Theologie
+Durchaus studiert, mit heißem Bemühn.
+Da steh' ich nun, ich armer Tor!
+Und bin so klug als wie zuvor;
+Heiße Magister, heiße Doktor gar,
+Und ziehe schon an die zehen Jahr'
+Herauf, herab und quer und krumm
+Meine Schüler an der Nase herum—
+Und sehe, dass wir nichts wissen können!
+
+Mephistopheles tritt in Gestalt eines fahrenden Scholastikus hinter dem Ofen hervor.
+
+FAUST:
+Werd' ich zum Augenblicke sagen:
+Verweile doch! du bist so schön!
+Dann magst du mich in Fesseln schlagen,
+Dann will ich gern zugrunde gehn!
+Dann mag die Totenglocke schallen,
+Dann bist du deines Dienstes frei,
+Die Uhr mag stehn, der Zeiger fallen,
+Es sei die Zeit für mich vorbei!`
+      },
+      {
+        chapter: 'Gretchens Tragödie und die Erlösung',
+        text: `Im Kerker liegt Gretchen in Ketten, dem Tode geweiht für die Ermordung ihres unseligen Kindes. Faust dringt mit Mephistopheles ein, um sie zu retten.
+
+GRETCHEN:
+Heinrich! Mir graut's vor dir!
+Gericht Gottes! dir hab' ich mich übergeben!
+
+MEPHISTOPHELES:
+Sie ist gerichtet!
+
+STIMME (von oben):
+Ist gerettet!
+
+FAUST eilt mit Mephistopheles hinweg. Die Tragödie schließt mit dem ewigen Sieg der göttlichen Gnade über die Finsternis.`
+      }
+    ]
+  },
+
+  // 11. Faust (English Verse Translation)
+  {
+    matchKeys: ['faust english', 'faust (english verse translation)', 'bayard taylor', 'classic-24', 'gutendex-14591'],
+    language: 'en',
+    title: 'Faust (English Verse Translation)',
+    author: 'Johann Wolfgang von Goethe (Trans. Bayard Taylor)',
+    chapters: [
+      {
+        chapter: 'Prologue in Heaven: The Wager with Mephistopheles',
+        text: `The Lord and the Heavenly Hosts. Mephistopheles comes forward.
+
+MEPHISTOPHELES:
+Since Thou, O Lord, approachest us once more,
+And how it goes with us dost ask of me,
+And as Thou didst receive me well before,
+Thou seest me also midst Thy company.
+Of suns and worlds I nothing have to say,
+I only see how mortals toil away.
+The little god o' the world came from the same old mold,
+And is as whimsical as on the day of old.
+
+THE LORD:
+Dost thou know Faust?
+
+MEPHISTOPHELES:
+The Doctor?
+
+THE LORD:
+Yea, my servant!
+
+MEPHISTOPHELES:
+Forsooth! He serves Thee in a wondrous fashion.
+Not of the earth is that mad fool's deep passion.
+A fermentation drives him far,
+Of his own folly he is half aware;
+From heaven he demands the fairest star,
+And from the earth each joy beyond compare,
+And all the near and all the far
+Cannot appease his deeply agitated breast.
+What wilt Thou wager? Him Thou yet shalt lose,
+If Thou wilt grant me Thy permission
+To lead him gently where I choose!
+
+THE LORD:
+As long as he on earth shall live,
+So long it shall not be forbidden.
+Man errs as long as he doth strive.`
+      },
+      {
+        chapter: 'Scene I: Faust’s Soliloquy and the Infernal Covenant',
+        text: `Faust sits restlessly at his desk in a narrow, high-vaulted Gothic study.
+
+FAUST:
+I've studied now Philosophy,
+And Jurisprudence, Medicine,
+And even, alas! Theology,
+From end to end, with labor keen;
+And here, poor fool! with all my lore
+I stand, no wiser than before:
+I'm Master styled, and Doctor, too,
+And drag through ten whole years anew
+My pupils by the nose, astray,
+Through crooked path and winding way—
+And see that nothing can be known!
+
+Mephistopheles steps forth from behind the stove in the garb of a travelling scholar.
+
+FAUST:
+When to the Moment I shall say:
+"Linger a while! Thou art so fair!"
+Then mayst thou fetters on me lay,
+Then will I perish in despair!
+Then may the death-bell toll my doom,
+Then art thou from thy service free,
+The clock may stop, its hands consume,
+And time be over then for me!`
+      },
+      {
+        chapter: 'Scene II: Gretchen’s Agony and the Voice from Above',
+        text: `In the gloomy prison cell, Gretchen lies chained on her bed of straw, condemned to the scaffold for the drowning of her infant. Faust rushes in with Mephistopheles to bear her away.
+
+GRETCHEN:
+Henry! I shudder at thee!
+Judgment of God! To Thee I give myself!
+
+MEPHISTOPHELES:
+She is judged!
+
+VOICE (from above):
+Is saved!
+
+MEPHISTOPHELES:
+Hither to me! (Disappears with Faust.)
+
+VOICE (from within, dying away):
+Henry! Henry!
+
+And the eternal grace of the divine triumphs over the illusions of the abyss.`
+      }
+    ]
+  },
+
+  // 12. War and Peace
+  {
+    matchKeys: ['war and peace', 'leo tolstoy', 'tolstoy', 'война и мир', 'classic-25', 'gutendex-2600'],
+    language: 'en',
+    title: 'War and Peace (English Unabridged)',
+    author: 'Leo Tolstoy (Trans. Louise & Aylmer Maude)',
+    chapters: [
+      {
+        chapter: 'Book I: The St. Petersburg Soirée and Pierre Bezukhov',
+        text: `"Well, Prince, so Genoa and Lucca are now no more than private estates of the Bonaparte family..."
+
+It was in July 1805, and the speaker was the well-known Anna Pavlovna Schérer, maid of honour and favourite of the Empress Marya Fedorovna. With these words she greeted Prince Vasili Kuragin, a man of high rank and importance, who was the first to arrive at her soirée.
+
+Among the guests was Pierre Bezukhov, the illegitimate, massive, and awkward son of the dying Count Bezukhov. Fresh from Paris and bubbling with youthful republican enthusiasm, Pierre shocked the polished aristocratic assembly by defending the French Revolution and Napoleon's genius.
+
+Alongside Pierre stood his closest friend, Prince Andrei Bolkonsky—a handsome, cynical, and disillusioned young officer weary of society life, who resolved to join the Russian army to seek military glory and escape the triviality of the world.`
+      },
+      {
+        chapter: 'Book II: The Battle of Austerlitz and the Sky of Andrei',
+        text: `On the foggy morning of December 2, 1805, the combined Russian and Austrian armies clashed with Napoleon's Grande Armée at Austerlitz.
+
+Amid the chaos of the Russian retreat, Prince Andrei seized a fallen standard and charged forward, rallying the panic-stricken soldiers: "Hurrah, lads!"
+
+A bullet struck him down. Lying on the battlefield of Pratzen, looking up into the infinite, serene, grey heavens, Andrei underwent a profound transformation:
+
+"How quiet, peaceful, and solemn; completely different from when I ran, shouted, and fought! How is it I did not see this lofty sky before? And how happy I am at last to have found it! Yes! All is vanity, all is a delusion, except these infinite skies. There is nothing, nothing but that."
+
+When Napoleon rode past and praised his bravery—"Voilá une belle mort!"—Andrei heard it only as the buzzing of an insignificant fly beneath the eternal canopy of heaven.`
+      },
+      {
+        chapter: 'Book III: Natasha Rostova and the First Grand Ball',
+        text: `On New Year's Eve 1809, the Grand Ball took place at St. Petersburg. Natasha Rostova, sixteen years of age, entered the ballroom in her white muslin gown, trembling with excitement and radiant with youthful vitality.
+
+Prince Andrei, drawn by her innocent beauty and joyful spirit, asked her for a waltz. As she glided into his arms, the cynicism that had weighed upon his heart dissolved into profound love.
+
+"If she smiles at me like that again," Andrei thought, "I shall know that life is not over for me."`
+      },
+      {
+        chapter: 'Book IV: The Invasion of 1812 and the Battle of Borodino',
+        text: `In June 1812, Napoleon crossed the Niemen with half a million soldiers, invading Holy Russia.
+
+At Borodino, seventy miles west of Moscow, the titanic collision of nations occurred. Over seventy thousand men fell in a single day of relentless cannonades.
+
+Prince Andrei, standing in reserve under heavy artillery fire, was mortally wounded by an exploding shell. In the hospital tent, he recognized Anatole Kuragin—the man who had wronged him—weeping in agony. In that crucible of pain, Andrei felt the divine love that forgives all enemies.`
+      },
+      {
+        chapter: 'Book V: The Burning of Moscow and Platon Karataev',
+        text: `Pierre Bezukhov remained in occupied Moscow, disguised as a peasant and harboring a bizarre mystical obsession to assassinate Napoleon.
+
+Arrested by French sentries and narrowly escaping the firing squad, Pierre was imprisoned with common soldiers. There he met Platon Karataev, a round, gentle peasant whose cheerful faith, simplicity, and selfless love embodied the enduring soul of Russia.
+
+From Karataev, Pierre learned the ultimate truth: that happiness does not lie in wealth, intellect, or glory, but within the simple acceptance of God's will and brotherhood with all living creatures.`
+      },
+      {
+        chapter: 'Book VI: The Retreat of the Grande Armée and Epilogue',
+        text: `The Russian winter descended upon the retreating French forces with ferocious intensity. Frost, starvation, and Cossack partisan attacks decimated the invaders until the Grande Armée ceased to exist.
+
+Prince Andrei passed away in the tender arms of Natasha Rostova, crossing serenely into the eternal peace he had glimpsed at Austerlitz.
+
+Years later, Pierre and Natasha were united in deep, mature love, building a family rooted in moral truth. Tolstoy's epic concludes with a profound meditation on the forces of history: that the destinies of mankind are not shaped by the whims of emperors and conquerors, but by the mysterious, collective spirit of the people.`
+      }
+    ]
+  },
+
+  // 13. The Arabian Nights Entertainments
+  {
+    matchKeys: ['arabian nights', '1001 nights', 'thousand and one nights', 'scheherazade', 'classic-26', 'gutendex-128', 'andrew lang'],
+    language: 'en',
+    title: 'The Arabian Nights Entertainments (1001 Nights)',
+    author: 'Traditional Arabic (Trans. Andrew Lang)',
+    chapters: [
+      {
+        chapter: 'Prologue: King Shahryar and the Wisdom of Scheherazade',
+        text: `In the chronicles of the ancient Sassanian kings, there ruled King Shahryar, who, betrayed by his faithless queen, vowed in bitter vengeance to marry a new maiden each evening and order her execution at the break of dawn.
+
+For three years the kingdom wept in terror until the Grand Vizier's daughter, the wise and cultured Scheherazade, resolved to save her people.
+
+On her wedding night, Scheherazade began a tale so wondrous that when dawn arrived, the story remained suspended at its most thrilling juncture. Eager to learn the end, the King stayed the execution for another day. And so, for one thousand and one nights, Scheherazade wove a tapestry of enchantments, until the King's cruelty was healed by love and wisdom.`
+      },
+      {
+        chapter: 'Tale I: The Seven Voyages of Sinbad the Sailor',
+        text: `In the glorious reign of the Caliph Harun al-Rashid in Baghdad, Sinbad the Sailor recounted the perils of his voyages across the unknown oceans:
+
+From the Isle of the Giant Roc—where he tied himself to the enormous bird's leg with his turban to escape the Valley of Diamonds—to the cannibal giants, the sea-serpents, and the Old Man of the Sea who rode upon his shoulders like a demon, Sinbad survived through unflinching courage, merchant shrewdness, and trust in divine destiny.`
+      },
+      {
+        chapter: 'Tale II: Aladdin and the Magic Lamp',
+        text: `In the capital of China lived Aladdin, a poor tailor's son. Tricked by an evil African Magician into descending into the enchanted subterranean cavern, Aladdin secured the bronze oil lamp.
+
+Rubbing the lamp, there arose a colossal Genie: "Command me! I am the slave of the Lamp, ready to obey the bearer in all things!"
+
+With the aid of the Genie, Aladdin built a palace of jasper and gold, married the Princess Badroulbadour, and outwitted the treacherous sorcerer with timeless cunning.`
+      },
+      {
+        chapter: 'Tale III: Ali Baba and the Forty Thieves',
+        text: `In a Persian town, poor woodcutter Ali Baba hid in a tall tree and watched forty ferocious thieves approach a sheer rock.
+
+Their captain cried out: "Open, Sesame!"
+The rock parted, revealing a cavern filled with gold, brocades, and jewels.
+
+Through the sharp intellect and loyalty of the slave girl Morgiana, who discovered the thieves hidden in forty oil jars and poured boiling oil upon them, Ali Baba's family was saved and granted rightful possession of the secret treasure.`
+      }
+    ]
+  },
+
+  // 14. 1984
   {
     matchKeys: ['1984', 'nineteen eighty-four', 'george orwell', 'orwell', 'big brother'],
     language: 'en',
@@ -471,7 +856,7 @@ Sitting in the Chestnut Tree Café with a glass of Victory Gin, Winston looked u
     ]
   },
 
-  // 9. The Picture of Dorian Gray
+  // 15. The Picture of Dorian Gray
   {
     matchKeys: ['dorian gray', 'the picture of dorian gray', 'oscar wilde', 'wilde'],
     language: 'en',
@@ -500,7 +885,7 @@ A terrible cry rang through the mansion. When the servants broke in, they found 
     ]
   },
 
-  // 10. The Metamorphosis
+  // 16. The Metamorphosis
   {
     matchKeys: ['the metamorphosis', 'metamorphosis', 'franz kafka', 'kafka', 'gregor samsa'],
     language: 'en',
@@ -526,7 +911,7 @@ The next morning, his family took a train into the countryside, rejoicing in the
     ]
   },
 
-  // 11. The Art of War
+  // 17. The Art of War
   {
     matchKeys: ['art of war', 'the art of war', 'sun tzu', 'sun zi'],
     language: 'en',
@@ -563,7 +948,7 @@ If you know the enemy and know yourself, you need not fear the result of a hundr
     ]
   },
 
-  // 12. Meditations
+  // 18. Meditations
   {
     matchKeys: ['meditations', 'marcus aurelius', 'aurelius', 'stoicism', 'stoic'],
     language: 'en',
@@ -589,7 +974,7 @@ The universe is change; our life is what our thoughts make it.`
     ]
   },
 
-  // 13. The Prophet
+  // 19. The Prophet
   {
     matchKeys: ['the prophet', 'kahlil gibran', 'gibran'],
     language: 'en',
@@ -611,6 +996,161 @@ Let there be spaces in your togetherness, and let the winds of the heavens dance
 When you work you are a flute through whose heart the whispering of the hours turns to music. Work is love made visible.
 
 Your joy is your sorrow unmasked. And the selfsame well from which your laughter rises was oftentimes filled with your tears. The deeper that sorrow carves into your being, the more joy you can contain.`
+      }
+    ]
+  },
+
+  // 20. Crime and Punishment
+  {
+    matchKeys: ['crime and punishment', 'dostoevsky', 'fyodor dostoevsky', 'raskolnikov'],
+    language: 'en',
+    title: 'Crime and Punishment',
+    author: 'Fyodor Dostoevsky',
+    chapters: [
+      {
+        chapter: 'Part I: The Theory of the Extraordinary Man',
+        text: `On an exceptionally hot evening early in July a young man came out of the tiny room which he rented from tenants in S. Place and walked slowly, as though in hesitation, towards K. Bridge.
+
+Rodion Romanovich Raskolnikov, a penniless former law student in St. Petersburg, had formulated a chilling theory: that extraordinary men (such as Napoleon) possessed the moral right to overstep conventional laws and commit murder for the betterment of mankind.
+
+Ascending the dark staircase to the apartment of the greedy old pawnbroker, Alyona Ivanovna, Raskolnikov drew an axe from beneath his coat. But when her gentle, innocent sister Lizaveta unexpectedly walked in, he was forced to strike down both women, fleeing into the night in feverish delirium.`
+      },
+      {
+        chapter: 'Part II: Sonya Marmeladov and the Gospel of Resurrection',
+        text: `Guilt and moral terror tore Raskolnikov's soul apart. Falling into fainting fits at the police bureau and wandering the squalid streets like a ghost, he found himself drawn to Sonya Marmeladov—a pure-hearted, devout girl forced into prostitution to feed her starving family.
+
+In her humble room by candlelight, Raskolnikov fell on his knees and kissed her foot: "I did not bow down to you, I bowed down to all the suffering of humanity."
+
+Sonya opened the New Testament and read aloud the raising of Lazarus, weeping with him and urging him to confess his crime before God and the people.`
+      },
+      {
+        chapter: 'Part III: Porfiry Petrovich and the Siberian Epilogue',
+        text: `The shrewd magistrate Porfiry Petrovich engaged Raskolnikov in a psychological duel, peeling away his intellectual pride until Raskolnikov walked into the police station and confessed.
+
+Exiled to the penal colony in Siberia, Sonya followed him faithfully. One spring morning on the bank of the wide Siberian river, Raskolnikov looked at Sonya's pale face and broke into tears:
+
+Love had resurrected them both. The seven years of imprisonment seemed to him like seven days. Seven years of profound spiritual renewal had begun.`
+      }
+    ]
+  },
+
+  // 21. Les Misérables
+  {
+    matchKeys: ['les miserables', 'les misérables', 'victor hugo', 'jean valjean', 'hugo'],
+    language: 'en',
+    title: 'Les Misérables',
+    author: 'Victor Hugo',
+    chapters: [
+      {
+        chapter: 'Book I: The Bishop’s Silver Candlesticks',
+        text: `In 1815, Jean Valjean, having served nineteen years at hard labor in the galleys for stealing a loaf of bread for his sister's starving children, was released with a yellow passport marking him an outcast.
+
+Turned away from every inn, he was taken in by the saintly Bishop of Digne, Monseigneur Myriel. In the dead of night, Valjean stole the Bishop's silver plates and fled.
+
+Captured by the gendarmes and brought back, the Bishop addressed him with sublime grace:
+"Jean Valjean, my brother, you belong no longer to evil, but to good. It is your soul that I am buying for you; I withdraw it from dark thoughts and from the spirit of perdition, and I give it to God!"`
+      },
+      {
+        chapter: 'Book II: The Promise to Fantine and the Rescue of Cosette',
+        text: `Reformed as Monsieur Madeleine, a wealthy and benevolent factory owner and Mayor of Montreuil-sur-Mer, Valjean protected the dying young mother Fantine, promising upon her deathbed to care for her orphaned daughter, Cosette.
+
+Pursued relentlessly by the fanatical police inspector Javert, who believed the law was absolute and criminals incapable of redemption, Valjean rescued Cosette from the abusive Thénardiers and raised her in Paris with tender paternal devotion.`
+      },
+      {
+        chapter: 'Book III: The Barricades of 1832 and Javert’s Crisis',
+        text: `During the Paris Student Uprising of 1832, Valjean entered the barricades to save Marius Pontmercy, the young republican lover of Cosette. When Javert was captured as a spy and slated for execution, Valjean cut his bonds and fired his pistol into the air, setting his mortal enemy free.
+
+Carrying the wounded Marius through the labyrinthine sewers of Paris, Valjean emerged onto the Seine, where Javert confronted him. Unable to reconcile the moral nobility of a convict with the rigid law he had worshiped all his life, Javert leaped into the dark whirlpools of the Seine.`
+      }
+    ]
+  },
+
+  // 22. A Tale of Two Cities
+  {
+    matchKeys: ['a tale of two cities', 'tale of two cities', 'charles dickens', 'dickens', 'sydney carton'],
+    language: 'en',
+    title: 'A Tale of Two Cities',
+    author: 'Charles Dickens',
+    chapters: [
+      {
+        chapter: 'Chapter I: The Period — The Best of Times and the Worst of Times',
+        text: `It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of Darkness, it was the spring of hope, it was the winter of despair.
+
+In London and Paris, the forces of oppression and human suffering simmered toward the catastrophic eruption of the French Revolution. Dr. Alexandre Manette, unjustly imprisoned in the Bastille for eighteen years, was recalled to life in London through the gentle love of his daughter, Lucie.`
+      },
+      {
+        chapter: 'Chapter II: The Reign of Terror and the Guillotine',
+        text: `Charles Darnay, a French aristocrat who renounced his noble heritage to live honorably in England and marry Lucie Manette, returned to Paris during the Terror to save an innocent servant.
+
+Arrested and sentenced to death by the bloodthirsty tribunal of Madame Defarge, Darnay was imprisoned in the Conciergerie awaiting the guillotine.`
+      },
+      {
+        chapter: 'Chapter III: Sydney Carton’s Supreme Sacrifice',
+        text: `Sydney Carton, the brilliant but self-loathing English barrister who loved Lucie with unselfish devotion, slipped into Darnay's cell, drugged him, exchanged clothes, and had Darnay carried out to safety.
+
+Ascending the scaffold in Darnay's place, Carton comforted a trembling seamstress beside him. As the blade fell, his final thoughts echoed through eternity:
+
+"It is a far, far better thing that I do, than I have ever done; it is a far, far better rest that I go to than I have ever known."`
+      }
+    ]
+  },
+
+  // 23. The Adventures of Sherlock Holmes
+  {
+    matchKeys: ['sherlock holmes', 'adventures of sherlock holmes', 'arthur conan doyle', 'conan doyle', 'baker street'],
+    language: 'en',
+    title: 'The Adventures of Sherlock Holmes',
+    author: 'Sir Arthur Conan Doyle',
+    chapters: [
+      {
+        chapter: 'Story I: A Scandal in Bohemia and Irene Adler',
+        text: `To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex.
+
+The King of Bohemia arrived incognito at 221B Baker Street, seeking the recovery of a compromising photograph held by the American opera singer Irene Adler.
+
+Through brilliant disguises and simulated fire in her lodgings, Holmes located the secret panel. Yet when he returned to seize the photograph, he found it gone, replaced by a letter from Irene Adler acknowledging his genius and outwitting the world's greatest consulting detective.`
+      },
+      {
+        chapter: 'Story II: The Adventure of the Speckled Band',
+        text: `Helen Stoner arrived in terror at Baker Street, describing the mysterious midnight death of her twin sister Julia in the ancestral manor of Stoke Moran: "It was the band! The speckled band!"
+
+Investigating the dark bedroom with Dr. Watson, Holmes discovered the sinister ventilator connecting to the room of Dr. Grimesby Roylott. Sitting in pitch darkness, Holmes heard the low, clear whistle and struck a match, furiously lashing with his cane at the deadly swamp adder.
+
+The enraged serpent turned back through the ventilator and struck Dr. Roylott, killing the villain with his own horrific weapon.`
+      }
+    ]
+  },
+
+  // 24. Alice's Adventures in Wonderland
+  {
+    matchKeys: ['alice in wonderland', 'alice\'s adventures in wonderland', 'lewis carroll', 'carroll', 'cheshire cat'],
+    language: 'en',
+    title: 'Alice’s Adventures in Wonderland',
+    author: 'Lewis Carroll',
+    chapters: [
+      {
+        chapter: 'Chapter I: Down the Rabbit-Hole',
+        text: `Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, "and what is the use of a book," thought Alice, "without pictures or conversations?"
+
+Suddenly a White Rabbit with pink eyes ran close by her, took a watch out of its waistcoat-pocket, looked at it, and hurried on. Burning with curiosity, Alice ran across the field after it and popped down a large rabbit-hole, falling into a wonderland of talking animals, shrinking potions, and whimsical logic.`
+      },
+      {
+        chapter: 'Chapter II: The Mad Tea-Party',
+        text: `There was a table set out under a tree in front of the house, and the March Hare and the Hatter were having tea at it: a Dormouse was sitting between them, fast asleep.
+
+"No room! No room!" they cried out when they saw Alice coming.
+"There's plenty of room!" said Alice indignantly, and sat down in a large arm-chair at one end of the table.
+
+"Why is a raven like a writing-desk?" asked the Hatter with a grin.`
+      },
+      {
+        chapter: 'Chapter III: The Queen’s Croquet-Ground and the Courtroom',
+        text: `The Queen of Hearts shouted her eternal command: "Off with their heads!"
+
+At the trial of the Knave of Hearts for stealing tarts, Alice grew back to her full natural size. When the Queen demanded a verdict before evidence, Alice laughed with fearless clarity:
+"Who cares for you? You're nothing but a pack of cards!"
+
+The whole pack rose up into the air and came flying down upon her, and Alice awoke upon the sunny bank with her head in her sister's lap.`
       }
     ]
   }

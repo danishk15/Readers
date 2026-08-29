@@ -115,76 +115,186 @@ News arrives that Netherfield Park is let to Mr. Bingley, a wealthy young bachel
     ]
   },
 
-  // 3. Frankenstein - Mary Shelley
+  // 3. Don Quijote de la Mancha (Spanish Original & Bilingual) - Miguel de Cervantes
   {
-    matchKeys: ['frankenstein', 'mary shelley', 'shelley', 'classic-3', 'gutendex-84'],
-    language: 'en',
-    title: 'Frankenstein; or, The Modern Prometheus',
-    author: 'Mary Wollstonecraft Shelley',
+    matchKeys: ['don quixote', 'don quijote', 'cervantes', 'miguel de cervantes', 'classic-19', 'classic-20', 'gutendex-2000', 'gutendex-996'],
+    language: 'es',
+    title: 'Don Quijote de la Mancha (Edición Clásica)',
+    author: 'Miguel de Cervantes Saavedra',
     chapters: [
       {
-        chapter: 'Letters I–IV: Walton’s Arctic Journey and the Rescued Stranger',
-        text: `Captain Robert Walton writes to his sister from the frozen Arctic seas, where his crew rescues a dying Victor Frankenstein pursuing a monstrous sledge across the ice.`
+        chapter: 'Capítulo I: De la condición del hidalgo Don Quijote',
+        text: `En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor.
+
+Una olla de algo más vaca que carnero, salpicón las más noches, duelos y quebrantos los sábados, lantejas los viernes, algún palomino de añadidura los domingos, consumían las tres partes de su hacienda.
+
+Frisaba la edad de nuestro hidalgo con los cincuenta años; era de complexión recia, seco de carnes, enjuto de rostro, gran madrugador y amigo de la caza. Y del poco dormir y del mucho leer libros de caballerías, se le secó el celebro de manera que vino a perder el juicio.`
       },
       {
-        chapter: 'Chapters I–IV: The Creation of Life in Ingolstadt',
-        text: `Victor masters chemistry and natural philosophy, isolating himself in his laboratory to infuse life into an eight-foot creature assembled from charnel house remains. On a dreary November night, the yellow eye opens, terrifying Victor into flight.`
+        chapter: 'Capítulo II: La aventura de los molinos de viento',
+        text: `En esto, descubrieron treinta o cuarenta molinos de viento que hay en aquel campo; y así como Don Quijote los vio, dijo a su escudero:
+
+—La ventura va guiando nuestras cosas mejor de lo que acertáramos a desear; porque ves allí, amigo Sancho Panza, donde se descubren treinta, o pocos más, desaforados gigantes, con quien pienso hacer batalla y quitarles a todos las vidas.
+
+—¿Qué gigantes? —dijo Sancho Panza.
+—Aquellos que allí ves —respondió su amo— de los brazos largos.
+—Mire vuestra merced —respondió Sancho— que aquellos que allí se parecen no son gigantes, sino molinos de viento, y lo que en ellos parecen brazos son las aspas, que, volteadas del viento, hacen andar la piedra del molino.`
       },
       {
-        chapter: 'Chapters V–X: The Murder of William and Meeting on the Glacier',
-        text: `William is murdered in Geneva and innocent Justine is executed. Tormented by guilt, Victor climbs Montanvert where the creature confronts him on the Mer de Glace: "I ought to be thy Adam, but I am rather the fallen angel."`
-      },
-      {
-        chapter: 'Chapters XI–XVI: The Monster’s Tale of the De Laceys',
-        text: `The creature recounts learning language, benevolence, and reading Milton while observing the peasant family, only to be beaten and rejected when he reveals himself. Misery transforms him into a vengeful fiend.`
-      },
-      {
-        chapter: 'Chapters XVII–XXIV: The Wedding Night Curse and Final Vow',
-        text: `Victor agrees to create a female companion but destroys it in horror. The monster vows: "I shall be with you on your wedding-night!" True to his word, the monster strangles Elizabeth. Victor pursues him to the Arctic, where Victor dies and the creature vanishes into the dark waves on an ice-raft.`
+        chapter: 'Capítulo III: El nombramiento de caballero en la venta',
+        text: `Llegando a una modesta venta que a Don Quijote pareció alcázar imperial con cuatro torres y chapiteles de luciente plata, rogó al ventero que le armase caballero andante para enderezar entuertos y proteger a los desvalidos en el ancho mundo.`
       }
     ]
   },
 
-  // 4. Moby Dick - Herman Melville
+  // 4. Le Petit Prince (The Little Prince) - Antoine de Saint-Exupéry (French)
   {
-    matchKeys: ['moby dick', 'moby-dick', 'herman melville', 'melville', 'classic-4', 'gutendex-2701'],
-    language: 'en',
-    title: 'Moby Dick; or, The Whale',
-    author: 'Herman Melville',
+    matchKeys: ['petit prince', 'little prince', 'le petit prince', 'saint-exupery', 'antoine de saint-exupery'],
+    language: 'fr',
+    title: 'Le Petit Prince (The Little Prince - Édition Intégrale)',
+    author: 'Antoine de Saint-Exupéry',
     chapters: [
       {
-        chapter: 'Chapter I: Loomings & The Spouter-Inn',
-        text: `Call me Ishmael. Ishmael signs onto the whaling vessel Pequod alongside his tattooed friend Queequeg in Nantucket.`
+        chapter: 'Chapitre I: Le dessin du serpent boa et l’enfance',
+        text: `Lorsque j'avais six ans j'ai vu, une fois, une magnifique image, dans un livre sur la Forêt Vierge qui s'appelait "Histoires Vécues". Ça représentait un serpent boa qui avalait un fauve.
+
+J'ai alors beaucoup réfléchi sur les aventures de la jungle et, à mon tour, j'ai réussi, avec un crayon de couleur, à tracer mon premier dessin. J'ai montré mon chef-d'œuvre aux grandes personnes et je leur ai demandé si mon dessin leur faisait peur.
+Elles m'ont répondu: "Pourquoi un chapeau ferait-il peur?"
+Mon dessin ne représentait pas un chapeau. Il représentait un serpent boa qui digérait un éléphant.`
       },
       {
-        chapter: 'Chapter II: Captain Ahab & The Gold Doubloon',
-        text: `Captain Ahab reveals his ivory peg leg and nails a Spanish gold ounce to the mast, offering it to whoever first sights the White Whale that reaped his leg.`
+        chapter: 'Chapitre II: La rencontre au désert du Sahara',
+        text: `J'ai ainsi vécu seul, sans personne avec qui parler véritablement, jusqu'à une panne dans le désert du Sahara, il y a six ans. Quelque chose s'était cassé dans mon moteur.
+
+Le premier soir je me suis donc endormi sur le sable à mille milles de toute terre habitée. Alors vous imaginez ma surprise, au lever du jour, quand une drôle de petite voix m'a réveillé. Elle disait:
+— S'il vous plaît… dessine-moi un mouton !
+— Hein!
+— Dessine-moi un mouton…`
       },
       {
-        chapter: 'Chapter III: The Three-Day Chase & The Vortex',
-        text: `The Pequod hunts Moby Dick across the Pacific. On the third day, the whale rams the ship directly. Ahab is dragged to the deep by his own harpoon line, and Ishmael alone survives atop Queequeg's wooden coffin.`
+        chapter: 'Chapitre III: Le secret du renard — L’essentiel est invisible',
+        text: `C'est alors qu'apparut le renard:
+— Bonjour, dit le renard.
+— Bonjour, répondit poliment le petit prince.
+— Je suis là, dit la voix, sous le pommier.
+— Qui es-tu ? dit le petit prince. Tu es bien joli…
+— Je suis un renard.
+— Viens jouer avec moi, lui proposa le petit prince. Je suis tellement triste…
+— Je ne puis pas jouer avec toi, dit le renard. Je ne suis pas apprivoisé.
+
+Puis le renard lui confia son secret:
+— Voici mon secret. Il est très simple: on ne voit bien qu'avec le cœur. L'essentiel est invisible pour les yeux.`
       }
     ]
   },
 
-  // 5. Dracula - Bram Stoker
+  // 5. Faust: Eine Tragödie (German) - Johann Wolfgang von Goethe
   {
-    matchKeys: ['dracula', 'bram stoker', 'stoker', 'classic-5', 'gutendex-345'],
-    language: 'en',
-    title: 'Dracula',
-    author: 'Bram Stoker',
+    matchKeys: ['faust', 'goethe', 'johann wolfgang von goethe', 'classic-23', 'classic-24', 'gutendex-2229', 'gutendex-14591'],
+    language: 'de',
+    title: 'Faust: Eine Tragödie (Der Tragödie erster Teil)',
+    author: 'Johann Wolfgang von Goethe',
     chapters: [
       {
-        chapter: 'Jonathan Harker’s Journal: Castle Dracula',
-        text: `Jonathan Harker travels to the Carpathian mountains of Transylvania and finds himself trapped in the castle of Count Dracula, who walks walls face-down like a bat.`
+        chapter: 'Zueignung & Prolog im Himmel',
+        text: `Ihr naht euch wieder, schwankende Gestalten,
+Die früh sich einst dem trüben Blick gezeigt.
+Versuch ich wohl, euch diesmal festzuhalten?
+Fühl ich mein Herz noch jenem Wahn geneigt?
+
+Im Prolog im Himmel schließt Mephistopheles die Wette mit dem Herrn über die Seele des unermüdlich strebenden Gelehrten Heinrich Faust: "Was wettet Ihr? den sollt Ihr noch verlieren, wenn Ihr mirlaubt, ihn meine Straße sacht zu führen!"`
       },
       {
-        chapter: 'The Demeter & The Siege of Carfax',
-        text: `Dracula arrives in England aboard a doomed ship, preying on Lucy Westenra. Professor Van Helsing leads the fight with crucifixes, garlic, and blood transfusions.`
+        chapter: 'Nacht: Das Studierzimmer & Der Pakt mit Mephisto',
+        text: `Habe nun, ach! Philosophie,
+Juristerei und Medizin,
+Und leider auch Theologie
+Durchaus studiert, mit heißem Bemühn.
+Da steh ich nun, ich armer Tor!
+Und bin so klug als wie zuvor;
+Heiße Magister, heiße Doktor gar
+Und ziehe schon an die zehen Jahr
+Herauf, herab und quer und krumm
+Meine Schüler an der Nase herum—
+Und sehe, daß wir nichts wissen können!
+
+Faust schließt den ewigen Pakt mit Mephistopheles:
+"Werd ich zum Augenblicke sagen:
+Verweile doch! du bist so schön!
+Dann magst du mich in Fesseln schlagen,
+Dann will ich gern zugrunde gehn!"`
       },
       {
-        chapter: 'The Final Hunt Across Transylvania',
-        text: `Pursuing Dracula back to his mountain fortress in the snows, Harker and Quincey Morris strike Dracula's throat and heart, turning him to dust at sunset.`
+        chapter: 'Gretchentragödie & Erlösung',
+        text: `Faust begegnet Margarete (Gretchen). Gretchen fragt ihn nach seinem Glauben: "Nun sag, wie hast du’s mit der Religion?" Faust antwortet mit dem hymmischen Bekenntnis zum Gefühl: "Gefühl ist alles; Name ist Schall und Rauch." Trotz Schuld und Kerkerhaft wird Gretchen durch Gottes Gnade erlöst: "Sie ist gerichtet! — Ist gerettet!"`
+      }
+    ]
+  },
+
+  // 6. Die Verwandlung (The Metamorphosis) - Franz Kafka (German)
+  {
+    matchKeys: ['die verwandlung', 'metamorphosis', 'franz kafka', 'kafka', 'the metamorphosis'],
+    language: 'de',
+    title: 'Die Verwandlung (The Metamorphosis)',
+    author: 'Franz Kafka',
+    chapters: [
+      {
+        chapter: 'Kapitel I: Das Erwachen als ungeheures Ungeziefer',
+        text: `Als Gregor Samsa eines Morgens aus unruhigen Träumen erwachte, fand er sich in seinem Bett zu einem ungeheuren Ungeziefer verwandelt.
+
+Er lag auf seinem panzerartig harten Rücken und sah, wenn er den Kopf ein wenig hob, seinen gewölbten, braunen, von bogenförmigen Versteifungen geteilten Bauch, auf dessen Höhe sich die Bettdecke, zum gänzlichen Niedergleiten bereit, kaum noch erhalten konnte. Seine vielen, im Vergleich zu seinem sonstigen Umfang kläglich dünnen Beine flimmerten ihm hilflos vor den Augen.
+
+"Was ist mit mir geschehen?", dachte er. Es war kein Traum.`
+      },
+      {
+        chapter: 'Kapitel II: Die Entfremdung und Gretes Violine',
+        text: `Seine Schwester Grete bringt ihm verfaulte Essensreste, die ihm nun köstlich schmecken. Gregor lauscht eines Abends ergriffen dem Geigenspiel seiner Schwester: "War er ein Tier, da ihn Musik so ergriff? Ihm war, als zeige sich ihm der Weg zu der ersehnten unbekannten Nahrung."`
+      }
+    ]
+  },
+
+  // 7. War and Peace & Russian Classics - Leo Tolstoy
+  {
+    matchKeys: ['war and peace', 'leo tolstoy', 'tolstoy', 'война и мир', 'classic-25', 'gutendex-2600'],
+    language: 'ru',
+    title: 'Война и мир (War and Peace - Masterpiece)',
+    author: 'Лев Николаевич Толстой (Leo Tolstoy)',
+    chapters: [
+      {
+        chapter: 'Часть I: Салон Анны Павловны Шерер в Петербурге',
+        text: `— Eh bien, mon prince. Gênes et Lucques ne sont plus que des apanages, des поместья, de la famille Bonaparte...
+
+Так говорила в июле 1805 года известная Анна Павловна Шерер, фрейлина и приближенная императрицы Марии Феодоровны, встречая важного и чиновного князя Василия, первого приехавшего на ее вечер.
+
+В салон входит Пьер Безухов — незаконный сын богатейшего вельможи, неуклюжий, искренний и восторженный почитатель Наполеона, и князь Андрей Болконский, мечтающий о славе и великом подвиге.`
+      },
+      {
+        chapter: 'Часть II: Небо Аустерлица и пробуждение князя Андрея',
+        text: `На поле Аустерлица князь Андрей со знаменем в руках падает раненый. Он открывает глаза и видит над собой бесконечно высокое, тихое и торжественное небо с плывущими облаками.
+
+"Как же я не видал прежде этого высокого неба? И как я счастлив, что узнал его наконец. Да! всё пустое, всё обман, кроме этого бесконечного неба!" Даже Наполеон кажется ему теперь ничтожным по сравнению с величием вечности.`
+      }
+    ]
+  },
+
+  // 8. Meditations (Latin / Ancient Stoic Philosophy) - Marcus Aurelius
+  {
+    matchKeys: ['meditations', 'marcus aurelius', 'stoicism', 'philosophy', 'ta eis heauton'],
+    language: 'la',
+    title: 'Meditations (Thoughts of the Philosopher Emperor)',
+    author: 'Marcus Aurelius Antoninus',
+    chapters: [
+      {
+        chapter: 'Book II: On the Morning Routine & Human Nature',
+        text: `When you wake up in the morning, tell yourself: The people I deal with today will be meddling, ungrateful, arrogant, dishonest, jealous, and surly. They are like this because they cannot distinguish good from evil.
+
+But I have seen the beauty of good, and the ugliness of evil, and have recognized that the wrongdoer has a nature related to my own—not of the same blood or birth, but the same mind, and possessing a share of the divine.`
+      },
+      {
+        chapter: 'Book IV: The Inner Citadel & Serenity',
+        text: `Men seek retreats for themselves, houses in the country, sea-shores, and mountains. But it is in your power whenever you choose to retire into yourself.
+
+For nowhere either with more quiet or more freedom from trouble does a man retire than into his own soul, particularly when he has within him such thoughts that by looking into them he is immediately in perfect tranquility.`
       }
     ]
   }

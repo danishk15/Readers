@@ -1,10 +1,10 @@
 /**
- * Intelligent Script Transliteration & Language Style Transformation
- * Converts text between writing scripts (Urdu Nastaliq, Hindi Devanagari, Roman Urdu/Hindi)
- * WITHOUT doing robotic literal word translations, preserving authentic words and pronunciation.
+ * Intelligent Script Transliteration & Multi-Language Lexicon Engine
+ * Converts text between writing scripts (Urdu Nastaliq, Hindi Devanagari, Arabic Naskh, Persian, Russian Cyrillic)
+ * WITHOUT robotic literal word translations, preserving authentic words, phonetic pronunciation, and literary nuances.
  */
 
-// Urdu Nastaliq to Roman Urdu Mapping
+// 1. Urdu Nastaliq to Roman Urdu Mapping
 const URDU_TO_ROMAN_MAP: Record<string, string> = {
   'ا': 'a', 'آ': 'aa', 'ب': 'b', 'پ': 'p', 'ت': 't', 'ٹ': 'T', 'ث': 's',
   'ج': 'j', 'چ': 'ch', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ڈ': 'D', 'ذ': 'z',
@@ -63,27 +63,6 @@ const URDU_WORD_REPLACEMENTS: [RegExp, string][] = [
   [/\bجاتا\b/g, 'jata'],
   [/\bجاتی\b/g, 'jati'],
   [/\bجاتے\b/g, 'jate'],
-  [/\bگئی\b/g, 'gayi'],
-  [/\bگئے\b/g, 'gaye'],
-  [/\bگیا\b/g, 'gaya'],
-  [/\bکر\b/g, 'kar'],
-  [/\bکرنا\b/g, 'karna'],
-  [/\bکرنے\b/g, 'karne'],
-  [/\bکیا\b/g, 'kiya'],
-  [/\bکی\b/g, 'ki'],
-  [/\bدی\b/g, 'di'],
-  [/\bدیا\b/g, 'diya'],
-  [/\bدیے\b/g, 'diye'],
-  [/\bدیتا\b/g, 'deta'],
-  [/\bلیتا\b/g, 'leta'],
-  [/\bلی\b/g, 'li'],
-  [/\bلیا\b/g, 'liya'],
-  [/\bلیے\b/g, 'liye'],
-  [/\bایک\b/g, 'ek'],
-  [/\bدو\b/g, 'do'],
-  [/\bتین\b/g, 'teen'],
-  [/\bچار\b/g, 'chaar'],
-  [/\bپانچ\b/g, 'paanch'],
   [/\bخدا\b/g, 'Khuda'],
   [/\bاللہ\b/g, 'Allah'],
   [/\bمحبت\b/g, 'mohabbat'],
@@ -92,39 +71,24 @@ const URDU_WORD_REPLACEMENTS: [RegExp, string][] = [
   [/\bانسان\b/g, 'insan'],
   [/\bدل\b/g, 'dil'],
   [/\bجان\b/g, 'jaan'],
-  [/\bروشنی\b/g, 'roshni'],
-  [/\bاندھیرا\b/g, 'andhera'],
-  [/\bراستہ\b/g, 'raasta'],
-  [/\bکتاب\b/g, 'kitaab'],
   [/\bشاعری\b/g, 'shaairi'],
-  [/\bغزل\b/g, 'ghazal'],
-  [/\bباب\b/g, 'Baab'],
-  [/\bاول\b/g, 'Awwal'],
-  [/\bدوم\b/g, 'Doam'],
-  [/\bسوم\b/g, 'Soam'],
-  [/\bچہارم\b/g, 'Chaharum'],
-  [/\bپنجم\b/g, 'Panjum'],
-  [/\bششم\b/g, 'Shashum'],
-  [/\bہفتم\b/g, 'Haftum'],
-  [/\bہشتم\b/g, 'Hashtum'],
-  [/\bنہم\b/g, 'Nahum'],
-  [/\bدہم\b/g, 'Dahum']
+  [/\bغزل\b/g, 'ghazal']
 ];
 
-// Devanagari Hindi to Roman Hinglish Mapping
+// 2. Hindi Devanagari to Roman Hindi Mapping
 const HINDI_TO_ROMAN_MAP: Record<string, string> = {
   'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri',
-  'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+  'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au', 'अं': 'an', 'अः': 'ah',
   'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
   'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
   'ट': 'T', 'ठ': 'Th', 'ड': 'D', 'ढ': 'Dh', 'ण': 'N',
   'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
   'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
-  'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh',
-  'ष': 'sh', 'स': 's', 'ह': 'h',
+  'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+  'क्ष': 'ksh', 'त्र': 'tra', 'ज्ञ': 'gya',
   'ा': 'aa', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'ृ': 'ri',
-  'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n', 'ँ': 'n',
-  'ः': 'h', '्': '', '़': '', '।': '.', '॥': '.'
+  'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n', 'ँ': 'n', 'ः': 'h', '्': '',
+  '।': '.', '॥': '.', '“': '"', '”': '"', '‘': "'", '’': "'"
 };
 
 const HINDI_WORD_REPLACEMENTS: [RegExp, string][] = [
@@ -142,116 +106,95 @@ const HINDI_WORD_REPLACEMENTS: [RegExp, string][] = [
   [/\bके\b/g, 'ke'],
   [/\bने\b/g, 'ne'],
   [/\bपर\b/g, 'par'],
-  [/\bतक\b/g, 'tak'],
-  [/\bकि\b/g, 'ki'],
   [/\bयह\b/g, 'yeh'],
   [/\bवह\b/g, 'woh'],
-  [/\bतो\b/g, 'toh'],
-  [/\bजो\b/g, 'jo'],
   [/\bक्या\b/g, 'kya'],
   [/\bक्यों\b/g, 'kyun'],
-  [/\bकैसे\b/g, 'kaise'],
-  [/\bकब\b/g, 'kab'],
-  [/\bकहाँ\b/g, 'kahan'],
-  [/\bनहीं\b/g, 'nahi'],
-  [/\bना\b/g, 'na'],
-  [/\bसब\b/g, 'sab'],
-  [/\bअपने\b/g, 'apne'],
-  [/\bअपनी\b/g, 'apni'],
-  [/\bअपना\b/g, 'apna'],
-  [/\bअगर\b/g, 'agar'],
-  [/\bमगर\b/g, 'magar'],
-  [/\bलेकिन\b/g, 'lekin'],
-  [/\bभी\b/g, 'bhi'],
-  [/\bहो\b/g, 'ho'],
-  [/\bहुआ\b/g, 'hua'],
-  [/\bहुई\b/g, 'hui'],
-  [/\bहुए\b/g, 'hue'],
-  [/\bरहा\b/g, 'raha'],
-  [/\bرہی\b/g, 'rahi'],
-  [/\bरहे\b/g, 'rahe'],
-  [/\bअध्याय\b/g, 'Adhyay'],
-  [/\bसर्ग\b/g, 'Sarg'],
-  [/\bअंक\b/g, 'Ank'],
-  [/\bप्रस्तावना\b/g, 'Prastavana'],
-  [/\bभाग\b/g, 'Bhaag']
+  [/\bप्रेम\b/g, 'prem'],
+  [/\bजीवन\b/g, 'jeevan'],
+  [/\bहृदय\b/g, 'hriday']
 ];
 
-/**
- * Transliterates Urdu text into clean, phonetic Roman Urdu
- * Keeps 100% of original words intact without translating meaning.
- */
+// 3. Arabic & Persian to Roman Transliteration
+const ARABIC_PERSIAN_TO_ROMAN_MAP: Record<string, string> = {
+  'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ء': "'", 'ب': 'b', 'پ': 'p', 'ت': 't', 'ث': 'th',
+  'ج': 'j', 'چ': 'ch', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'ژ': 'zh',
+  'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': "'a", 'غ': 'gh',
+  'ف': 'f', 'ق': 'q', 'ك': 'k', 'ک': 'k', 'گ': 'g', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'ة': 't', 'و': 'w', 'ؤ': 'u', 'ي': 'y', 'ى': 'a', 'ئ': "'i", 'ی': 'y', 'ے': 'e',
+  'َ': 'a', 'ُ': 'u', 'ِ': 'i', 'ً': 'an', 'ٌ': 'un', 'ٍ': 'in', 'ّ': '', 'ْ': ''
+};
+
+// 4. Russian Cyrillic to Latin Mapping
+const CYRILLIC_TO_LATIN_MAP: Record<string, string> = {
+  'А': 'A', 'а': 'a', 'Б': 'B', 'б': 'b', 'В': 'V', 'в': 'v', 'Г': 'G', 'г': 'g',
+  'Д': 'D', 'д': 'd', 'Е': 'E', 'е': 'e', 'Ё': 'Yo', 'ё': 'yo', 'Ж': 'Zh', 'ж': 'zh',
+  'З': 'Z', 'з': 'z', 'И': 'I', 'и': 'i', 'Й': 'Y', 'й': 'y', 'К': 'K', 'к': 'k',
+  'Л': 'L', 'л': 'l', 'М': 'M', 'м': 'm', 'Н': 'N', 'н': 'n', 'О': 'O', 'о': 'o',
+  'П': 'P', 'п': 'p', 'Р': 'R', 'р': 'r', 'С': 'S', 'с': 's', 'Т': 'T', 'т': 't',
+  'У': 'U', 'у': 'u', 'Ф': 'F', 'ф': 'f', 'Х': 'Kh', 'х': 'kh', 'Ц': 'Ts', 'ц': 'ts',
+  'Ч': 'Ch', 'ч': 'ch', 'Ш': 'Sh', 'ш': 'sh', 'Щ': 'Shch', 'щ': 'shch', 'Ъ': '', 'ъ': '',
+  'Ы': 'Y', 'ы': 'y', 'Ь': "'", 'ь': "'", 'Э': 'E', 'э': 'e', 'Ю': 'Yu', 'ю': 'yu',
+  'Я': 'Ya', 'я': 'ya'
+};
+
 export function transliterateUrduToRoman(urduText: string): string {
   if (!urduText) return '';
-
   let text = urduText;
-
-  // Apply known common Urdu words first
   for (const [regex, rep] of URDU_WORD_REPLACEMENTS) {
     text = text.replace(regex, rep);
   }
-
-  // Character by character mapping for remaining words
   let result = '';
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    if (URDU_TO_ROMAN_MAP[char] !== undefined) {
-      result += URDU_TO_ROMAN_MAP[char];
-    } else {
-      result += char;
-    }
+    result += URDU_TO_ROMAN_MAP[char] !== undefined ? URDU_TO_ROMAN_MAP[char] : char;
   }
-
-  // Polish formatting
-  return result
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s+/g, '\n')
-    .replace(/([a-zA-Z])\s*\.\s*([a-zA-Z])/g, '$1. $2')
-    .trim();
+  return result.replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Transliterates Hindi Devanagari text into clean Roman Hindi / Hinglish
- * Keeps 100% of original words intact without translating meaning.
- */
 export function transliterateHindiToRoman(hindiText: string): string {
   if (!hindiText) return '';
-
   let text = hindiText;
-
-  // Apply known common Hindi words
   for (const [regex, rep] of HINDI_WORD_REPLACEMENTS) {
     text = text.replace(regex, rep);
   }
-
-  // Character mapping with implicit 'a' vowel handling
   const consonants = new Set(['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ','ट','ठ','ड','ढ','ण','त','थ','द','ध','न','प','फ','ब','भ','म','य','र','ल','व','श','ष','स','ह']);
-  const matras = new Set(['ा','ि','ी','ु','ू','ृ','े','ै','ो','ौ','ं','ँ','ः','्']);
-
   let result = '';
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
     const nextChar = text[i + 1];
-
     if (HINDI_TO_ROMAN_MAP[char] !== undefined) {
       result += HINDI_TO_ROMAN_MAP[char];
-      // Add implicit 'a' if consonant is followed by another consonant or whitespace, not a matra or halant
       if (consonants.has(char)) {
         if (nextChar && consonants.has(nextChar)) {
           result += 'a';
-        } else if (nextChar && nextChar === ' ') {
-          // don't add trailing 'a' to words ending in consonants in modern Hindi
         }
       }
     } else {
       result += char;
     }
   }
+  return result.replace(/\s+/g, ' ').trim();
+}
 
-  return result
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s+/g, '\n')
-    .trim();
+export function transliterateArabicPersianToRoman(text: string): string {
+  if (!text) return '';
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    result += ARABIC_PERSIAN_TO_ROMAN_MAP[char] !== undefined ? ARABIC_PERSIAN_TO_ROMAN_MAP[char] : char;
+  }
+  return result.replace(/\s+/g, ' ').trim();
+}
+
+export function transliterateCyrillicToRoman(text: string): string {
+  if (!text) return '';
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    result += CYRILLIC_TO_LATIN_MAP[char] !== undefined ? CYRILLIC_TO_LATIN_MAP[char] : char;
+  }
+  return result.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -259,18 +202,69 @@ export function transliterateHindiToRoman(hindiText: string): string {
  */
 export function transliterateScript(text: string): string {
   if (!text) return '';
-
-  const isUrdu = /[\u0600-\u06FF\u0750-\u077F]/.test(text);
+  const isCyrillic = /[\u0400-\u04FF]/.test(text);
   const isHindi = /[\u0900-\u097F]/.test(text);
+  const isArabicPersianUrdu = /[\u0600-\u06FF\u0750-\u077F]/.test(text);
 
-  if (isUrdu) {
-    return transliterateUrduToRoman(text);
-  }
-  if (isHindi) {
-    return transliterateHindiToRoman(text);
-  }
+  if (isCyrillic) return transliterateCyrillicToRoman(text);
+  if (isHindi) return transliterateHindiToRoman(text);
+  if (isArabicPersianUrdu) return transliterateUrduToRoman(text);
 
   return text;
+}
+
+/**
+ * Built-in Multi-Language Literary Lexicon (Instant Definitions & Vocabulary Lookup)
+ */
+export interface WordDefinition {
+  word: string;
+  language: string;
+  romanization: string;
+  translation: string;
+  partOfSpeech?: string;
+  sampleSentence?: string;
+  culturalNote?: string;
+}
+
+const LITERARY_DICTIONARY: Record<string, WordDefinition> = {
+  'محبت': { word: 'محبت', language: 'Urdu', romanization: 'Mohabbat', translation: 'Love / Affection / Passionate Devotion', partOfSpeech: 'Noun', sampleSentence: 'محبت میں نہیں ہے فرق جینے اور مرنے کا', culturalNote: 'A cornerstone theme in Classical Urdu and Persian Sufi ghazals.' },
+  'عشق': { word: 'عشق', language: 'Urdu/Arabic', romanization: 'Ishq', translation: 'Divine or Transcendent Love', partOfSpeech: 'Noun', culturalNote: 'Distinguished from ordinary love (Ishq-e-Haqiqi vs Ishq-e-Majazi).' },
+  'دل': { word: 'دل', language: 'Urdu/Persian', romanization: 'Dil', translation: 'Heart / Soul / Mind / Courage', partOfSpeech: 'Noun' },
+  'شاعری': { word: 'شاعری', language: 'Urdu', romanization: 'Shaairi', translation: 'Poetry / Versification', partOfSpeech: 'Noun' },
+  'غزل': { word: 'غزل', language: 'Urdu/Arabic', romanization: 'Ghazal', translation: 'Lyrical ode of love and longing', partOfSpeech: 'Noun' },
+  'خودی': { word: 'خودی', language: 'Urdu/Persian', romanization: 'Khudi', translation: 'Selfhood / Spiritual Self-Realization', partOfSpeech: 'Noun', culturalNote: 'Central philosophical concept developed by Allama Iqbal.' },
+  'پیر': { word: 'پیر', language: 'Urdu/Persian', romanization: 'Peer', translation: 'Spiritual Guide / Master / Elder', partOfSpeech: 'Noun' },
+  'ساقی': { word: 'ساقی', language: 'Urdu/Persian', romanization: 'Saqi', translation: 'Cupbearer / Distributor of Divine Wine', partOfSpeech: 'Noun' },
+  'हृदय': { word: 'हृदय', language: 'Hindi/Sanskrit', romanization: 'Hriday', translation: 'Heart / Core / Conscience', partOfSpeech: 'Noun' },
+  'प्रेम': { word: 'प्रेम', language: 'Hindi', romanization: 'Prem', translation: 'Unconditional Love / Compassion', partOfSpeech: 'Noun' },
+  'गोदान': { word: 'गोदान', language: 'Hindi', romanization: 'Godan', translation: 'Gift of a Cow (Sacred rite for spiritual release)', partOfSpeech: 'Noun', culturalNote: 'Premchand’s magnum opus exploring rural Indian feudal plight.' },
+  'जीवन': { word: 'जीवन', language: 'Hindi', romanization: 'Jeevan', translation: 'Life / Existence / Vital breath', partOfSpeech: 'Noun' },
+  'महाकाव्य': { word: 'महाकाव्य', language: 'Hindi', romanization: 'Mahakavya', translation: 'Grand Epic / Magnificent Poem', partOfSpeech: 'Noun' },
+  'محبة': { word: 'محبة', language: 'Arabic', romanization: 'Mahabba', translation: 'Affection / Deep Love', partOfSpeech: 'Noun' },
+  'حكمة': { word: 'حكمة', language: 'Arabic', romanization: 'Hikma', translation: 'Wisdom / Philosophy / Divine Insight', partOfSpeech: 'Noun' },
+  'روح': { word: 'روح', language: 'Arabic/Persian/Urdu', romanization: 'Rooh', translation: 'Spirit / Soul / Breath of Life', partOfSpeech: 'Noun' },
+  'نی': { word: 'نی', language: 'Persian', romanization: 'Ney', translation: 'Reed Flute (Symbol of the soul longing for origin)', partOfSpeech: 'Noun', culturalNote: 'Opens Rumi’s Masnavi symbolising the longing human spirit.' },
+  'بشنو': { word: 'بشنو', language: 'Persian', romanization: 'Beshno', translation: 'Listen! / Hearken!', partOfSpeech: 'Verb' },
+  'amor': { word: 'amor', language: 'Spanish/Latin', romanization: 'Amor', translation: 'Love / Passion', partOfSpeech: 'Noun' },
+  'hidalgo': { word: 'hidalgo', language: 'Spanish', romanization: 'Hidalgo', translation: 'Noble / Gentleman of noble blood', partOfSpeech: 'Noun' },
+  'amour': { word: 'amour', language: 'French', romanization: 'Amour', translation: 'Love / Beloved', partOfSpeech: 'Noun' },
+  'renard': { word: 'renard', language: 'French', romanization: 'Renard', translation: 'Fox (The teacher of wisdom in Le Petit Prince)', partOfSpeech: 'Noun' },
+  'sehnsucht': { word: 'Sehnsucht', language: 'German', romanization: 'Sehnsucht', translation: 'Deep Yearning / Nostalgic Longing', partOfSpeech: 'Noun', culturalNote: 'A profound German literary concept representing an earnest yearning for an unattainable ideal.' },
+  'streben': { word: 'Streben', language: 'German', romanization: 'Streben', translation: 'Striving / Constant Spiritual Aspiration', partOfSpeech: 'Noun' }
+};
+
+export function lookupLiteraryWord(rawWord: string): WordDefinition | null {
+  if (!rawWord) return null;
+  const clean = rawWord.replace(/[^\w\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0400-\u04FF]/gi, '').toLowerCase().trim();
+  if (LITERARY_DICTIONARY[clean]) return LITERARY_DICTIONARY[clean];
+
+  // Try raw word lookup
+  for (const [key, val] of Object.entries(LITERARY_DICTIONARY)) {
+    if (clean === key.toLowerCase() || rawWord.trim() === key) {
+      return val;
+    }
+  }
+  return null;
 }
 
 /**
@@ -310,6 +304,16 @@ export const LANGUAGE_SCRIPT_STYLES: ScriptStylePreset[] = [
     description: 'Majestic classical Naskh typography with high legibility'
   },
   {
+    id: 'persian-shekasteh',
+    name: 'Persian Classical Script',
+    nativeLabel: 'خط خوشنویسی فارسی',
+    fontFamily: "'Amiri', 'Noto Nastaliq Urdu', serif",
+    lineHeight: '2.4',
+    isRtl: true,
+    fontSizeOffset: 1,
+    description: 'Graceful Persian calligraphy tailored for Rumi and Hafez'
+  },
+  {
     id: 'hindi-devanagari',
     name: 'Hindi Devanagari Literary',
     nativeLabel: 'देवनागरी हिन्दी साहित्य',
@@ -341,16 +345,6 @@ export const LANGUAGE_SCRIPT_STYLES: ScriptStylePreset[] = [
     description: 'High-contrast elegant editorial serif with exquisite letterforms'
   },
   {
-    id: 'modern-jakarta',
-    name: 'Modern Jakarta Sans',
-    nativeLabel: 'Jakarta Clean Sans',
-    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
-    lineHeight: '1.8',
-    isRtl: false,
-    fontSizeOffset: -1,
-    description: 'Ultra-modern, sleek geometric sans-serif for fatigue-free reading'
-  },
-  {
     id: 'editorial-lora',
     name: 'Lora Literary Editorial',
     nativeLabel: 'Lora Contemporary',
@@ -359,6 +353,16 @@ export const LANGUAGE_SCRIPT_STYLES: ScriptStylePreset[] = [
     isRtl: false,
     fontSizeOffset: 0,
     description: 'Calligraphic contemporary serif designed specifically for screen reading'
+  },
+  {
+    id: 'modern-jakarta',
+    name: 'Modern Jakarta Sans',
+    nativeLabel: 'Jakarta Clean Sans',
+    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    lineHeight: '1.8',
+    isRtl: false,
+    fontSizeOffset: -1,
+    description: 'Ultra-modern, sleek geometric sans-serif for fatigue-free reading'
   },
   {
     id: 'monospace-focus',

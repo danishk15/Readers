@@ -9,7 +9,8 @@ import {
   ArrowRight, ArrowLeft, Search, List, AlignJustify, BookMarked, 
   Settings2, Eye, Compass, ChevronDown, ChevronRight, X, Play, Pause,
   Share2, Maximize2, Minimize2, Type, Palette, ArrowLeftRight,
-  SkipBack, SkipForward, Music, Radio, Sliders, Volume1
+  SkipBack, SkipForward, Music, Radio, Sliders, Volume1, Bookmark,
+  BookA, Trash2, HelpCircle, Download, FileText, CheckCheck, Lightbulb
 } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 import { getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
@@ -19,6 +20,8 @@ import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { stripHtml } from '@/utils/textSanitizer';
 import { 
   transliterateScript, 
+  lookupLiteraryWord,
+  WordDefinition,
   LANGUAGE_SCRIPT_STYLES, 
   ScriptStylePreset 
 } from '@/utils/transliteration';
@@ -34,6 +37,17 @@ interface LocationStart {
 }
 interface EpubLocation {
   start: LocationStart;
+}
+
+export interface VocabularyItem {
+  id: string;
+  word: string;
+  translation: string;
+  romanization?: string;
+  partOfSpeech?: string;
+  sourceBook?: string;
+  language?: string;
+  dateAdded: string;
 }
 
 // 1. Warm Parchment Light Reader Theme (Maximum Contrast & Clean Aesthetics)
@@ -83,20 +97,25 @@ const MIDNIGHT_INK_THEME = {
 };
 
 export const TRANSLATE_LANGUAGES = [
-  { code: 'ur', name: 'Urdu (اردو)', isRtl: true, font: "'Noto Nastaliq Urdu', serif" },
-  { code: 'en', name: 'English', isRtl: false, font: 'Georgia, serif' },
-  { code: 'ar', name: 'Arabic (العربية)', isRtl: true, font: "'Amiri', serif" },
-  { code: 'fa', name: 'Persian (فارسی)', isRtl: true, font: "'Amiri', serif" },
-  { code: 'hi', name: 'Hindi (हिन्दी)', isRtl: false, font: "'Inter', sans-serif" },
-  { code: 'es', name: 'Spanish (Español)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'fr', name: 'French (Français)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'de', name: 'German (Deutsch)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'ru', name: 'Russian (Русский)', isRtl: false, font: "'Lora', serif" },
-  { code: 'zh', name: 'Chinese (中文)', isRtl: false, font: "'Inter', sans-serif" },
-  { code: 'ja', name: 'Japanese (日本語)', isRtl: false, font: "'Inter', sans-serif" },
-  { code: 'tr', name: 'Turkish (Türkçe)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'pt', name: 'Portuguese (Português)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'it', name: 'Italian (Italiano)', isRtl: false, font: 'Georgia, serif' },
+  { code: 'ur', name: 'Urdu (اردو)', isRtl: true, font: "'Noto Nastaliq Urdu', serif", flag: '🇵🇰' },
+  { code: 'en', name: 'English', isRtl: false, font: 'Georgia, serif', flag: '🇬🇧' },
+  { code: 'ar', name: 'Arabic (العربية)', isRtl: true, font: "'Amiri', serif", flag: '🇸🇦' },
+  { code: 'fa', name: 'Persian (فارسی)', isRtl: true, font: "'Amiri', serif", flag: '🇮🇷' },
+  { code: 'hi', name: 'Hindi (हिन्दी)', isRtl: false, font: "'Inter', sans-serif", flag: '🇮🇳' },
+  { code: 'es', name: 'Spanish (Español)', isRtl: false, font: 'Georgia, serif', flag: '🇪🇸' },
+  { code: 'fr', name: 'French (Français)', isRtl: false, font: 'Georgia, serif', flag: '🇫🇷' },
+  { code: 'de', name: 'German (Deutsch)', isRtl: false, font: 'Georgia, serif', flag: '🇩🇪' },
+  { code: 'ru', name: 'Russian (Русский)', isRtl: false, font: "'Lora', serif", flag: '🇷🇺' },
+  { code: 'zh', name: 'Chinese (中文)', isRtl: false, font: "'Inter', sans-serif", flag: '🇨🇳' },
+  { code: 'ja', name: 'Japanese (日本語)', isRtl: false, font: "'Inter', sans-serif", flag: '🇯🇵' },
+  { code: 'tr', name: 'Turkish (Türkçe)', isRtl: false, font: 'Georgia, serif', flag: '🇹🇷' },
+  { code: 'pt', name: 'Portuguese (Português)', isRtl: false, font: 'Georgia, serif', flag: '🇧🇷' },
+  { code: 'it', name: 'Italian (Italiano)', isRtl: false, font: 'Georgia, serif', flag: '🇮🇹' },
+  { code: 'bn', name: 'Bengali (বাংলা)', isRtl: false, font: "'Inter', sans-serif", flag: '🇧🇩' },
+  { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ / پنجابی)', isRtl: false, font: "'Inter', sans-serif", flag: '🇵🇰' },
+  { code: 'ko', name: 'Korean (한국어)', isRtl: false, font: "'Inter', sans-serif", flag: '🇰🇷' },
+  { code: 'nl', name: 'Dutch (Nederlands)', isRtl: false, font: 'Georgia, serif', flag: '🇳🇱' },
+  { code: 'la', name: 'Latin (Latina)', isRtl: false, font: "Georgia, serif", flag: '🏛️' }
 ];
 
 export interface ReaderProps {
@@ -157,21 +176,24 @@ export default function Reader({
     return null;
   }, [bookId, previewLink, source]);
   
-  // View Modes: 'reader' (Authentic Text), 'transliterated' (Roman Script, No Translation), 'bilingual' (Dual Column), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed), 'google' (Google Books Viewer)
+  // View Modes: 'reader' (Authentic Text), 'transliterated' (Roman Script), 'bilingual' (Dual View), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed), 'google' (Google Books Viewer)
   const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'transliterated' | 'bilingual' | 'translated' | 'epub' | 'archive' | 'google'>(() => {
     if (iaId && (!bookUrl || readMode === 'archive')) return 'archive';
     return 'reader';
   });
 
-  // Dual View Mode Type: 'transliteration' (Original Script vs Roman Script) or 'translation' (Original vs Translated words)
-  const [bilingualModeType, setBilingualModeType] = useState<'transliteration' | 'translation'>('transliteration');
+  // Dual View Mode Type & Layout Style
+  const [bilingualModeType, setBilingualModeType] = useState<'transliteration' | 'translation'>('translation');
+  const [bilingualLayout, setBilingualLayout] = useState<'columns' | 'interlinear'>('columns');
 
   // Reading Modes: 'paginated' (One chapter at a time) or 'continuous' (All chapters flowing)
   const [scrollMode, setScrollMode] = useState<'paginated' | 'continuous'>('paginated');
 
-  // Table of Contents Drawer & Search States
+  // Drawer and Modal States
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLangStudioOpen, setIsLangStudioOpen] = useState(false);
+  const [isVocabModalOpen, setIsVocabModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -179,15 +201,46 @@ export default function Reader({
   const [selectedScriptId, setSelectedScriptId] = useState<string>('auto');
 
   // Translation States
-  const [targetLang, setTargetLang] = useState<string>('ur');
+  const [targetLang, setTargetLang] = useState<string>('en');
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationCache, setTranslationCache] = useState<Record<string, { chapter: string; text: string; paragraphs: { original: string; translated: string }[] }>>({});
   const [copied, setCopied] = useState(false);
+
+  // Instant Floating Word Selection Popover State
+  const [selectionPopover, setSelectionPopover] = useState<{
+    word: string;
+    x: number;
+    y: number;
+    translation?: string;
+    romanization?: string;
+    dictionary?: WordDefinition | null;
+    isTranslating?: boolean;
+    isSaved?: boolean;
+  } | null>(null);
+
+  // Vocabulary Notebook State
+  const [savedVocabulary, setSavedVocabulary] = useState<VocabularyItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return JSON.parse(localStorage.getItem('quillhawk-vocabulary-notebook') || '[]');
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [vocabSearchFilter, setVocabSearchFilter] = useState('');
+  const [vocabLangFilter, setVocabLangFilter] = useState('');
+  const [isFlashcardMode, setIsFlashcardMode] = useState(false);
+  const [activeFlashcardIndex, setActiveFlashcardIndex] = useState(0);
+  const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
 
   // Audio Narration & TTS States
   const [isAudioBarOpen, setIsAudioBarOpen] = useState(false);
   const [narrationLang, setNarrationLang] = useState<string>('auto');
   const [narrationSpeed, setNarrationSpeed] = useState<number>(1.0);
+  const [narrationPitch, setNarrationPitch] = useState<number>(1.0);
   const [narrationState, setNarrationState] = useState<NarrationState>({
     isPlaying: false,
     isPaused: false,
@@ -228,8 +281,11 @@ export default function Reader({
     description?.match(/[\u0900-\u097F]/) ||
     author?.match(/[\u0900-\u097F]/)
   );
+  const isBookArabic = Boolean(
+    title?.match(/[\u0600-\u06FF]/) && (title?.includes('أ') || title?.includes('ة') || title?.includes('ي') || title?.includes('ك'))
+  );
 
-  const isBookRtl = isBookUrdu;
+  const isBookRtl = isBookUrdu || isBookArabic;
   const isTargetRtl = TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.isRtl ?? false;
 
   // Resolve effective active script style preset
@@ -243,10 +299,12 @@ export default function Reader({
     if (isBookHindi) {
       return LANGUAGE_SCRIPT_STYLES.find(s => s.id === 'hindi-devanagari') || null;
     }
+    if (isBookArabic) {
+      return LANGUAGE_SCRIPT_STYLES.find(s => s.id === 'arabic-amiri') || null;
+    }
     return null;
-  }, [selectedScriptId, isBookUrdu, isBookHindi]);
+  }, [selectedScriptId, isBookUrdu, isBookHindi, isBookArabic]);
 
-  // Apply script preset typography
   const effectiveFontFamily = activeScriptPreset ? activeScriptPreset.fontFamily : fontFamily;
   const effectiveLineHeight = activeScriptPreset ? activeScriptPreset.lineHeight : (isBookRtl ? '2.4' : '1.85');
   const effectiveIsRtl = activeScriptPreset ? (activeScriptPreset.isRtl ?? false) : isBookRtl;
@@ -310,6 +368,15 @@ export default function Reader({
     }
   }, [bookId, fallbackPage]);
 
+  // Save Vocabulary Notebook
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quillhawk-vocabulary-notebook', JSON.stringify(savedVocabulary));
+      } catch (e) {}
+    }
+  }, [savedVocabulary]);
+
   // Reset reader states on book change
   useEffect(() => {
     setExtractedChapters([]);
@@ -322,6 +389,7 @@ export default function Reader({
     setTranslationCache({});
     narrationRef.current?.stop();
     setIsAudioBarOpen(false);
+    setSelectionPopover(null);
   }, [bookId, bookUrl, iaId, readMode]);
 
   // Unified chapters array
@@ -363,142 +431,7 @@ export default function Reader({
   const { resolvedTheme } = useTheme();
   const styles = resolvedTheme === 'dark' ? MIDNIGHT_INK_THEME : WARM_PARCHMENT_THEME;
 
-  // Background EPUB Spine Extractor (extracts all authentic chapters for Reflowable/Bilingual/Translated modes)
-  useEffect(() => {
-    if (!resolvedBookUrl || isPdf) return;
-
-    let book: any = null;
-    let isDestroyed = false;
-
-    const extractEpubChapters = async () => {
-      try {
-        const isExternal = resolvedBookUrl && 
-          (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
-          (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
-          
-        const resolvedUrl = isExternal 
-          ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
-          : resolvedBookUrl;
-
-        const response = await fetch(resolvedUrl);
-        if (!response.ok) return;
-        const buffer = await response.arrayBuffer();
-        if (isDestroyed) return;
-
-        book = ePub(buffer);
-
-        book.opened.then(async () => {
-          if (isDestroyed) return;
-          try {
-            const spine = await book.loaded.spine;
-            if (!spine || !spine.spineItems) return;
-            const tempChapters: AuthenticBookChapter[] = [];
-            const maxItems = Math.min(spine.spineItems.length, 150);
-
-            for (let i = 0; i < maxItems; i++) {
-              if (isDestroyed) return;
-              const item = spine.spineItems[i];
-              try {
-                const doc = await item.load(book.load.bind(book));
-                if (!doc) continue;
-                const text = (doc.body?.textContent || doc.textContent || '').replace(/\s+/g, ' ').trim();
-                if (text.length < 30) continue;
-
-                let chapterTitle = '';
-                const heading = doc.querySelector('h1, h2, h3, h4, [class*="title"], [class*="chapter"]');
-                if (heading) chapterTitle = heading.textContent?.trim() || '';
-                if (!chapterTitle) chapterTitle = `Chapter ${tempChapters.length + 1}`;
-
-                tempChapters.push({ chapter: chapterTitle, text });
-              } catch {}
-            }
-
-            if (tempChapters.length > 0 && !isDestroyed) {
-              setExtractedChapters(tempChapters);
-            }
-          } catch {}
-        });
-      } catch (err) {
-        console.warn('EPUB chapter extraction skipped:', err);
-      }
-    };
-
-    extractEpubChapters();
-
-    return () => {
-      isDestroyed = true;
-      if (book && currentViewMode !== 'epub') {
-        try { book.destroy(); } catch {}
-      }
-    };
-  }, [resolvedBookUrl, isPdf, currentViewMode]);
-
-  // EPUB.js Rendition Loader for Raw EPUB View
-  useEffect(() => {
-    if (!resolvedBookUrl || isPdf || currentViewMode !== 'epub') return;
-    if (!viewerRef.current) return;
-
-    let book: any = null;
-    let isDestroyed = false;
-
-    const loadEpubRendition = async () => {
-      try {
-        const isExternal = resolvedBookUrl && 
-          (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
-          (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
-          
-        const resolvedUrl = isExternal 
-          ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
-          : resolvedBookUrl;
-
-        const response = await fetch(resolvedUrl);
-        if (!response.ok) throw new Error('EPUB fetch failed');
-        const buffer = await response.arrayBuffer();
-        if (isDestroyed || !viewerRef.current) return;
-
-        book = ePub(buffer);
-
-        const rendition = book.renderTo(viewerRef.current, {
-          width: '100%',
-          height: '100%',
-          spread: 'none',
-          manager: 'continuous',
-          flow: 'paginated',
-        });
-
-        renditionRef.current = rendition;
-        await rendition.display();
-        
-        rendition.themes.default({
-          body: { 
-            background: styles.rawBg, 
-            color: styles.rawText, 
-            'font-family': effectiveFontFamily,
-            'font-size': `${fontSize}px`,
-            'line-height': effectiveLineHeight
-          }
-        });
-
-        rendition.on('relocated', (location: EpubLocation) => {
-          setCurrentPage(location.start.index);
-        });
-
-      } catch (err) {
-        console.warn('EPUB display failed, reflowable view active:', err);
-      }
-    };
-
-    loadEpubRendition();
-
-    return () => {
-      isDestroyed = true;
-      if (book) {
-        try { book.destroy(); } catch {}
-      }
-    };
-  }, [resolvedBookUrl, isPdf, currentViewMode, effectiveFontFamily, fontSize, styles, effectiveLineHeight]);
-
-  // Real-time Translation Fetcher
+  // Real-time Chapter Translation Fetcher
   const translateCurrentChapter = useCallback(async (target: string) => {
     const chapterIdx = fallbackPage - 1;
     const ch = activeChapters[chapterIdx] || activeChapters[0];
@@ -569,6 +502,98 @@ export default function Reader({
     };
   }, [currentChapterObj]);
 
+  // Handle Text Selection for Floating Word Translator Popover
+  const handleTextSelection = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText || selectedText.length > 250) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+
+    const x = rect.left + rect.width / 2 - (containerRect?.left || 0);
+    const y = rect.top - (containerRect?.top || 0) - 10;
+
+    // Check built-in literary dictionary first
+    const dictEntry = lookupLiteraryWord(selectedText);
+    const roman = transliterateScript(selectedText);
+    const isAlreadySaved = savedVocabulary.some(v => v.word.toLowerCase() === selectedText.toLowerCase());
+
+    setSelectionPopover({
+      word: selectedText,
+      x: Math.max(140, Math.min(x, (containerRect?.width || window.innerWidth) - 160)),
+      y: Math.max(60, y),
+      romanization: roman !== selectedText ? roman : undefined,
+      dictionary: dictEntry,
+      translation: dictEntry?.translation || undefined,
+      isTranslating: !dictEntry,
+      isSaved: isAlreadySaved
+    });
+
+    if (!dictEntry) {
+      try {
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: selectedText, targetLang: targetLang || 'en' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSelectionPopover(prev => prev ? {
+            ...prev,
+            translation: data.translatedText || selectedText,
+            romanization: data.romanization || prev.romanization,
+            dictionary: data.dictionary || prev.dictionary,
+            isTranslating: false
+          } : null);
+        }
+      } catch {
+        setSelectionPopover(prev => prev ? { ...prev, isTranslating: false } : null);
+      }
+    }
+  }, [savedVocabulary, targetLang]);
+
+  // Save Word to Vocabulary Notebook
+  const handleSaveToVocabulary = (word: string, translation?: string, roman?: string, partOfSpeech?: string) => {
+    if (!word) return;
+    const newItem: VocabularyItem = {
+      id: `vocab-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      word: word.trim(),
+      translation: translation || 'Saved term',
+      romanization: roman,
+      partOfSpeech: partOfSpeech,
+      sourceBook: title || 'Literary Catalog',
+      language: isBookUrdu ? 'Urdu' : (isBookHindi ? 'Hindi' : (isBookArabic ? 'Arabic' : 'Literary')),
+      dateAdded: new Date().toLocaleDateString()
+    };
+
+    setSavedVocabulary(prev => [newItem, ...prev.filter(v => v.word.toLowerCase() !== word.toLowerCase())]);
+    if (selectionPopover) {
+      setSelectionPopover(prev => prev ? { ...prev, isSaved: true } : null);
+    }
+  };
+
+  // Speak single word in native pronunciation
+  const handleSpeakWord = (word: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const langCode = isBookUrdu ? 'ur' : (isBookHindi ? 'hi' : (isBookArabic ? 'ar' : 'en'));
+    const bestVoice = getBestVoiceForLanguage(langCode, voices);
+    if (bestVoice) utterance.voice = bestVoice;
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Subscribe to Audio Narration Engine updates
   useEffect(() => {
     narrationRef.current?.subscribe((state) => {
@@ -600,9 +625,8 @@ export default function Reader({
 
     setIsAudioBarOpen(true);
 
-    // Determine audio text and speaking language
     let textToSpeak = currentChapterObj.text;
-    let speakLang = isBookUrdu ? 'ur' : (isBookHindi ? 'hi' : 'en');
+    let speakLang = isBookUrdu ? 'ur' : (isBookHindi ? 'hi' : (isBookArabic ? 'ar' : 'en'));
 
     const effectiveLang = customTargetLang || (narrationLang !== 'auto' ? narrationLang : (currentViewMode === 'translated' ? targetLang : 'auto'));
 
@@ -625,7 +649,8 @@ export default function Reader({
     narrationState.isPaused, 
     currentChapterObj.text, 
     isBookUrdu, 
-    isBookHindi, 
+    isBookHindi,
+    isBookArabic, 
     narrationLang, 
     currentViewMode, 
     targetLang, 
@@ -672,32 +697,16 @@ export default function Reader({
     }
   }, []);
 
-  // In-book Search
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim() || searchQuery.length < 2) return [];
-    const q = searchQuery.toLowerCase();
-    const matches: { chapterIdx: number; chapterTitle: string; snippet: string }[] = [];
-
-    activeChapters.forEach((ch, cIdx) => {
-      const text = ch.text || '';
-      const lower = text.toLowerCase();
-      let pos = lower.indexOf(q);
-      let count = 0;
-      while (pos !== -1 && count < 3) {
-        const start = Math.max(0, pos - 40);
-        const end = Math.min(text.length, pos + q.length + 60);
-        const snippet = (start > 0 ? '...' : '') + text.slice(start, end).replace(/\s+/g, ' ') + (end < text.length ? '...' : '');
-        matches.push({
-          chapterIdx: cIdx,
-          chapterTitle: ch.chapter,
-          snippet
-        });
-        pos = lower.indexOf(q, pos + q.length + 1);
-        count++;
-      }
+  // Filtered Vocabulary items
+  const filteredVocabulary = useMemo(() => {
+    return savedVocabulary.filter(v => {
+      const matchesSearch = !vocabSearchFilter || 
+        v.word.toLowerCase().includes(vocabSearchFilter.toLowerCase()) || 
+        v.translation.toLowerCase().includes(vocabSearchFilter.toLowerCase());
+      const matchesLang = !vocabLangFilter || v.language === vocabLangFilter;
+      return matchesSearch && matchesLang;
     });
-    return matches;
-  }, [searchQuery, activeChapters]);
+  }, [savedVocabulary, vocabSearchFilter, vocabLangFilter]);
 
   const currentTransData = translationCache[`${fallbackPage - 1}::${targetLang}`];
   const totalWords = useMemo(() => activeChapters.reduce((acc, c) => acc + (c.text?.split(/\s+/).length || 0), 0), [activeChapters]);
@@ -711,7 +720,7 @@ export default function Reader({
       {/* Reader Header Bar */}
       <div className={`h-16 ${styles.headerBg} backdrop-blur-md border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 flex-shrink-0 gap-2 ${styles.text}`}>
         
-        {/* Left: Book Meta & Table of Contents Button */}
+        {/* Left: Book Meta & Chapters Button */}
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <Button 
             onClick={() => setIsTocOpen(!isTocOpen)} 
@@ -737,7 +746,7 @@ export default function Reader({
           </div>
         </div>
 
-        {/* Center: Mode Switching Pills */}
+        {/* Center: Reading & Translation Mode Pills */}
         <div className={`hidden lg:flex items-center gap-1 ${styles.buttonBg}/60 p-1 rounded-xl border ${styles.buttonBorder}`}>
           {/* 1. Authentic Original Text */}
           <button
@@ -747,13 +756,13 @@ export default function Reader({
                 ? 'bg-primary text-white shadow' 
                 : `${styles.mutedText} hover:${styles.text}`
             }`}
-            title="Read in original language and text"
+            title="Read in original language and authentic text"
           >
             <BookOpen className="w-3 h-3" />
-            <span>Original Text</span>
+            <span>Original</span>
           </button>
 
-          {/* 2. Roman Script Transliteration (No Translation, pure authentic words in phonetic English letters) */}
+          {/* 2. Roman Script Transliteration */}
           <button
             onClick={() => setCurrentViewMode('transliterated')}
             className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
@@ -767,7 +776,7 @@ export default function Reader({
             <span>Roman Script</span>
           </button>
 
-          {/* 3. Side-by-Side Dual View */}
+          {/* 3. Dual Bilingual View */}
           <button
             onClick={() => setCurrentViewMode('bilingual')}
             className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
@@ -775,7 +784,7 @@ export default function Reader({
                 ? 'bg-primary text-white shadow' 
                 : `${styles.mutedText} hover:${styles.text}`
             }`}
-            title="Side-by-Side Dual Column View"
+            title="Side-by-Side or Interlinear Dual View"
           >
             <ArrowLeftRight className="w-3 h-3 text-sky-500" />
             <span>Dual View</span>
@@ -794,114 +803,41 @@ export default function Reader({
             <Globe className="w-3 h-3 text-emerald-500" />
             <span>Translated</span>
           </button>
-
-          {resolvedBookUrl && !isPdf && (
-            <button
-              onClick={() => setCurrentViewMode('epub')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
-                currentViewMode === 'epub' 
-                  ? 'bg-primary text-white shadow' 
-                  : `${styles.mutedText} hover:${styles.text}`
-              }`}
-            >
-              📄 EPUB
-            </button>
-          )}
-
-          {iaId && (
-            <button
-              onClick={() => setCurrentViewMode('archive')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
-                currentViewMode === 'archive' 
-                  ? 'bg-primary text-white shadow' 
-                  : `${styles.mutedText} hover:${styles.text}`
-              }`}
-            >
-              🏛️ Archive
-            </button>
-          )}
-
-          {resolvedGoogleId && (
-            <button
-              onClick={() => setCurrentViewMode('google')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
-                currentViewMode === 'google' 
-                  ? 'bg-primary text-white shadow' 
-                  : `${styles.mutedText} hover:${styles.text}`
-              }`}
-            >
-              🌐 Google Preview
-            </button>
-          )}
         </div>
 
-        {/* Right: Controls (Language Script Style, Search, Neural Listen, Settings) */}
+        {/* Right: Translation Studio, Vocab Notebook, Narration, and Typography */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           
-          {/* Quick Language Script & Typography Style Selector */}
-          <div className={`flex items-center gap-1.5 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl shadow-sm`} title="Transform typography and language script style without translating words">
-            <Palette className="w-3.5 h-3.5 text-primary shrink-0" />
-            <select
-              value={selectedScriptId}
-              onChange={(e) => {
-                const sId = e.target.value;
-                setSelectedScriptId(sId);
-                const found = LANGUAGE_SCRIPT_STYLES.find(s => s.id === sId);
-                if (found) {
-                  setFontFamily(found.fontFamily);
-                }
-              }}
-              className={`bg-transparent ${styles.text} font-bold text-[11px] focus:outline-none cursor-pointer border-0 p-0 max-w-[130px] sm:max-w-[160px] truncate`}
-            >
-              <option value="auto" className={`${styles.cardBg} ${styles.text}`}>
-                🎨 Auto Script Style
-              </option>
-              {LANGUAGE_SCRIPT_STYLES.map(s => (
-                <option key={s.id} value={s.id} className={`${styles.cardBg} ${styles.text}`}>
-                  {s.name} ({s.nativeLabel})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Translation selector if in Translated Mode */}
-          {currentViewMode === 'translated' && (
-            <div className={`flex items-center gap-1 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl`}>
-              <Globe className={`w-3 h-3 ${styles.accentText} shrink-0`} />
-              <select
-                value={targetLang}
-                onChange={(e) => setTargetLang(e.target.value)}
-                className={`bg-transparent ${styles.text} font-bold text-xs focus:outline-none cursor-pointer border-0 p-0`}
-              >
-                {TRANSLATE_LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Search button */}
-          <button 
-            onClick={() => setIsSearchOpen(!isSearchOpen)} 
-            className={`p-1.5 rounded-xl border transition ${isSearchOpen ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`}`}
-            title="Search inside book"
+          {/* Translation & Script Studio Drawer Trigger */}
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => setIsLangStudioOpen(!isLangStudioOpen)}
+            className={`text-xs font-bold px-2.5 py-1.5 gap-1.5 border transition-all ${
+              isLangStudioOpen 
+                ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30' 
+                : `${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`
+            }`}
+            title="Open Multi-Language & Translation Studio"
           >
-            <Search className="w-4 h-4" />
-          </button>
+            <Languages className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Translation Studio</span>
+          </Button>
 
-          {/* Continuous vs Paginated Toggle */}
-          {(currentViewMode === 'reader' || currentViewMode === 'transliterated') && (
-            <button
-              onClick={() => setScrollMode(scrollMode === 'paginated' ? 'continuous' : 'paginated')}
-              className={`p-1.5 rounded-xl border text-[10px] font-bold hidden sm:flex items-center gap-1 ${scrollMode === 'continuous' ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`}`}
-              title={scrollMode === 'paginated' ? 'Switch to Continuous Scroll' : 'Switch to Paginated'}
-            >
-              <AlignJustify className="w-3.5 h-3.5" />
-              <span>{scrollMode === 'paginated' ? 'Paginated' : 'Continuous'}</span>
-            </button>
-          )}
+          {/* Personal Vocabulary Notebook Trigger */}
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => setIsVocabModalOpen(true)}
+            className={`text-xs font-bold px-2.5 py-1.5 gap-1.5 border relative ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
+            title="Open Vocabulary Notebook (ذخیرہ الفاظ)"
+          >
+            <Bookmark className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden md:inline">Vocab ({savedVocabulary.length})</span>
+            {savedVocabulary.length > 0 && (
+              <span className="md:hidden w-2 h-2 bg-amber-500 rounded-full absolute top-1 right-1" />
+            )}
+          </Button>
 
           {/* Multi-Language Neural Listen Button */}
           <Button 
@@ -913,7 +849,7 @@ export default function Reader({
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md ring-2 ring-emerald-400/40' 
                 : `${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`
             }`}
-            title="Listen to chapter with intelligent multi-language voice and translation"
+            title="Listen to chapter with intelligent multi-language voice"
           >
             {narrationState.isPlaying && !narrationState.isPaused ? (
               <>
@@ -932,6 +868,15 @@ export default function Reader({
               </>
             )}
           </Button>
+
+          {/* Search button */}
+          <button 
+            onClick={() => setIsSearchOpen(!isSearchOpen)} 
+            className={`p-1.5 rounded-xl border transition ${isSearchOpen ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`}`}
+            title="Search inside book"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
           {/* Font Size Adjuster */}
           <div className={`hidden sm:flex items-center gap-1 text-[11px] ${styles.buttonBg}/90 border ${styles.buttonBorder} px-2 py-1 rounded-xl shadow-inner`}>
@@ -956,225 +901,455 @@ export default function Reader({
         </div>
       </div>
 
-      {/* Interactive High-Fidelity Audio Narration Player Bar */}
-      {isAudioBarOpen && (
-        <div className={`h-16 ${styles.paperBg} border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 shrink-0 gap-3 shadow-md animate-in slide-in-from-top-2 duration-300`}>
-          
-          {/* Left: Soundwave Visualizer & Active Phrase Subtitle */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Animated Equalizer Wave */}
-            <div className="flex items-end gap-0.5 h-6 w-7 shrink-0 p-1 rounded-lg bg-primary/10">
-              <span className={`w-1 bg-primary rounded-full transition-all duration-150 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-full animate-pulse' : 'h-1.5'}`} />
-              <span className={`w-1 bg-primary rounded-full transition-all duration-200 delay-75 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-3/4 animate-pulse' : 'h-2'}`} />
-              <span className={`w-1 bg-primary rounded-full transition-all duration-300 delay-150 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-5/6 animate-pulse' : 'h-1.5'}`} />
-              <span className={`w-1 bg-primary rounded-full transition-all duration-100 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-full animate-pulse' : 'h-3'}`} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-primary font-mono shrink-0">
-                  Sentence {narrationState.currentSentenceIdx + 1} / {Math.max(1, narrationState.totalSentences)}
+      {/* Floating Interactive Word Translation Popover (On Text Selection) */}
+      {selectionPopover && (
+        <div 
+          className="absolute z-40 bg-slate-950/95 text-white border border-slate-700/80 rounded-2xl shadow-2xl p-4 w-72 md:w-80 backdrop-blur-xl animate-in zoom-in-95 duration-150 transform -translate-x-1/2"
+          style={{ left: `${selectionPopover.x}px`, top: `${selectionPopover.y}px` }}
+        >
+          <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2.5 mb-2.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-800/60">
+                  Instant Translator
                 </span>
-                <span className={`text-[10px] ${styles.mutedText} font-mono hidden sm:inline`}>
-                  ({Math.round(((narrationState.currentSentenceIdx + 1) / Math.max(1, narrationState.totalSentences)) * 100)}%)
-                </span>
+                {selectionPopover.dictionary?.partOfSpeech && (
+                  <span className="text-[10px] text-slate-400 italic">({selectionPopover.dictionary.partOfSpeech})</span>
+                )}
               </div>
-              <p className={`text-xs font-medium truncate ${styles.headingText} italic`}>
-                "{narrationState.currentSentenceText || 'Preparing neural audio playback...'}"
-              </p>
-            </div>
-          </div>
-
-          {/* Center: Playback Controls */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => narrationRef.current?.prevSentence()}
-              disabled={narrationState.currentSentenceIdx <= 0}
-              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} ${styles.buttonHover} disabled:opacity-30`}
-              title="Previous sentence"
-            >
-              <SkipBack className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => {
-                if (narrationState.isPlaying) {
-                  if (narrationState.isPaused) narrationRef.current?.resume();
-                  else narrationRef.current?.pause();
-                } else {
-                  handleToggleNarration();
-                }
-              }}
-              className="p-2 rounded-xl bg-primary text-white hover:opacity-90 shadow-md transition"
-              title={narrationState.isPlaying && !narrationState.isPaused ? 'Pause' : 'Play'}
-            >
-              {narrationState.isPlaying && !narrationState.isPaused ? (
-                <Pause className="w-4 h-4 fill-white" />
-              ) : (
-                <Play className="w-4 h-4 fill-white ml-0.5" />
+              <h4 className="font-bold text-base text-white mt-1 truncate">{selectionPopover.word}</h4>
+              {selectionPopover.romanization && (
+                <p className="text-xs text-amber-400 font-mono italic">[{selectionPopover.romanization}]</p>
               )}
-            </button>
-
-            <button
-              onClick={() => narrationRef.current?.nextSentence()}
-              disabled={narrationState.currentSentenceIdx >= narrationState.totalSentences - 1}
-              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} ${styles.buttonHover} disabled:opacity-30`}
-              title="Next sentence"
-            >
-              <SkipForward className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => {
-                narrationRef.current?.stop();
-                setIsAudioBarOpen(false);
-              }}
-              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} hover:text-rose-500`}
-              title="Stop and Close Audio"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Right: Translate & Speak Language Selector + Speed */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            {/* Translate & Listen in Any Language */}
-            <div className={`flex items-center gap-1.5 text-xs ${styles.buttonBg} border ${styles.buttonBorder} px-2.5 py-1 rounded-xl`} title="Translate and speak in any language with native pronunciation">
-              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="text-[10px] font-bold text-emerald-500 uppercase">Voice:</span>
-              <select
-                value={narrationLang}
-                onChange={(e) => {
-                  const newLang = e.target.value;
-                  setNarrationLang(newLang);
-                  narrationRef.current?.stop();
-                  handleToggleNarration(newLang);
-                }}
-                className={`bg-transparent ${styles.text} font-bold text-xs focus:outline-none cursor-pointer border-0 p-0 max-w-[130px] truncate`}
-              >
-                <option value="auto" className={`${styles.cardBg} ${styles.text}`}>
-                  🎙️ Auto Native Voice
-                </option>
-                {TRANSLATE_LANGUAGES.map(l => (
-                  <option key={`narr-l-${l.code}`} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
             </div>
-
-            {/* Speed Selector */}
-            <div className={`flex items-center gap-1 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl`}>
-              <span className={`text-[10px] font-bold ${styles.mutedText}`}>Speed:</span>
-              <select
-                value={narrationSpeed}
-                onChange={(e) => {
-                  const s = parseFloat(e.target.value);
-                  setNarrationSpeed(s);
-                  narrationRef.current?.setSpeed(s);
-                }}
-                className={`bg-transparent ${styles.text} font-mono font-bold text-xs focus:outline-none cursor-pointer border-0 p-0`}
-              >
-                <option value="0.75" className={`${styles.cardBg} ${styles.text}`}>0.75x</option>
-                <option value="1.0" className={`${styles.cardBg} ${styles.text}`}>1.0x</option>
-                <option value="1.25" className={`${styles.cardBg} ${styles.text}`}>1.25x</option>
-                <option value="1.5" className={`${styles.cardBg} ${styles.text}`}>1.5x</option>
-                <option value="2.0" className={`${styles.cardBg} ${styles.text}`}>2.0x</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* In-Book Search Drawer Overlay */}
-      {isSearchOpen && (
-        <div className={`absolute top-16 right-0 w-full sm:w-96 max-h-[500px] ${styles.cardBg} border-b sm:border-l ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-4 space-y-3 animate-in slide-in-from-top-2 duration-200`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-              <Search className="w-3.5 h-3.5" />
-              <span>Search in Book</span>
-            </span>
-            <button onClick={() => setIsSearchOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
+            <button 
+              onClick={() => setSelectionPopover(null)} 
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search words, phrases, names..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full text-xs p-2.5 pl-8 rounded-xl ${styles.inputBg} border ${styles.buttonBorder} ${styles.text} focus:outline-none focus:border-primary`}
-              autoFocus
-            />
-            <Search className={`w-3.5 h-3.5 absolute left-2.5 top-3 ${styles.mutedText}`} />
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-2 max-h-72 divide-y divide-border/20">
-            {searchResults.length === 0 ? (
-              <p className={`text-xs ${styles.mutedText} text-center py-6`}>
-                {searchQuery.trim() ? 'No occurrences found.' : 'Type at least 2 characters to search across all chapters.'}
-              </p>
+          {/* Translation Result */}
+          <div className="space-y-2 mb-3">
+            {selectionPopover.isTranslating ? (
+              <div className="flex items-center gap-2 py-2 text-xs text-indigo-300">
+                <div className="animate-spin w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full" />
+                <span>Translating via AI engine...</span>
+              </div>
             ) : (
-              searchResults.map((res, idx) => (
-                <button
-                  key={`search-res-${idx}`}
-                  onClick={() => {
-                    setFallbackPage(res.chapterIdx + 1);
-                    setIsSearchOpen(false);
-                    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`w-full text-left p-2.5 rounded-lg transition hover:${styles.buttonBg} space-y-1 block`}
-                >
-                  <span className="text-[10px] text-primary font-bold block">{res.chapterTitle}</span>
-                  <p className={`text-xs ${styles.text} line-clamp-2 leading-relaxed`}>{res.snippet}</p>
-                </button>
-              ))
+              <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Meaning / Translation:</span>
+                <p className="text-sm font-semibold text-slate-100 mt-0.5 leading-snug">
+                  {selectionPopover.translation || 'No translation available.'}
+                </p>
+              </div>
+            )}
+
+            {selectionPopover.dictionary?.culturalNote && (
+              <div className="bg-amber-950/30 border border-amber-800/40 p-2 rounded-lg text-[11px] text-amber-200/90 leading-tight flex items-start gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>{selectionPopover.dictionary.culturalNote}</span>
+              </div>
             )}
           </div>
+
+          {/* Quick Actions */}
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+            <button
+              onClick={() => handleSpeakWord(selectionPopover.word)}
+              className="flex items-center gap-1 text-[11px] font-bold text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 transition"
+              title="Pronounce Word"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Pronounce</span>
+            </button>
+
+            <button
+              onClick={() => handleSaveToVocabulary(
+                selectionPopover.word, 
+                selectionPopover.translation, 
+                selectionPopover.romanization, 
+                selectionPopover.dictionary?.partOfSpeech
+              )}
+              disabled={selectionPopover.isSaved}
+              className={`flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-lg transition ${
+                selectionPopover.isSaved 
+                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800 cursor-default' 
+                  : 'bg-primary text-white hover:bg-primary/90 shadow'
+              }`}
+            >
+              {selectionPopover.isSaved ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Saved in Notebook</span>
+                </>
+              ) : (
+                <>
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span>+ Save to Vocab</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Table of Contents Drawer */}
-      {isTocOpen && (
-        <div className={`absolute top-16 left-0 w-full sm:w-80 h-[calc(100%-4rem)] ${styles.cardBg} border-r ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-4 space-y-4 animate-in slide-in-from-left duration-200`}>
-          <div className="flex items-center justify-between border-b ${styles.divider} pb-3">
+      {/* Language & Translation Studio Drawer */}
+      {isLangStudioOpen && (
+        <div className={`absolute top-16 right-0 w-full sm:w-96 h-[calc(100%-4rem)] ${styles.cardBg} border-l ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-5 space-y-5 animate-in slide-in-from-right duration-200 overflow-y-auto`}>
+          <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
             <div className="flex items-center gap-2">
-              <BookMarked className="w-4 h-4 text-primary" />
-              <span className={`text-xs font-black uppercase tracking-wider ${styles.headingText}`}>Table of Contents</span>
+              <Languages className="w-4 h-4 text-indigo-500" />
+              <h3 className={`text-sm font-black uppercase tracking-wider ${styles.headingText}`}>Translation & Script Studio</h3>
             </div>
-            <button onClick={() => setIsTocOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
+            <button onClick={() => setIsLangStudioOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            {activeChapters.map((ch, idx) => {
-              const isSelected = fallbackPage === idx + 1;
-              const wordCount = ch.text ? ch.text.split(/\s+/).length : 0;
-              return (
+          {/* 1. Target Translation Language */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5" /> Active Target Language
+            </label>
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className={`w-full text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl p-2.5 focus:outline-none cursor-pointer font-bold`}
+            >
+              {TRANSLATE_LANGUAGES.map(l => (
+                <option key={`studio-lang-${l.code}`} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
+                  {l.flag} {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 2. Dual View Layout Selector */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black uppercase tracking-wider text-sky-500 flex items-center gap-1.5">
+              <ArrowLeftRight className="w-3.5 h-3.5" /> Dual View Layout
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => { setCurrentViewMode('bilingual'); setBilingualLayout('columns'); }}
+                className={`p-2.5 rounded-xl border text-xs font-bold text-left transition ${
+                  currentViewMode === 'bilingual' && bilingualLayout === 'columns'
+                    ? 'bg-primary text-white border-primary shadow'
+                    : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`
+                }`}
+              >
+                <span className="block font-black">Side-by-Side</span>
+                <span className="text-[10px] opacity-80">Dual column split view</span>
+              </button>
+              <button
+                onClick={() => { setCurrentViewMode('bilingual'); setBilingualLayout('interlinear'); }}
+                className={`p-2.5 rounded-xl border text-xs font-bold text-left transition ${
+                  currentViewMode === 'bilingual' && bilingualLayout === 'interlinear'
+                    ? 'bg-primary text-white border-primary shadow'
+                    : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`
+                }`}
+              >
+                <span className="block font-black">Interlinear</span>
+                <span className="text-[10px] opacity-80">Paragraph-by-paragraph</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Typography & Script Style Presets */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5" /> Calligraphy & Script Style
+            </label>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              <button
+                onClick={() => setSelectedScriptId('auto')}
+                className={`w-full p-2.5 rounded-xl border text-xs font-bold text-left transition flex items-center justify-between ${
+                  selectedScriptId === 'auto'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 font-black'
+                    : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`
+                }`}
+              >
+                <span>🎨 Auto-Detect Book Script</span>
+                {selectedScriptId === 'auto' && <Check className="w-3.5 h-3.5" />}
+              </button>
+              {LANGUAGE_SCRIPT_STYLES.map(s => (
                 <button
-                  key={`toc-ch-${idx}`}
+                  key={`studio-script-${s.id}`}
                   onClick={() => {
-                    setFallbackPage(idx + 1);
-                    setIsTocOpen(false);
-                    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    setSelectedScriptId(s.id);
+                    setFontFamily(s.fontFamily);
                   }}
-                  className={`w-full text-left p-3 rounded-xl transition flex items-center justify-between gap-3 ${
-                    isSelected 
-                      ? 'bg-primary/20 border border-primary/60 font-bold shadow-sm text-primary' 
-                      : `hover:${styles.buttonBg}/80 ${styles.mutedText} hover:${styles.text} border border-transparent`
+                  className={`w-full p-2.5 rounded-xl border text-xs font-bold text-left transition flex items-center justify-between ${
+                    selectedScriptId === s.id
+                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 font-black'
+                      : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`
                   }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <span className={`text-[10px] ${styles.mutedText} font-mono block`}>Section {idx + 1}</span>
-                    <p className={`text-xs truncate font-medium ${isSelected ? 'text-primary font-bold' : styles.text}`}>{ch.chapter}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{s.name}</p>
+                    <span className="text-[10px] opacity-70 block">{s.nativeLabel}</span>
                   </div>
-                  <span className={`text-[10px] ${styles.mutedText} font-mono shrink-0`}>~{Math.max(1, Math.round(wordCount / 200))}m</span>
+                  {selectedScriptId === s.id && <Check className="w-3.5 h-3.5 shrink-0" />}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* 4. Neural Speech Synthesis Controls */}
+          <div className={`p-4 rounded-2xl ${styles.paperBg} border ${styles.border} space-y-3`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5" /> Voice & Narration
+              </span>
+              <span className="text-[10px] font-mono font-bold text-slate-400">{narrationSpeed}x speed</span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-slate-400">
+                <span>0.75x</span>
+                <span>1.0x Normal</span>
+                <span>1.5x Fast</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.7" 
+                max="1.6" 
+                step="0.1" 
+                value={narrationSpeed}
+                onChange={(e) => {
+                  const spd = parseFloat(e.target.value);
+                  setNarrationSpeed(spd);
+                  narrationRef.current?.setSpeed(spd);
+                }}
+                className="w-full accent-emerald-500 cursor-pointer"
+              />
+            </div>
+
+            <Button 
+              size="sm" 
+              onClick={() => handleToggleNarration()}
+              className="w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow"
+            >
+              {narrationState.isPlaying && !narrationState.isPaused ? 'Pause Narration' : 'Start Multi-Language Audio'}
+            </Button>
+          </div>
+
+          {/* 5. Vocabulary Notebook Shortcut */}
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => { setIsLangStudioOpen(false); setIsVocabModalOpen(true); }}
+            className={`w-full py-2.5 text-xs font-bold gap-2 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
+          >
+            <Bookmark className="w-4 h-4 text-amber-500" />
+            <span>Open Vocabulary Notebook ({savedVocabulary.length} saved)</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Vocabulary Notebook Modal (ذخیرہ الفاظ / शब्दावली) */}
+      {isVocabModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={`max-w-2xl w-full max-h-[85vh] ${styles.cardBg} border ${styles.cardBorder} rounded-3xl shadow-2xl flex flex-col overflow-hidden`}>
+            
+            {/* Modal Header */}
+            <div className={`p-5 border-b ${styles.divider} flex items-center justify-between`}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+                  <Bookmark className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className={`text-base font-black ${styles.headingText}`}>Personal Vocabulary Notebook</h3>
+                  <p className={`text-xs ${styles.mutedText}`}>Review terms, translations, and pronunciations saved across your readings.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsVocabModalOpen(false); setIsFlashcardMode(false); }} 
+                className={`p-2 rounded-xl hover:${styles.buttonBg} ${styles.mutedText}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter & Study Toggle Bar */}
+            <div className={`p-4 border-b ${styles.divider} flex flex-wrap items-center justify-between gap-3 ${styles.paperBg}`}>
+              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                <Search className={`w-3.5 h-3.5 ${styles.mutedText}`} />
+                <input 
+                  type="text" 
+                  placeholder="Search saved vocabulary..." 
+                  value={vocabSearchFilter}
+                  onChange={(e) => setVocabSearchFilter(e.target.value)}
+                  className={`w-full text-xs p-1.5 rounded-lg bg-transparent border-0 focus:outline-none ${styles.text}`}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  onClick={() => {
+                    setIsFlashcardMode(!isFlashcardMode);
+                    setActiveFlashcardIndex(0);
+                    setIsFlashcardFlipped(false);
+                  }}
+                  className={`text-xs font-bold gap-1.5 ${
+                    isFlashcardMode 
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-500' 
+                      : `${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder}`
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isFlashcardMode ? 'List Mode' : 'Flashcard Study Mode'}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Body: Flashcard or List */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {filteredVocabulary.length === 0 ? (
+                <div className="py-16 text-center space-y-3">
+                  <Bookmark className="w-10 h-10 text-slate-400 mx-auto opacity-40" />
+                  <h4 className={`text-sm font-bold ${styles.headingText}`}>No saved words yet</h4>
+                  <p className={`text-xs ${styles.mutedText} max-w-sm mx-auto`}>
+                    Highlight or click any word in the book reader and click "+ Save to Vocab" to build your multi-language vocabulary list!
+                  </p>
+                </div>
+              ) : isFlashcardMode ? (
+                /* Flashcard Study Mode */
+                <div className="py-6 flex flex-col items-center justify-center space-y-6">
+                  {(() => {
+                    const currentCard = filteredVocabulary[activeFlashcardIndex] || filteredVocabulary[0];
+                    return (
+                      <div className="w-full max-w-md space-y-6">
+                        <div 
+                          onClick={() => setIsFlashcardFlipped(!isFlashcardFlipped)}
+                          className={`aspect-[4/3] w-full rounded-3xl p-8 cursor-pointer border shadow-xl flex flex-col justify-between text-center transition-all duration-300 transform hover:scale-[1.02] ${
+                            isFlashcardFlipped 
+                              ? 'bg-gradient-to-tr from-indigo-950 to-slate-900 border-indigo-700 text-white' 
+                              : `${styles.paperBg} border-${styles.cardBorder}`
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-xs opacity-70">
+                            <span>Card {activeFlashcardIndex + 1} of {filteredVocabulary.length}</span>
+                            <span>Click to Flip 🔄</span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {!isFlashcardFlipped ? (
+                              <>
+                                <span className="text-xs uppercase tracking-widest text-primary font-black">Word</span>
+                                <h3 className="text-3xl font-black">{currentCard.word}</h3>
+                                {currentCard.romanization && (
+                                  <p className="text-sm text-amber-500 font-mono italic">[{currentCard.romanization}]</p>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs uppercase tracking-widest text-emerald-400 font-black">Meaning</span>
+                                <h3 className="text-2xl font-bold text-slate-100">{currentCard.translation}</h3>
+                                <p className="text-xs text-slate-400 italic">From: {currentCard.sourceBook}</p>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex justify-center">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleSpeakWord(currentCard.word); }}
+                              className="p-2 rounded-full bg-primary/20 text-primary hover:bg-primary/30"
+                              title="Listen Pronunciation"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Flashcard Navigation */}
+                        <div className="flex items-center justify-between gap-3">
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            disabled={activeFlashcardIndex === 0}
+                            onClick={() => { setActiveFlashcardIndex(prev => Math.max(0, prev - 1)); setIsFlashcardFlipped(false); }}
+                            className={`text-xs font-bold ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder}`}
+                          >
+                            ← Previous
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            disabled={activeFlashcardIndex === filteredVocabulary.length - 1}
+                            onClick={() => { setActiveFlashcardIndex(prev => Math.min(filteredVocabulary.length - 1, prev + 1)); setIsFlashcardFlipped(false); }}
+                            className={`text-xs font-bold ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder}`}
+                          >
+                            Next Card →
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* Vocabulary List View */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {filteredVocabulary.map((item) => (
+                    <div 
+                      key={item.id}
+                      className={`p-4 rounded-2xl ${styles.paperBg} border ${styles.border} space-y-2 flex flex-col justify-between shadow-sm hover:border-primary/40 transition`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className={`text-base font-black ${styles.headingText}`}>{item.word}</h4>
+                          {item.romanization && (
+                            <p className="text-xs text-amber-500 font-mono italic">[{item.romanization}]</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => handleSpeakWord(item.word)}
+                            className={`p-1.5 rounded-lg hover:${styles.buttonBg} text-emerald-500`}
+                            title="Pronounce"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => setSavedVocabulary(prev => prev.filter(v => v.id !== item.id))}
+                            className={`p-1.5 rounded-lg hover:${styles.buttonBg} text-rose-400`}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className={`p-2 rounded-xl ${styles.buttonBg}/60 text-xs font-semibold ${styles.text}`}>
+                        {item.translation}
+                      </div>
+
+                      <div className={`flex justify-between items-center text-[10px] ${styles.mutedText} pt-1`}>
+                        <span className="truncate max-w-[140px]">📖 {item.sourceBook}</span>
+                        <span>{item.dateAdded}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className={`p-4 border-t ${styles.divider} flex justify-between items-center text-xs ${styles.mutedText}`}>
+              <span>{savedVocabulary.length} words saved in your literary notebook</span>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => { setIsVocabModalOpen(false); setIsFlashcardMode(false); }}
+                className={`text-xs font-bold ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder}`}
+              >
+                Close Notebook
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -1182,6 +1357,8 @@ export default function Reader({
       {/* Main Reading View Area */}
       <div 
         ref={containerRef}
+        onMouseUp={handleTextSelection}
+        onTouchEnd={handleTextSelection}
         className={`flex-1 w-full relative z-0 overflow-y-auto ${styles.bg}`}
       >
         {loading && (
@@ -1210,11 +1387,10 @@ export default function Reader({
             title={title || "PDF Reader"} 
           />
         ) : currentViewMode === 'transliterated' ? (
-          /* 2. Roman Script Transliterated View (Same authentic words, purely converted to Roman Latin letters) */
+          /* 2. Roman Script Transliterated View */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-10 px-4 md:px-12 flex flex-col transition-colors duration-300 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
               
-              {/* Informative Header Banner */}
               <div className={`p-3.5 rounded-2xl ${styles.paperBg} border ${styles.border} flex items-center justify-between gap-3 shadow-sm`}>
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
@@ -1222,7 +1398,7 @@ export default function Reader({
                   </div>
                   <div>
                     <h4 className={`text-xs font-black ${styles.headingText}`}>Roman Script Transliteration</h4>
-                    <p className={`text-[11px] ${styles.mutedText}`}>100% authentic words and poetic phrasing preserved in phonetic Latin letters — with 0 machine translations.</p>
+                    <p className={`text-[11px] ${styles.mutedText}`}>100% authentic words and poetic phrasing preserved in phonetic Latin letters — 0 machine translations.</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1292,24 +1468,13 @@ export default function Reader({
             </div>
           </div>
         ) : currentViewMode === 'bilingual' ? (
-          /* 3. Side-by-Side Dual View (Supports both Dual Script and Dual Translation) */
+          /* 3. Side-by-Side OR Interlinear Dual View */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-8 px-4 md:px-10 flex flex-col space-y-6`}>
             <div className={`flex flex-col md:flex-row items-center justify-between gap-4 border-b ${styles.divider} pb-4 max-w-6xl mx-auto w-full`}>
               
               {/* Dual View Mode Switcher */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className={`inline-flex p-1 rounded-xl ${styles.buttonBg} border ${styles.buttonBorder}`}>
-                  <button
-                    onClick={() => setBilingualModeType('transliteration')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                      bilingualModeType === 'transliteration'
-                        ? 'bg-primary text-white shadow'
-                        : `${styles.mutedText} hover:${styles.text}`
-                    }`}
-                  >
-                    <Type className="w-3.5 h-3.5" />
-                    <span>Dual Script (Original + Roman Script)</span>
-                  </button>
                   <button
                     onClick={() => setBilingualModeType('translation')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
@@ -1318,8 +1483,34 @@ export default function Reader({
                         : `${styles.mutedText} hover:${styles.text}`
                     }`}
                   >
-                    <Globe className="w-3.5 h-3.5" />
-                    <span>Dual Language (AI Translation)</span>
+                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>AI Translation</span>
+                  </button>
+                  <button
+                    onClick={() => setBilingualModeType('transliteration')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      bilingualModeType === 'transliteration'
+                        ? 'bg-primary text-white shadow'
+                        : `${styles.mutedText} hover:${styles.text}`
+                    }`}
+                  >
+                    <Type className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Roman Script</span>
+                  </button>
+                </div>
+
+                <div className={`inline-flex p-1 rounded-xl ${styles.buttonBg} border ${styles.buttonBorder}`}>
+                  <button
+                    onClick={() => setBilingualLayout('columns')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${bilingualLayout === 'columns' ? 'bg-primary text-white' : styles.mutedText}`}
+                  >
+                    Side-by-Side
+                  </button>
+                  <button
+                    onClick={() => setBilingualLayout('interlinear')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${bilingualLayout === 'interlinear' ? 'bg-primary text-white' : styles.mutedText}`}
+                  >
+                    Interlinear
                   </button>
                 </div>
 
@@ -1336,11 +1527,11 @@ export default function Reader({
                   <select
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
-                    className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-2.5 py-1.5 focus:outline-none cursor-pointer`}
+                    className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-2.5 py-1.5 focus:outline-none cursor-pointer font-bold`}
                   >
                     {TRANSLATE_LANGUAGES.map(l => (
                       <option key={`bi-lang-${l.code}`} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
-                        {l.name}
+                        {l.flag} {l.name}
                       </option>
                     ))}
                   </select>
@@ -1349,7 +1540,7 @@ export default function Reader({
                 <select
                   value={fallbackPage}
                   onChange={(e) => setFallbackPage(Number(e.target.value))}
-                  className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[180px] truncate`}
+                  className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[180px] truncate font-bold`}
                 >
                   {activeChapters.map((ch, idx) => (
                     <option key={`ch-bilingual-${idx}`} value={idx + 1} className={`${styles.cardBg} ${styles.text}`}>
@@ -1357,122 +1548,162 @@ export default function Reader({
                     </option>
                   ))}
                 </select>
-
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => handleCopyText(bilingualModeType === 'transliteration' ? transliteratedChapter.text : (currentTransData?.text || currentChapterObj.text))}
-                  className={`text-xs font-bold gap-1 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </Button>
               </div>
             </div>
 
-            {/* Bilingual Dual Column Grid */}
-            <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
-              {/* Left Column: Original Text */}
-              <div className={`p-6 rounded-2xl ${styles.paperBg} border ${styles.border} space-y-6 shadow-sm`}>
-                <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
-                  <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <span>📜 Original Text & Script</span>
-                  </span>
-                  <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Section {fallbackPage}</span>
+            {/* Interlinear Layout */}
+            {bilingualLayout === 'interlinear' ? (
+              <div className="max-w-4xl mx-auto w-full space-y-8 pt-4">
+                <div className={`p-5 rounded-2xl ${styles.paperBg} border ${styles.border} text-center`}>
+                  <h3 className={`text-xl md:text-2xl font-black ${styles.headingText}`} style={{ fontFamily: effectiveFontFamily }}>
+                    {currentChapterObj.chapter}
+                  </h3>
+                  {bilingualModeType === 'translation' && currentTransData?.chapter && (
+                    <p className="text-sm font-bold text-primary mt-1">
+                      {currentTransData.chapter}
+                    </p>
+                  )}
                 </div>
 
-                <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
-                  {currentChapterObj.chapter}
-                </h3>
+                <div className="space-y-6">
+                  {currentChapterObj.text.split(/\n\s*\n/).filter(p => p.trim()).map((para, pIdx) => {
+                    const translatedPara = currentTransData?.paragraphs?.[pIdx]?.translated;
+                    const translitPara = transliterateScript(para);
 
-                <div 
-                  className={`space-y-5 leading-relaxed whitespace-pre-line ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
-                  dir={effectiveIsRtl ? 'rtl' : 'ltr'}
-                  style={{ 
-                    fontSize: `${fontSize}px`, 
-                    fontFamily: effectiveFontFamily,
-                    lineHeight: effectiveLineHeight 
-                  }}
-                >
-                  {currentChapterObj.text}
-                </div>
-              </div>
-
-              {/* Right Column: Roman Script Transliteration OR AI Translation */}
-              <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.cardBorder} space-y-6 shadow-sm relative`}>
-                {bilingualModeType === 'transliteration' ? (
-                  <>
-                    <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
-                      <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-                        <Type className="w-3.5 h-3.5" />
-                        <span>Roman Script Transliteration (No Translation)</span>
-                      </span>
-                      <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Phonetic Latin</span>
-                    </div>
-
-                    <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
-                      {transliteratedChapter.chapter}
-                    </h3>
-
-                    <div 
-                      className="space-y-5 leading-relaxed whitespace-pre-line text-justify"
-                      style={{ 
-                        fontSize: `${fontSize}px`, 
-                        fontFamily: effectiveFontFamily,
-                        lineHeight: effectiveLineHeight 
-                      }}
-                    >
-                      {transliteratedChapter.text}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
-                      <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5" />
-                        <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
-                      </span>
-                      <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>AI Translation</span>
-                    </div>
-
-                    <h3 
-                      className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
-                      dir={isTargetRtl ? 'rtl' : 'ltr'}
-                      style={{ 
-                        fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
-                      }}
-                    >
-                      {currentTransData?.chapter || 'Translating chapter title...'}
-                    </h3>
-
-                    <div 
-                      className={`space-y-5 leading-relaxed whitespace-pre-line ${isTargetRtl ? 'text-right' : 'text-justify'}`}
-                      dir={isTargetRtl ? 'rtl' : 'ltr'}
-                      style={{ 
-                        fontSize: `${fontSize}px`, 
-                        fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
-                        lineHeight: isTargetRtl ? 2.4 : 1.85 
-                      }}
-                    >
-                      {isTranslating && !currentTransData ? (
-                        <div className="py-12 flex flex-col items-center justify-center space-y-3">
-                          <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-                          <p className="text-xs text-primary animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                    return (
+                      <div key={`interlinear-${pIdx}`} className={`p-6 rounded-2xl ${styles.paperBg} border ${styles.border} shadow-sm space-y-4`}>
+                        {/* Original paragraph */}
+                        <div 
+                          className={`leading-relaxed ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                          dir={effectiveIsRtl ? 'rtl' : 'ltr'}
+                          style={{ 
+                            fontSize: `${fontSize}px`, 
+                            fontFamily: effectiveFontFamily,
+                            lineHeight: effectiveLineHeight 
+                          }}
+                        >
+                          {para}
                         </div>
-                      ) : currentTransData?.paragraphs?.length ? (
-                        currentTransData.paragraphs.map((p, idx) => (
-                          <p key={`trans-p-${idx}`} className={`p-2 rounded-lg ${styles.buttonBg}/60 hover:${styles.buttonBg} transition-colors border ${styles.buttonBorder}`}>
-                            {p.translated}
+
+                        {/* Interlinear translated or transliterated subtitle */}
+                        <div className={`p-4 rounded-xl ${styles.cardBg} border ${styles.cardBorder} space-y-1`}>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-primary">
+                            {bilingualModeType === 'translation' ? `Translation (${TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name})` : 'Roman Script Transliteration'}
+                          </span>
+                          <p className="text-sm font-medium text-slate-300 leading-relaxed">
+                            {bilingualModeType === 'translation' ? (translatedPara || (isTranslating ? 'Translating paragraph...' : para)) : translitPara}
                           </p>
-                        ))
-                      ) : (
-                        currentTransData?.text || "Translating text..."
-                      )}
-                    </div>
-                  </>
-                )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Side-by-Side Dual Column Grid */
+              <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+                {/* Left Column: Original Text */}
+                <div className={`p-6 rounded-2xl ${styles.paperBg} border ${styles.border} space-y-6 shadow-sm`}>
+                  <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                    <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <span>📜 Original Text & Script</span>
+                    </span>
+                    <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Section {fallbackPage}</span>
+                  </div>
+
+                  <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
+                    {currentChapterObj.chapter}
+                  </h3>
+
+                  <div 
+                    className={`space-y-5 leading-relaxed whitespace-pre-line ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                    dir={effectiveIsRtl ? 'rtl' : 'ltr'}
+                    style={{ 
+                      fontSize: `${fontSize}px`, 
+                      fontFamily: effectiveFontFamily,
+                      lineHeight: effectiveLineHeight 
+                    }}
+                  >
+                    {currentChapterObj.text}
+                  </div>
+                </div>
+
+                {/* Right Column: Roman Script Transliteration OR AI Translation */}
+                <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.cardBorder} space-y-6 shadow-sm relative`}>
+                  {bilingualModeType === 'transliteration' ? (
+                    <>
+                      <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                        <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                          <Type className="w-3.5 h-3.5" />
+                          <span>Roman Script (Phonetic Letters)</span>
+                        </span>
+                        <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Phonetic Latin</span>
+                      </div>
+
+                      <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
+                        {transliteratedChapter.chapter}
+                      </h3>
+
+                      <div 
+                        className="space-y-5 leading-relaxed whitespace-pre-line text-justify"
+                        style={{ 
+                          fontSize: `${fontSize}px`, 
+                          fontFamily: effectiveFontFamily,
+                          lineHeight: effectiveLineHeight 
+                        }}
+                      >
+                        {transliteratedChapter.text}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                        <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5" />
+                          <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
+                        </span>
+                        <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>AI Translation</span>
+                      </div>
+
+                      <h3 
+                        className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
+                        dir={isTargetRtl ? 'rtl' : 'ltr'}
+                        style={{ 
+                          fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
+                        }}
+                      >
+                        {currentTransData?.chapter || 'Translating chapter title...'}
+                      </h3>
+
+                      <div 
+                        className={`space-y-5 leading-relaxed whitespace-pre-line ${isTargetRtl ? 'text-right' : 'text-justify'}`}
+                        dir={isTargetRtl ? 'rtl' : 'ltr'}
+                        style={{ 
+                          fontSize: `${fontSize}px`, 
+                          fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                          lineHeight: isTargetRtl ? 2.4 : 1.85 
+                        }}
+                      >
+                        {isTranslating && !currentTransData ? (
+                          <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                            <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+                            <p className="text-xs text-primary animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                          </div>
+                        ) : currentTransData?.paragraphs?.length ? (
+                          currentTransData.paragraphs.map((p, idx) => (
+                            <p key={`trans-p-${idx}`} className={`p-2 rounded-lg ${styles.buttonBg}/60 hover:${styles.buttonBg} transition-colors border ${styles.buttonBorder}`}>
+                              {p.translated}
+                            </p>
+                          ))
+                        ) : (
+                          currentTransData?.text || "Translating text..."
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Pagination Footer */}
             <div className={`max-w-6xl mx-auto w-full text-center text-xs ${styles.mutedText} font-semibold font-mono border-t ${styles.divider} pt-6 flex justify-between items-center`}>
@@ -1551,12 +1782,12 @@ export default function Reader({
           /* 5. Original EPUB View */
           <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         ) : (
-          /* 6. Default Reflowable Full Book View with Custom Language Script Styling */
+          /* 6. Default Reflowable Full Book View */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-10 px-4 md:px-12 flex flex-col transition-colors duration-300 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
               
               {scrollMode === 'continuous' ? (
-                /* Continuous Scroll View (All Chapters Sequentially) */
+                /* Continuous Scroll View */
                 <div className="space-y-16">
                   {activeChapters.map((ch, idx) => (
                     <div key={`cont-ch-${idx}`} className={`space-y-6 border-b ${styles.divider} pb-12`}>
@@ -1588,7 +1819,7 @@ export default function Reader({
                   ))}
                 </div>
               ) : (
-                /* Paginated View (Single Chapter Focused Canvas) */
+                /* Paginated View */
                 <>
                   <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
                     <h2 
@@ -1601,7 +1832,7 @@ export default function Reader({
                     <select
                       value={fallbackPage}
                       onChange={(e) => setFallbackPage(Number(e.target.value))}
-                      className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate`}
+                      className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate font-bold`}
                     >
                       {activeChapters.map((ch, idx) => (
                         <option key={`opt-${idx}`} value={idx + 1} className={`${styles.cardBg} ${styles.text}`}>

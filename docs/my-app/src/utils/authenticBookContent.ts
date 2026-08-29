@@ -7,6 +7,8 @@
 import { URDU_CLASSICS, AuthenticBookChapter, AuthenticBookEntry } from './books/urduClassics';
 import { WORLD_CLASSICS } from './books/worldClassics';
 import { HINDI_CLASSICS } from './books/hindiClassics';
+import { ARABIC_CLASSICS } from './books/arabicClassics';
+import { PERSIAN_CLASSICS } from './books/persianClassics';
 import { stripHtml } from './textSanitizer';
 
 export type { AuthenticBookChapter, AuthenticBookEntry };
@@ -14,6 +16,8 @@ export type { AuthenticBookChapter, AuthenticBookEntry };
 export const AUTHENTIC_BOOK_REGISTRY: AuthenticBookEntry[] = [
   ...HINDI_CLASSICS,
   ...URDU_CLASSICS,
+  ...ARABIC_CLASSICS,
+  ...PERSIAN_CLASSICS,
   ...WORLD_CLASSICS
 ];
 

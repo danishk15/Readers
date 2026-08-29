@@ -313,6 +313,126 @@ export const CLASSIC_BOOKS = [
     is_translation: true,
     translated_to: 'English',
     original_title: 'ألف ليلة وليلة'
+  },
+  { 
+    id: 'classic-27', 
+    title: 'ألف ليلة وليلة (Arabian Nights - Arabic Original)', 
+    author: 'التراث العربي الكلاسيكي (Classical Arabic Heritage)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8235123-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'ar',
+    is_original: true,
+    original_language: 'Arabic',
+    original_title: 'ألف ليلة وليلة'
+  },
+  { 
+    id: 'classic-28', 
+    title: 'النبي (The Prophet - Arabic Masterpiece)', 
+    author: 'جبران خليل جبران (Kahlil Gibran)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8254881-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'ar',
+    is_original: true,
+    original_language: 'Arabic',
+    original_title: 'النبي'
+  },
+  { 
+    id: 'classic-29', 
+    title: 'مثنوی معنوی (Masnavi - Persian Mysticism)', 
+    author: 'مولانا جلال‌الدین محمد رومی (Mawlana Rumi)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8314125-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'fa',
+    is_original: true,
+    original_language: 'Persian',
+    original_title: 'مثنوی معنوی'
+  },
+  { 
+    id: 'classic-30', 
+    title: 'دیوان حافظ شیرازی (Divan of Hafez)', 
+    author: 'خواجه شمس‌الدین محمد حافظ شیرازی (Hafez Shirazi)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8302146-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'fa',
+    is_original: true,
+    original_language: 'Persian',
+    original_title: 'دیوان حافظ'
+  },
+  { 
+    id: 'classic-31', 
+    title: 'گلستان سعدی (Gulistan of Saadi)', 
+    author: 'مصلح‌الدین شیخ سعدی شیرازی (Saadi Shirazi)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8259441-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'fa',
+    is_original: true,
+    original_language: 'Persian',
+    original_title: 'گلستان سعدی'
+  },
+  { 
+    id: 'classic-32', 
+    title: 'Le Petit Prince (The Little Prince - French Original)', 
+    author: 'Antoine de Saint-Exupéry', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8313431-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'fr',
+    is_original: true,
+    original_language: 'French',
+    original_title: 'Le Petit Prince'
+  },
+  { 
+    id: 'classic-33', 
+    title: 'Die Verwandlung (The Metamorphosis - German)', 
+    author: 'Franz Kafka', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8282121-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'de',
+    is_original: true,
+    original_language: 'German',
+    original_title: 'Die Verwandlung'
+  },
+  { 
+    id: 'classic-34', 
+    title: 'Meditations (Stoic Philosophy - Latin)', 
+    author: 'Marcus Aurelius Antoninus', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8447146-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'la',
+    is_original: true,
+    original_language: 'Latin',
+    original_title: 'Τὰ εἰς ἑαυτόν'
+  },
+  { 
+    id: 'classic-35', 
+    title: 'रश्मिरथी (Rashmirathi - Hindi Mahakavya)', 
+    author: 'रामधारी सिंह दिनकर (Ramdhari Singh Dinkar)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8231456-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'hi',
+    is_original: true,
+    original_language: 'Hindi',
+    original_title: 'रश्मिरथी'
+  },
+  { 
+    id: 'classic-36', 
+    title: 'मधुशाला (Madhushala - Hindi Classic)', 
+    author: 'हरिवंश राय बच्चन (Harivansh Rai Bachchan)', 
+    cover_url: 'https://covers.openlibrary.org/b/id/8258641-M.jpg', 
+    file_url: '', 
+    is_premium: false, 
+    language: 'hi',
+    is_original: true,
+    original_language: 'Hindi',
+    original_title: 'मधुशाला'
   }
 ];
 

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import LogoutButton from '@/components/ui/LogoutButton';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { createClient } from '@/utils/supabase/server';
-import { BookOpen, Globe, Users, BookMarked, Award, Sparkles, Trophy, MessageSquare, Compass } from 'lucide-react';
+import { BookOpen, Globe, Users, BookMarked, Award, Sparkles, Trophy, MessageSquare, Compass, Languages } from 'lucide-react';
 
 export default async function DashboardLayout({
   children,
@@ -54,7 +54,12 @@ export default async function DashboardLayout({
             <span>My Bookshelf</span>
           </Link>
           
-          <Link href="/dashboard?tab=online" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-primary hover:bg-surface-hover text-sm font-semibold transition-all">
+          <Link href="/dashboard?tab=languages" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-foreground hover:bg-surface-hover text-sm font-semibold transition-all">
+            <Languages className="w-4 h-4 shrink-0 text-indigo-500" />
+            <span>World Languages (زبانیں)</span>
+          </Link>
+
+          <Link href="/dashboard?tab=online" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-foreground hover:bg-surface-hover text-sm font-semibold transition-all">
             <Globe className="w-4 h-4 shrink-0 text-primary" />
             <span>Global Catalog</span>
           </Link>

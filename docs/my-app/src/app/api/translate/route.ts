@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { lookupLiteraryWord, transliterateScript } from '@/utils/transliteration';
 
 // In-memory server translation cache to prevent repetitive requests
 const translationCache = new Map<string, string>();
@@ -16,12 +17,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, translatedText: '' });
     }
 
+    // Check if word exists in built-in literary lexicon
+    const literaryDef = lookupLiteraryWord(trimmedText);
+    const romanization = transliterateScript(trimmedText);
+
     // Normalise language codes
     const sLang = sourceLang.toLowerCase() === 'auto' ? 'auto' : sourceLang.toLowerCase().slice(0, 2);
     const tLang = targetLang.toLowerCase().slice(0, 2);
 
     if (sLang === tLang && sLang !== 'auto') {
-      return NextResponse.json({ success: true, translatedText: text });
+      return NextResponse.json({ 
+        success: true, 
+        translatedText: text,
+        romanization,
+        dictionary: literaryDef || undefined
+      });
     }
 
     const cacheKey = `${sLang}->${tLang}::${trimmedText.slice(0, 300)}::${trimmedText.length}`;
@@ -29,6 +39,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         translatedText: translationCache.get(cacheKey),
+        romanization,
+        dictionary: literaryDef || undefined,
         cached: true
       });
     }
@@ -85,6 +97,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       translatedText: finalResult,
+      romanization,
+      dictionary: literaryDef || undefined,
       sourceLang: sLang,
       targetLang: tLang
     });

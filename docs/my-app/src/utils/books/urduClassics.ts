@@ -5,7 +5,7 @@ export interface AuthenticBookChapter {
 
 export interface AuthenticBookEntry {
   matchKeys: string[];
-  language: 'ur' | 'en' | 'es' | 'fr' | 'de' | 'ru' | 'ar' | 'fa' | 'hi' | 'other';
+  language: string;
   title: string;
   author: string;
   chapters: AuthenticBookChapter[];

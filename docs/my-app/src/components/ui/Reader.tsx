@@ -8,7 +8,8 @@ import {
   BookOpen, Globe, Languages, Volume2, VolumeX, Sparkles, Copy, Check, 
   ArrowRight, ArrowLeft, Search, List, AlignJustify, BookMarked, 
   Settings2, Eye, Compass, ChevronDown, ChevronRight, X, Play, Pause,
-  Share2, Maximize2, Minimize2, Type, Palette, ArrowLeftRight
+  Share2, Maximize2, Minimize2, Type, Palette, ArrowLeftRight,
+  SkipBack, SkipForward, Music, Radio, Sliders, Volume1
 } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 import { getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
@@ -21,6 +22,12 @@ import {
   LANGUAGE_SCRIPT_STYLES, 
   ScriptStylePreset 
 } from '@/utils/transliteration';
+import { 
+  AudioNarrationController, 
+  NarrationState, 
+  splitTextIntoSentences,
+  getBestVoiceForLanguage
+} from '@/utils/audioNarration';
 
 interface LocationStart {
   index: number;
@@ -125,6 +132,12 @@ export default function Reader({
   const containerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
 
+  // Audio Narration Engine Instance
+  const narrationRef = useRef<AudioNarrationController | null>(null);
+  if (!narrationRef.current) {
+    narrationRef.current = new AudioNarrationController();
+  }
+
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
@@ -170,8 +183,20 @@ export default function Reader({
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationCache, setTranslationCache] = useState<Record<string, { chapter: string; text: string; paragraphs: { original: string; translated: string }[] }>>({});
   const [copied, setCopied] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechRate, setSpeechRate] = useState(1);
+
+  // Audio Narration & TTS States
+  const [isAudioBarOpen, setIsAudioBarOpen] = useState(false);
+  const [narrationLang, setNarrationLang] = useState<string>('auto');
+  const [narrationSpeed, setNarrationSpeed] = useState<number>(1.0);
+  const [narrationState, setNarrationState] = useState<NarrationState>({
+    isPlaying: false,
+    isPaused: false,
+    currentSentenceIdx: 0,
+    totalSentences: 0,
+    currentSentenceText: '',
+    langCode: 'en',
+    speed: 1.0
+  });
 
   // Reflowable / Typography states
   const [fontSize, setFontSize] = useState(18);
@@ -192,7 +217,7 @@ export default function Reader({
   const [extractedChapters, setExtractedChapters] = useState<AuthenticBookChapter[]>([]);
   const [apiFetchedChapters, setApiFetchedChapters] = useState<AuthenticBookChapter[]>([]);
 
-  // Detect if book or target language is RTL (Urdu, Arabic, Persian, Hebrew)
+  // Detect if book is Urdu, Hindi, or Arabic
   const isBookUrdu = Boolean(
     title?.match(/[\u0600-\u06FF\u0750-\u077F]/) || 
     description?.match(/[\u0600-\u06FF\u0750-\u077F]/) ||
@@ -295,6 +320,8 @@ export default function Reader({
       setCurrentViewMode('reader');
     }
     setTranslationCache({});
+    narrationRef.current?.stop();
+    setIsAudioBarOpen(false);
   }, [bookId, bookUrl, iaId, readMode]);
 
   // Unified chapters array
@@ -471,7 +498,7 @@ export default function Reader({
     };
   }, [resolvedBookUrl, isPdf, currentViewMode, effectiveFontFamily, fontSize, styles, effectiveLineHeight]);
 
-  // Real-time Translation Fetcher (Only used when Translation Mode is specifically chosen)
+  // Real-time Translation Fetcher
   const translateCurrentChapter = useCallback(async (target: string) => {
     const chapterIdx = fallbackPage - 1;
     const ch = activeChapters[chapterIdx] || activeChapters[0];
@@ -527,12 +554,12 @@ export default function Reader({
     }
   }, [fallbackPage, activeChapters, translationCache]);
 
-  // Trigger translation when in translation mode
+  // Trigger translation when in translation mode or audio translated mode
   useEffect(() => {
-    if ((currentViewMode === 'translated' || (currentViewMode === 'bilingual' && bilingualModeType === 'translation')) && targetLang) {
+    if ((currentViewMode === 'translated' || (currentViewMode === 'bilingual' && bilingualModeType === 'translation') || (narrationLang !== 'auto' && narrationLang !== 'en')) && targetLang) {
       translateCurrentChapter(targetLang);
     }
-  }, [currentViewMode, bilingualModeType, targetLang, fallbackPage, translateCurrentChapter]);
+  }, [currentViewMode, bilingualModeType, targetLang, narrationLang, fallbackPage, translateCurrentChapter]);
 
   // Dynamic Transliterated text (Same authentic words, converted into Roman script)
   const transliteratedChapter = useMemo(() => {
@@ -541,6 +568,72 @@ export default function Reader({
       text: transliterateScript(currentChapterObj.text)
     };
   }, [currentChapterObj]);
+
+  // Subscribe to Audio Narration Engine updates
+  useEffect(() => {
+    narrationRef.current?.subscribe((state) => {
+      setNarrationState(state);
+    });
+    return () => {
+      narrationRef.current?.stop();
+    };
+  }, []);
+
+  // Stop audio on chapter change
+  useEffect(() => {
+    narrationRef.current?.stop();
+  }, [fallbackPage]);
+
+  // Start / Toggle Multi-Language Audio Narration
+  const handleToggleNarration = useCallback((customTargetLang?: string) => {
+    const controller = narrationRef.current;
+    if (!controller) return;
+
+    if (narrationState.isPlaying) {
+      if (narrationState.isPaused) {
+        controller.resume();
+      } else {
+        controller.pause();
+      }
+      return;
+    }
+
+    setIsAudioBarOpen(true);
+
+    // Determine audio text and speaking language
+    let textToSpeak = currentChapterObj.text;
+    let speakLang = isBookUrdu ? 'ur' : (isBookHindi ? 'hi' : 'en');
+
+    const effectiveLang = customTargetLang || (narrationLang !== 'auto' ? narrationLang : (currentViewMode === 'translated' ? targetLang : 'auto'));
+
+    if (effectiveLang !== 'auto') {
+      speakLang = effectiveLang;
+      const transData = translationCache[`${fallbackPage - 1}::${speakLang}`];
+      if (transData?.text) {
+        textToSpeak = transData.text;
+      }
+    } else if (currentViewMode === 'transliterated') {
+      textToSpeak = transliteratedChapter.text;
+      speakLang = 'en';
+    }
+
+    controller.loadText(textToSpeak, speakLang, 0);
+    controller.setSpeed(narrationSpeed);
+    controller.play();
+  }, [
+    narrationState.isPlaying, 
+    narrationState.isPaused, 
+    currentChapterObj.text, 
+    isBookUrdu, 
+    isBookHindi, 
+    narrationLang, 
+    currentViewMode, 
+    targetLang, 
+    translationCache, 
+    fallbackPage, 
+    transliteratedChapter.text, 
+    narrationSpeed
+  ]);
 
   // Navigation handlers
   const prevPage = useCallback(() => {
@@ -569,31 +662,6 @@ export default function Reader({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Text to Speech
-  const handleToggleSpeak = useCallback((textToSpeak: string, langCode: string = 'en') => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(textToSpeak.slice(0, 3000));
-    utterance.rate = speechRate;
-
-    const voices = window.speechSynthesis.getVoices();
-    const matchedVoice = voices.find(v => v.lang.startsWith(langCode));
-    if (matchedVoice) utterance.voice = matchedVoice;
-
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
-  }, [isSpeaking, speechRate]);
 
   // Copy text handler
   const handleCopyText = useCallback((text: string) => {
@@ -767,7 +835,7 @@ export default function Reader({
           )}
         </div>
 
-        {/* Right: Controls (Language Script Style, Search, Audio, Pagination) */}
+        {/* Right: Controls (Language Script Style, Search, Neural Listen, Settings) */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           
           {/* Quick Language Script & Typography Style Selector */}
@@ -835,21 +903,34 @@ export default function Reader({
             </button>
           )}
 
-          {/* Audio TTS */}
+          {/* Multi-Language Neural Listen Button */}
           <Button 
             variant="secondary" 
             size="sm" 
-            onClick={() => {
-              const textToSpeak = currentViewMode === 'transliterated' 
-                ? transliteratedChapter.text 
-                : (currentTransData?.text || currentChapterObj.text);
-              handleToggleSpeak(textToSpeak, isTargetRtl ? targetLang : (effectiveIsRtl ? 'ur' : 'en'));
-            }}
-            className={`text-xs font-bold px-2.5 py-1 gap-1 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
-            title="Listen to chapter"
+            onClick={() => handleToggleNarration()}
+            className={`text-xs font-bold px-3 py-1.5 gap-1.5 transition-all duration-300 ${
+              narrationState.isPlaying && !narrationState.isPaused
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md ring-2 ring-emerald-400/40' 
+                : `${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`
+            }`}
+            title="Listen to chapter with intelligent multi-language voice and translation"
           >
-            {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> : <Volume2 className={`w-3.5 h-3.5 ${styles.accentText}`} />}
-            <span className="hidden md:inline">{isSpeaking ? 'Stop' : 'Listen'}</span>
+            {narrationState.isPlaying && !narrationState.isPaused ? (
+              <>
+                <Volume2 className="w-4 h-4 animate-bounce text-white" />
+                <span className="font-extrabold">Listening...</span>
+              </>
+            ) : narrationState.isPaused ? (
+              <>
+                <Pause className="w-3.5 h-3.5 text-amber-500" />
+                <span>Resume</span>
+              </>
+            ) : (
+              <>
+                <Volume1 className={`w-4 h-4 ${styles.accentText}`} />
+                <span>Listen</span>
+              </>
+            )}
           </Button>
 
           {/* Font Size Adjuster */}
@@ -874,6 +955,136 @@ export default function Reader({
           <ThemeToggle />
         </div>
       </div>
+
+      {/* Interactive High-Fidelity Audio Narration Player Bar */}
+      {isAudioBarOpen && (
+        <div className={`h-16 ${styles.paperBg} border-b ${styles.border} flex items-center justify-between px-3 md:px-6 z-20 shrink-0 gap-3 shadow-md animate-in slide-in-from-top-2 duration-300`}>
+          
+          {/* Left: Soundwave Visualizer & Active Phrase Subtitle */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Animated Equalizer Wave */}
+            <div className="flex items-end gap-0.5 h-6 w-7 shrink-0 p-1 rounded-lg bg-primary/10">
+              <span className={`w-1 bg-primary rounded-full transition-all duration-150 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-full animate-pulse' : 'h-1.5'}`} />
+              <span className={`w-1 bg-primary rounded-full transition-all duration-200 delay-75 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-3/4 animate-pulse' : 'h-2'}`} />
+              <span className={`w-1 bg-primary rounded-full transition-all duration-300 delay-150 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-5/6 animate-pulse' : 'h-1.5'}`} />
+              <span className={`w-1 bg-primary rounded-full transition-all duration-100 ${narrationState.isPlaying && !narrationState.isPaused ? 'h-full animate-pulse' : 'h-3'}`} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary font-mono shrink-0">
+                  Sentence {narrationState.currentSentenceIdx + 1} / {Math.max(1, narrationState.totalSentences)}
+                </span>
+                <span className={`text-[10px] ${styles.mutedText} font-mono hidden sm:inline`}>
+                  ({Math.round(((narrationState.currentSentenceIdx + 1) / Math.max(1, narrationState.totalSentences)) * 100)}%)
+                </span>
+              </div>
+              <p className={`text-xs font-medium truncate ${styles.headingText} italic`}>
+                "{narrationState.currentSentenceText || 'Preparing neural audio playback...'}"
+              </p>
+            </div>
+          </div>
+
+          {/* Center: Playback Controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => narrationRef.current?.prevSentence()}
+              disabled={narrationState.currentSentenceIdx <= 0}
+              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} ${styles.buttonHover} disabled:opacity-30`}
+              title="Previous sentence"
+            >
+              <SkipBack className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() => {
+                if (narrationState.isPlaying) {
+                  if (narrationState.isPaused) narrationRef.current?.resume();
+                  else narrationRef.current?.pause();
+                } else {
+                  handleToggleNarration();
+                }
+              }}
+              className="p-2 rounded-xl bg-primary text-white hover:opacity-90 shadow-md transition"
+              title={narrationState.isPlaying && !narrationState.isPaused ? 'Pause' : 'Play'}
+            >
+              {narrationState.isPlaying && !narrationState.isPaused ? (
+                <Pause className="w-4 h-4 fill-white" />
+              ) : (
+                <Play className="w-4 h-4 fill-white ml-0.5" />
+              )}
+            </button>
+
+            <button
+              onClick={() => narrationRef.current?.nextSentence()}
+              disabled={narrationState.currentSentenceIdx >= narrationState.totalSentences - 1}
+              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} ${styles.buttonHover} disabled:opacity-30`}
+              title="Next sentence"
+            >
+              <SkipForward className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() => {
+                narrationRef.current?.stop();
+                setIsAudioBarOpen(false);
+              }}
+              className={`p-1.5 rounded-lg border ${styles.buttonBg} ${styles.buttonBorder} hover:text-rose-500`}
+              title="Stop and Close Audio"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Right: Translate & Speak Language Selector + Speed */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {/* Translate & Listen in Any Language */}
+            <div className={`flex items-center gap-1.5 text-xs ${styles.buttonBg} border ${styles.buttonBorder} px-2.5 py-1 rounded-xl`} title="Translate and speak in any language with native pronunciation">
+              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="text-[10px] font-bold text-emerald-500 uppercase">Voice:</span>
+              <select
+                value={narrationLang}
+                onChange={(e) => {
+                  const newLang = e.target.value;
+                  setNarrationLang(newLang);
+                  narrationRef.current?.stop();
+                  handleToggleNarration(newLang);
+                }}
+                className={`bg-transparent ${styles.text} font-bold text-xs focus:outline-none cursor-pointer border-0 p-0 max-w-[130px] truncate`}
+              >
+                <option value="auto" className={`${styles.cardBg} ${styles.text}`}>
+                  🎙️ Auto Native Voice
+                </option>
+                {TRANSLATE_LANGUAGES.map(l => (
+                  <option key={`narr-l-${l.code}`} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Speed Selector */}
+            <div className={`flex items-center gap-1 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl`}>
+              <span className={`text-[10px] font-bold ${styles.mutedText}`}>Speed:</span>
+              <select
+                value={narrationSpeed}
+                onChange={(e) => {
+                  const s = parseFloat(e.target.value);
+                  setNarrationSpeed(s);
+                  narrationRef.current?.setSpeed(s);
+                }}
+                className={`bg-transparent ${styles.text} font-mono font-bold text-xs focus:outline-none cursor-pointer border-0 p-0`}
+              >
+                <option value="0.75" className={`${styles.cardBg} ${styles.text}`}>0.75x</option>
+                <option value="1.0" className={`${styles.cardBg} ${styles.text}`}>1.0x</option>
+                <option value="1.25" className={`${styles.cardBg} ${styles.text}`}>1.25x</option>
+                <option value="1.5" className={`${styles.cardBg} ${styles.text}`}>1.5x</option>
+                <option value="2.0" className={`${styles.cardBg} ${styles.text}`}>2.0x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* In-Book Search Drawer Overlay */}
       {isSearchOpen && (
@@ -1014,15 +1225,26 @@ export default function Reader({
                     <p className={`text-[11px] ${styles.mutedText}`}>100% authentic words and poetic phrasing preserved in phonetic Latin letters — with 0 machine translations.</p>
                   </div>
                 </div>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => handleCopyText(transliteratedChapter.text)}
-                  className={`text-xs font-bold gap-1 shrink-0 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => handleToggleNarration()}
+                    className={`text-xs font-bold gap-1 shrink-0 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
+                  >
+                    <Volume2 className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Listen Roman</span>
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => handleCopyText(transliteratedChapter.text)}
+                    className={`text-xs font-bold gap-1 shrink-0 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+                  </Button>
+                </div>
               </div>
 
               {/* Transliterated Chapter Content */}

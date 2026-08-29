@@ -8,7 +8,7 @@ import {
   BookOpen, Globe, Languages, Volume2, VolumeX, Sparkles, Copy, Check, 
   ArrowRight, ArrowLeft, Search, List, AlignJustify, BookMarked, 
   Settings2, Eye, Compass, ChevronDown, ChevronRight, X, Play, Pause,
-  Share2, Maximize2, Minimize2
+  Share2, Maximize2, Minimize2, Type, Palette, ArrowLeftRight
 } from 'lucide-react';
 import { getCachedBook } from '@/utils/offlineStorage';
 import { getAuthenticBookChapters, AuthenticBookChapter } from '@/utils/authenticBookContent';
@@ -16,6 +16,11 @@ import { useTheme } from '@/components/ThemeProvider';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import GoogleBookViewer from '@/components/ui/GoogleBookViewer';
 import { stripHtml } from '@/utils/textSanitizer';
+import { 
+  transliterateScript, 
+  LANGUAGE_SCRIPT_STYLES, 
+  ScriptStylePreset 
+} from '@/utils/transliteration';
 
 interface LocationStart {
   index: number;
@@ -70,19 +75,6 @@ const MIDNIGHT_INK_THEME = {
   rawPaperBg: '#0F172A'
 };
 
-const READER_FONTS = [
-  { value: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif", label: 'Urdu Nastaliq (اردو خط نستعلیق)' },
-  { value: "'Amiri', serif", label: 'Arabic Amiri (خط أميري عربي)' },
-  { value: 'Georgia, serif', label: 'Classic Serif (Georgia)' },
-  { value: "'Playfair Display', serif", label: 'Playfair (Literary Serif)' },
-  { value: "'Merriweather', serif", label: 'Merriweather (Book Serif)' },
-  { value: "'Lora', serif", label: 'Lora (Editorial Serif)' },
-  { value: "'Inter', sans-serif", label: 'Inter (Clean Sans)' },
-  { value: "'Plus Jakarta Sans', sans-serif", label: 'Jakarta (Modern Sans)' },
-  { value: "'Roboto', sans-serif", label: 'Roboto (Clean Sans)' },
-  { value: "'Fira Code', monospace", label: 'Fira Code (Monospace)' }
-];
-
 export const TRANSLATE_LANGUAGES = [
   { code: 'ur', name: 'Urdu (اردو)', isRtl: true, font: "'Noto Nastaliq Urdu', serif" },
   { code: 'en', name: 'English', isRtl: false, font: 'Georgia, serif' },
@@ -98,28 +90,12 @@ export const TRANSLATE_LANGUAGES = [
   { code: 'tr', name: 'Turkish (Türkçe)', isRtl: false, font: 'Georgia, serif' },
   { code: 'pt', name: 'Portuguese (Português)', isRtl: false, font: 'Georgia, serif' },
   { code: 'it', name: 'Italian (Italiano)', isRtl: false, font: 'Georgia, serif' },
-  { code: 'bn', name: 'Bengali (বাংলা)', isRtl: false, font: "'Inter', sans-serif" },
-  { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ)', isRtl: false, font: "'Inter', sans-serif" },
-  { code: 'ko', name: 'Korean (한국어)', isRtl: false, font: "'Inter', sans-serif" }
 ];
 
-export default function Reader({ 
-  bookUrl, 
-  bookId, 
-  userId, 
-  title, 
-  author, 
-  description,
-  source,
-  iaId,
-  previewLink,
-  infoLink,
-  readMode = 'epub',
-  customChapters
-}: { 
-  bookUrl: string; 
-  bookId: string; 
-  userId: string; 
+export interface ReaderProps {
+  bookUrl?: string;
+  bookId: string;
+  userId?: string;
   title?: string;
   author?: string;
   description?: string;
@@ -127,16 +103,30 @@ export default function Reader({
   iaId?: string;
   previewLink?: string;
   infoLink?: string;
-  readMode?: 'epub' | 'archive' | 'google' | 'interactive';
+  readMode?: string;
   customChapters?: AuthenticBookChapter[];
-}) {
+}
+
+export default function Reader({ 
+  bookUrl, 
+  bookId, 
+  userId, 
+  title, 
+  author, 
+  description, 
+  source, 
+  iaId, 
+  previewLink, 
+  infoLink, 
+  readMode, 
+  customChapters 
+}: ReaderProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
-  const renditionRef = useRef<Rendition | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const renditionRef = useRef<Rendition | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [timeSpent, setTimeSpent] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
   const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
 
@@ -154,11 +144,14 @@ export default function Reader({
     return null;
   }, [bookId, previewLink, source]);
   
-  // View Modes: 'reader' (Reflowable Full Text), 'bilingual' (Dual Column), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed), 'google' (Google Books Viewer)
-  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'bilingual' | 'translated' | 'epub' | 'archive' | 'google'>(() => {
+  // View Modes: 'reader' (Authentic Text), 'transliterated' (Roman Script, No Translation), 'bilingual' (Dual Column), 'translated' (Single Translated), 'epub' (Raw EPUB), 'archive' (IA Embed), 'google' (Google Books Viewer)
+  const [currentViewMode, setCurrentViewMode] = useState<'reader' | 'transliterated' | 'bilingual' | 'translated' | 'epub' | 'archive' | 'google'>(() => {
     if (iaId && (!bookUrl || readMode === 'archive')) return 'archive';
     return 'reader';
   });
+
+  // Dual View Mode Type: 'transliteration' (Original Script vs Roman Script) or 'translation' (Original vs Translated words)
+  const [bilingualModeType, setBilingualModeType] = useState<'transliteration' | 'translation'>('transliteration');
 
   // Reading Modes: 'paginated' (One chapter at a time) or 'continuous' (All chapters flowing)
   const [scrollMode, setScrollMode] = useState<'paginated' | 'continuous'>('paginated');
@@ -168,6 +161,9 @@ export default function Reader({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Selected Language Script & Typography Style Preset
+  const [selectedScriptId, setSelectedScriptId] = useState<string>('auto');
 
   // Translation States
   const [targetLang, setTargetLang] = useState<string>('ur');
@@ -197,19 +193,38 @@ export default function Reader({
   const [apiFetchedChapters, setApiFetchedChapters] = useState<AuthenticBookChapter[]>([]);
 
   // Detect if book or target language is RTL (Urdu, Arabic, Persian, Hebrew)
-  const isBookRtl = Boolean(
+  const isBookUrdu = Boolean(
     title?.match(/[\u0600-\u06FF\u0750-\u077F]/) || 
     description?.match(/[\u0600-\u06FF\u0750-\u077F]/) ||
     author?.match(/[\u0600-\u06FF\u0750-\u077F]/)
   );
+  const isBookHindi = Boolean(
+    title?.match(/[\u0900-\u097F]/) || 
+    description?.match(/[\u0900-\u097F]/) ||
+    author?.match(/[\u0900-\u097F]/)
+  );
+
+  const isBookRtl = isBookUrdu;
   const isTargetRtl = TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.isRtl ?? false;
 
-  // Auto-set Nastaliq font if book title/description is Urdu/Arabic
-  useEffect(() => {
-    if (isBookRtl && fontFamily.includes('Georgia')) {
-      setFontFamily("'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif");
+  // Resolve effective active script style preset
+  const activeScriptPreset = useMemo(() => {
+    if (selectedScriptId !== 'auto') {
+      return LANGUAGE_SCRIPT_STYLES.find(s => s.id === selectedScriptId) || null;
     }
-  }, [isBookRtl, fontFamily]);
+    if (isBookUrdu) {
+      return LANGUAGE_SCRIPT_STYLES.find(s => s.id === 'urdu-nastaliq') || null;
+    }
+    if (isBookHindi) {
+      return LANGUAGE_SCRIPT_STYLES.find(s => s.id === 'hindi-devanagari') || null;
+    }
+    return null;
+  }, [selectedScriptId, isBookUrdu, isBookHindi]);
+
+  // Apply script preset typography
+  const effectiveFontFamily = activeScriptPreset ? activeScriptPreset.fontFamily : fontFamily;
+  const effectiveLineHeight = activeScriptPreset ? activeScriptPreset.lineHeight : (isBookRtl ? '2.4' : '1.85');
+  const effectiveIsRtl = activeScriptPreset ? (activeScriptPreset.isRtl ?? false) : isBookRtl;
 
   // Check if there is an offline cached version in IndexedDB
   useEffect(() => {
@@ -431,9 +446,9 @@ export default function Reader({
           body: { 
             background: styles.rawBg, 
             color: styles.rawText, 
-            'font-family': fontFamily,
+            'font-family': effectiveFontFamily,
             'font-size': `${fontSize}px`,
-            'line-height': isBookRtl ? '2.4' : '1.85'
+            'line-height': effectiveLineHeight
           }
         });
 
@@ -454,9 +469,9 @@ export default function Reader({
         try { book.destroy(); } catch {}
       }
     };
-  }, [resolvedBookUrl, isPdf, currentViewMode, fontFamily, fontSize, styles, isBookRtl]);
+  }, [resolvedBookUrl, isPdf, currentViewMode, effectiveFontFamily, fontSize, styles, effectiveLineHeight]);
 
-  // Real-time Translation Fetcher
+  // Real-time Translation Fetcher (Only used when Translation Mode is specifically chosen)
   const translateCurrentChapter = useCallback(async (target: string) => {
     const chapterIdx = fallbackPage - 1;
     const ch = activeChapters[chapterIdx] || activeChapters[0];
@@ -467,85 +482,97 @@ export default function Reader({
 
     setIsTranslating(true);
     try {
-      const paras = ch.text.split(/\n+/).filter(p => p.trim().length > 0);
-      
-      const translatedTitleRes = await fetch('/api/translate', {
+      const transChapterPromise = fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: ch.chapter, targetLang: target })
-      });
-      const titleData = await translatedTitleRes.json();
-      const translatedTitle = titleData.translatedText || ch.chapter;
+      }).then(r => r.ok ? r.json() : { translatedText: ch.chapter });
 
-      const fullTextRes = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: ch.text, targetLang: target })
-      });
-      const fullData = await fullTextRes.json();
-      const translatedFullText = fullData.translatedText || ch.text;
+      const paragraphs = ch.text.split(/\n\s*\n/).filter(p => p.trim());
+      const translatedParas: { original: string; translated: string }[] = [];
 
-      const transParas = translatedFullText.split(/\n+/).filter((p: string) => p.trim().length > 0);
-      const pairings = paras.map((orig, i) => ({
-        original: orig,
-        translated: transParas[i] || orig
-      }));
+      for (const p of paragraphs.slice(0, 30)) {
+        try {
+          const res = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: p, targetLang: target })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            translatedParas.push({ original: p, translated: data.translatedText || p });
+          } else {
+            translatedParas.push({ original: p, translated: p });
+          }
+        } catch {
+          translatedParas.push({ original: p, translated: p });
+        }
+      }
+
+      const chapterRes = await transChapterPromise;
+      const fullTranslatedText = translatedParas.map(tp => tp.translated).join('\n\n');
 
       setTranslationCache(prev => ({
         ...prev,
         [cacheKey]: {
-          chapter: translatedTitle,
-          text: translatedFullText,
-          paragraphs: pairings
+          chapter: chapterRes.translatedText || ch.chapter,
+          text: fullTranslatedText,
+          paragraphs: translatedParas
         }
       }));
     } catch (err) {
-      console.error('Translation failed:', err);
+      console.warn('Translation failed:', err);
     } finally {
       setIsTranslating(false);
     }
   }, [fallbackPage, activeChapters, translationCache]);
 
+  // Trigger translation when in translation mode
   useEffect(() => {
-    if (currentViewMode === 'bilingual' || currentViewMode === 'translated') {
+    if ((currentViewMode === 'translated' || (currentViewMode === 'bilingual' && bilingualModeType === 'translation')) && targetLang) {
       translateCurrentChapter(targetLang);
     }
-  }, [currentViewMode, targetLang, fallbackPage, translateCurrentChapter]);
+  }, [currentViewMode, bilingualModeType, targetLang, fallbackPage, translateCurrentChapter]);
 
-  // Reading Timer & DB sync
-  useEffect(() => {
-    if (loading) return;
-    const interval = setInterval(() => {
-      setTimeSpent(prev => prev + 10);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [loading]);
+  // Dynamic Transliterated text (Same authentic words, converted into Roman script)
+  const transliteratedChapter = useMemo(() => {
+    return {
+      chapter: transliterateScript(currentChapterObj.chapter),
+      text: transliterateScript(currentChapterObj.text)
+    };
+  }, [currentChapterObj]);
 
-  useEffect(() => {
-    if (timeSpent > 0 && timeSpent % 30 === 0) {
-      const syncProgress = async () => {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookId);
-        if (isUuid && userId) {
-          try {
-            const supabase = createClient();
-            await supabase.from('reading_logs').insert({
-              user_id: userId,
-              book_id: bookId,
-              time_spent_seconds: 30, 
-              pages_read: fallbackPage,
-            });
-          } catch (e) {
-            console.error('Error saving reading log:', e);
-          }
-        }
-      };
-      syncProgress();
+  // Navigation handlers
+  const prevPage = useCallback(() => {
+    if (currentViewMode === 'epub' && renditionRef.current) {
+      renditionRef.current.prev();
+    } else {
+      setFallbackPage(prev => Math.max(1, prev - 1));
+      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [timeSpent, bookId, userId, fallbackPage]);
+  }, [currentViewMode]);
 
-  // Text-to-Speech (TTS)
-  const handleToggleSpeak = (textToRead: string, langCode: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  const nextPage = useCallback(() => {
+    if (currentViewMode === 'epub' && renditionRef.current) {
+      renditionRef.current.next();
+    } else {
+      setFallbackPage(prev => Math.min(activeChapters.length, prev + 1));
+      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentViewMode, activeChapters.length]);
+
+  // Time Tracker
+  const [timeSpent, setTimeSpent] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeSpent(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Text to Speech
+  const handleToggleSpeak = useCallback((textToSpeak: string, langCode: string = 'en') => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
     if (isSpeaking) {
       window.speechSynthesis.cancel();
@@ -553,69 +580,49 @@ export default function Reader({
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(textToRead.slice(0, 3000));
-    utterance.lang = langCode === 'ur' ? 'ur-PK' : (langCode === 'ar' ? 'ar-SA' : (langCode === 'hi' ? 'hi-IN' : 'en-US'));
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(textToSpeak.slice(0, 3000));
     utterance.rate = speechRate;
+
+    const voices = window.speechSynthesis.getVoices();
+    const matchedVoice = voices.find(v => v.lang.startsWith(langCode));
+    if (matchedVoice) utterance.voice = matchedVoice;
+
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
-    
+
     window.speechSynthesis.speak(utterance);
     setIsSpeaking(true);
-  };
+  }, [isSpeaking, speechRate]);
 
-  const handleCopyText = (text: string) => {
+  // Copy text handler
+  const handleCopyText = useCallback((text: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }, []);
 
-  const prevPage = () => {
-    if (currentViewMode === 'epub') {
-      renditionRef.current?.prev();
-    } else {
-      setFallbackPage(prev => Math.max(1, prev - 1));
-      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const nextPage = () => {
-    if (currentViewMode === 'epub') {
-      renditionRef.current?.next();
-    } else {
-      setFallbackPage(prev => Math.min(activeChapters.length, prev + 1));
-      containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    }
-  };
-
-  // Filtered search results
+  // In-book Search
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase().trim();
+    if (!searchQuery.trim() || searchQuery.length < 2) return [];
+    const q = searchQuery.toLowerCase();
     const matches: { chapterIdx: number; chapterTitle: string; snippet: string }[] = [];
 
-    activeChapters.forEach((ch, idx) => {
-      const lower = ch.text.toLowerCase();
+    activeChapters.forEach((ch, cIdx) => {
+      const text = ch.text || '';
+      const lower = text.toLowerCase();
       let pos = lower.indexOf(q);
       let count = 0;
       while (pos !== -1 && count < 3) {
         const start = Math.max(0, pos - 40);
-        const end = Math.min(ch.text.length, pos + q.length + 40);
+        const end = Math.min(text.length, pos + q.length + 60);
+        const snippet = (start > 0 ? '...' : '') + text.slice(start, end).replace(/\s+/g, ' ') + (end < text.length ? '...' : '');
         matches.push({
-          chapterIdx: idx + 1,
+          chapterIdx: cIdx,
           chapterTitle: ch.chapter,
-          snippet: (start > 0 ? '...' : '') + ch.text.substring(start, end) + (end < ch.text.length ? '...' : '')
+          snippet
         });
         pos = lower.indexOf(q, pos + q.length + 1);
         count++;
@@ -664,38 +671,59 @@ export default function Reader({
 
         {/* Center: Mode Switching Pills */}
         <div className={`hidden lg:flex items-center gap-1 ${styles.buttonBg}/60 p-1 rounded-xl border ${styles.buttonBorder}`}>
+          {/* 1. Authentic Original Text */}
           <button
             onClick={() => setCurrentViewMode('reader')}
-            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 ${
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
               currentViewMode === 'reader' 
                 ? 'bg-primary text-white shadow' 
                 : `${styles.mutedText} hover:${styles.text}`
             }`}
+            title="Read in original language and text"
           >
-            📖 Full Book Text
+            <BookOpen className="w-3 h-3" />
+            <span>Original Text</span>
           </button>
 
+          {/* 2. Roman Script Transliteration (No Translation, pure authentic words in phonetic English letters) */}
+          <button
+            onClick={() => setCurrentViewMode('transliterated')}
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              currentViewMode === 'transliterated' 
+                ? 'bg-primary text-white shadow' 
+                : `${styles.mutedText} hover:${styles.text}`
+            }`}
+            title="Transliterate into Roman script without translating words"
+          >
+            <Type className="w-3 h-3 text-amber-500" />
+            <span>Roman Script</span>
+          </button>
+
+          {/* 3. Side-by-Side Dual View */}
           <button
             onClick={() => setCurrentViewMode('bilingual')}
-            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
               currentViewMode === 'bilingual' 
                 ? 'bg-primary text-white shadow' 
                 : `${styles.mutedText} hover:${styles.text}`
             }`}
+            title="Side-by-Side Dual Column View"
           >
-            <Languages className="w-3 h-3" />
-            <span>Side-by-Side Bilingual</span>
+            <ArrowLeftRight className="w-3 h-3 text-sky-500" />
+            <span>Dual View</span>
           </button>
 
+          {/* 4. Translated */}
           <button
             onClick={() => setCurrentViewMode('translated')}
-            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1 ${
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 ${
               currentViewMode === 'translated' 
                 ? 'bg-primary text-white shadow' 
                 : `${styles.mutedText} hover:${styles.text}`
             }`}
+            title="AI Language Translation"
           >
-            <Globe className="w-3 h-3" />
+            <Globe className="w-3 h-3 text-emerald-500" />
             <span>Translated</span>
           </button>
 
@@ -708,7 +736,7 @@ export default function Reader({
                   : `${styles.mutedText} hover:${styles.text}`
               }`}
             >
-              📄 Original EPUB
+              📄 EPUB
             </button>
           )}
 
@@ -739,11 +767,37 @@ export default function Reader({
           )}
         </div>
 
-        {/* Right: Controls (Search, Typography, Audio, Pagination) */}
+        {/* Right: Controls (Language Script Style, Search, Audio, Pagination) */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           
-          {/* Translation selector */}
-          {(currentViewMode === 'bilingual' || currentViewMode === 'translated') && (
+          {/* Quick Language Script & Typography Style Selector */}
+          <div className={`flex items-center gap-1.5 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl shadow-sm`} title="Transform typography and language script style without translating words">
+            <Palette className="w-3.5 h-3.5 text-primary shrink-0" />
+            <select
+              value={selectedScriptId}
+              onChange={(e) => {
+                const sId = e.target.value;
+                setSelectedScriptId(sId);
+                const found = LANGUAGE_SCRIPT_STYLES.find(s => s.id === sId);
+                if (found) {
+                  setFontFamily(found.fontFamily);
+                }
+              }}
+              className={`bg-transparent ${styles.text} font-bold text-[11px] focus:outline-none cursor-pointer border-0 p-0 max-w-[130px] sm:max-w-[160px] truncate`}
+            >
+              <option value="auto" className={`${styles.cardBg} ${styles.text}`}>
+                🎨 Auto Script Style
+              </option>
+              {LANGUAGE_SCRIPT_STYLES.map(s => (
+                <option key={s.id} value={s.id} className={`${styles.cardBg} ${styles.text}`}>
+                  {s.name} ({s.nativeLabel})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Translation selector if in Translated Mode */}
+          {currentViewMode === 'translated' && (
             <div className={`flex items-center gap-1 ${styles.buttonBg} border ${styles.buttonBorder} px-2 py-1 rounded-xl`}>
               <Globe className={`w-3 h-3 ${styles.accentText} shrink-0`} />
               <select
@@ -762,7 +816,7 @@ export default function Reader({
 
           {/* Search button */}
           <button 
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            onClick={() => setIsSearchOpen(!isSearchOpen)} 
             className={`p-1.5 rounded-xl border transition ${isSearchOpen ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`}`}
             title="Search inside book"
           >
@@ -770,7 +824,7 @@ export default function Reader({
           </button>
 
           {/* Continuous vs Paginated Toggle */}
-          {currentViewMode === 'reader' && (
+          {(currentViewMode === 'reader' || currentViewMode === 'transliterated') && (
             <button
               onClick={() => setScrollMode(scrollMode === 'paginated' ? 'continuous' : 'paginated')}
               className={`p-1.5 rounded-xl border text-[10px] font-bold hidden sm:flex items-center gap-1 ${scrollMode === 'continuous' ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`}`}
@@ -785,7 +839,12 @@ export default function Reader({
           <Button 
             variant="secondary" 
             size="sm" 
-            onClick={() => handleToggleSpeak(currentTransData?.text || currentChapterObj.text, isTargetRtl ? targetLang : (isBookRtl ? 'ur' : 'en'))}
+            onClick={() => {
+              const textToSpeak = currentViewMode === 'transliterated' 
+                ? transliteratedChapter.text 
+                : (currentTransData?.text || currentChapterObj.text);
+              handleToggleSpeak(textToSpeak, isTargetRtl ? targetLang : (effectiveIsRtl ? 'ur' : 'en'));
+            }}
             className={`text-xs font-bold px-2.5 py-1 gap-1 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
             title="Listen to chapter"
           >
@@ -793,108 +852,93 @@ export default function Reader({
             <span className="hidden md:inline">{isSpeaking ? 'Stop' : 'Listen'}</span>
           </Button>
 
-          {/* Font Selector & Size Adjuster */}
-          <div className={`hidden xl:flex items-center gap-2 text-[11px] ${styles.buttonBg}/90 border ${styles.buttonBorder} px-2.5 py-1 rounded-xl shadow-inner`}>
-            <select 
-              value={fontFamily} 
-              onChange={(e) => setFontFamily(e.target.value)} 
-              className={`bg-transparent ${styles.text} focus:outline-none cursor-pointer font-bold border-0 p-0 max-w-[130px] truncate`}
+          {/* Font Size Adjuster */}
+          <div className={`hidden sm:flex items-center gap-1 text-[11px] ${styles.buttonBg}/90 border ${styles.buttonBorder} px-2 py-1 rounded-xl shadow-inner`}>
+            <button 
+              onClick={() => setFontSize(prev => Math.max(12, prev - 2))} 
+              className={`px-1 font-bold ${styles.mutedText} hover:${styles.text}`}
+              title="Decrease font size"
             >
-              {READER_FONTS.map(f => (
-                <option key={f.value} value={f.value} className={`${styles.cardBg} ${styles.text}`}>{f.label}</option>
-              ))}
-            </select>
-            
-            <div className={`flex items-center gap-1 border-l ${styles.buttonBorder} pl-1.5`}>
-              <button onClick={() => setFontSize(p => Math.max(12, p - 2))} className={`hover:${styles.accentText} font-black px-1 text-xs`}>-</button>
-              <span className={`font-bold font-mono text-[10px] ${styles.text}`}>{fontSize}px</span>
-              <button onClick={() => setFontSize(p => Math.min(36, p + 2))} className={`hover:${styles.accentText} font-black px-1 text-xs`}>+</button>
-            </div>
+              A-
+            </button>
+            <span className="font-mono text-[10px] font-bold opacity-60">{fontSize}px</span>
+            <button 
+              onClick={() => setFontSize(prev => Math.min(36, prev + 2))} 
+              className={`px-1 font-bold ${styles.mutedText} hover:${styles.text}`}
+              title="Increase font size"
+            >
+              A+
+            </button>
           </div>
 
-          {/* Previous / Next buttons */}
-          {(currentViewMode === 'reader' || currentViewMode === 'bilingual' || currentViewMode === 'translated') && (
-            <div className="flex items-center gap-1">
-              <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className={`font-bold text-xs px-2.5 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}>←</Button>
-              <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className={`font-bold text-xs px-2.5 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}>→</Button>
-            </div>
-          )}
-
-          {/* Theme Switcher */}
-          <ThemeToggle variant="dropdown" size="sm" showLabel={false} className="shrink-0" />
-
-          {/* Fullscreen button */}
-          <button 
-            onClick={toggleFullscreen}
-            className={`p-1.5 rounded-xl ${styles.buttonBg} border ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text} hidden sm:block`}
-            title="Toggle Fullscreen"
-          >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-          </button>
+          <ThemeToggle />
         </div>
       </div>
 
-      {/* Slide-out In-Book Search Bar */}
+      {/* In-Book Search Drawer Overlay */}
       {isSearchOpen && (
-        <div className={`${styles.headerBg} border-b ${styles.border} p-4 z-20 space-y-3 animate-in slide-in-from-top-2`}>
-          <div className="max-w-2xl mx-auto flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${styles.mutedText}`} />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search words, names, or quotes across entire book..."
-                className={`w-full ${styles.inputBg} border ${styles.border} ${styles.text} rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-primary`}
-                autoFocus
-              />
-            </div>
-            <button 
-              onClick={() => setIsSearchOpen(false)}
-              className={`p-2 rounded-xl ${styles.mutedText} hover:${styles.text} hover:${styles.buttonBg}`}
-            >
+        <div className={`absolute top-16 right-0 w-full sm:w-96 max-h-[500px] ${styles.cardBg} border-b sm:border-l ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-4 space-y-3 animate-in slide-in-from-top-2 duration-200`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5" />
+              <span>Search in Book</span>
+            </span>
+            <button onClick={() => setIsSearchOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {searchQuery && (
-            <div className="max-w-2xl mx-auto max-h-48 overflow-y-auto space-y-2 pr-2">
-              <p className={`text-[11px] ${styles.mutedText} font-mono`}>Found {searchResults.length} matches across chapters:</p>
-              {searchResults.map((res, i) => (
-                <div 
-                  key={`res-${i}`}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search words, phrases, names..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full text-xs p-2.5 pl-8 rounded-xl ${styles.inputBg} border ${styles.buttonBorder} ${styles.text} focus:outline-none focus:border-primary`}
+              autoFocus
+            />
+            <Search className={`w-3.5 h-3.5 absolute left-2.5 top-3 ${styles.mutedText}`} />
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 max-h-72 divide-y divide-border/20">
+            {searchResults.length === 0 ? (
+              <p className={`text-xs ${styles.mutedText} text-center py-6`}>
+                {searchQuery.trim() ? 'No occurrences found.' : 'Type at least 2 characters to search across all chapters.'}
+              </p>
+            ) : (
+              searchResults.map((res, idx) => (
+                <button
+                  key={`search-res-${idx}`}
                   onClick={() => {
-                    setFallbackPage(res.chapterIdx);
+                    setFallbackPage(res.chapterIdx + 1);
                     setIsSearchOpen(false);
+                    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`p-2.5 rounded-xl ${styles.cardBg} border ${styles.cardBorder} hover:border-primary/60 cursor-pointer transition text-left`}
+                  className={`w-full text-left p-2.5 rounded-lg transition hover:${styles.buttonBg} space-y-1 block`}
                 >
-                  <span className="text-[10px] text-primary font-bold uppercase tracking-wider block">{res.chapterTitle}</span>
-                  <p className={`text-xs ${styles.text} line-clamp-1 mt-0.5`}>{res.snippet}</p>
-                </div>
-              ))}
-            </div>
-          )}
+                  <span className="text-[10px] text-primary font-bold block">{res.chapterTitle}</span>
+                  <p className={`text-xs ${styles.text} line-clamp-2 leading-relaxed`}>{res.snippet}</p>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
 
-      {/* Slide-out Table of Contents (TOC) Drawer */}
+      {/* Table of Contents Drawer */}
       {isTocOpen && (
-        <div className={`absolute inset-y-16 left-0 w-80 md:w-96 ${styles.headerBg} border-r ${styles.border} z-30 flex flex-col p-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-left duration-200 ${styles.text}`}>
-          <div className={`flex items-center justify-between pb-3 border-b ${styles.border}`}>
-            <div>
-              <h3 className={`font-extrabold text-sm ${styles.headingText} flex items-center gap-1.5`}>
-                <List className="w-4 h-4 text-primary" />
-                <span>Table of Contents</span>
-              </h3>
-              <p className={`text-[10px] ${styles.mutedText} font-mono`}>{activeChapters.length} Chapters | ~{estimatedReadTimeMins}m read</p>
+        <div className={`absolute top-16 left-0 w-full sm:w-80 h-[calc(100%-4rem)] ${styles.cardBg} border-r ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-4 space-y-4 animate-in slide-in-from-left duration-200`}>
+          <div className="flex items-center justify-between border-b ${styles.divider} pb-3">
+            <div className="flex items-center gap-2">
+              <BookMarked className="w-4 h-4 text-primary" />
+              <span className={`text-xs font-black uppercase tracking-wider ${styles.headingText}`}>Table of Contents</span>
             </div>
-            <button onClick={() => setIsTocOpen(false)} className={`p-1 rounded-lg ${styles.mutedText} hover:${styles.text} hover:${styles.buttonBg}`}>
+            <button onClick={() => setIsTocOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-3 space-y-1.5 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {activeChapters.map((ch, idx) => {
               const isSelected = fallbackPage === idx + 1;
               const wordCount = ch.text ? ch.text.split(/\s+/).length : 0;
@@ -932,7 +976,7 @@ export default function Reader({
         {loading && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center ${styles.bg} z-20 space-y-4`}>
             <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-            <p className={`text-xs ${styles.mutedText} animate-pulse font-medium`}>Opening authentic multi-chapter edition...</p>
+            <p className={`text-xs ${styles.mutedText} animate-pulse font-medium`}>Opening authentic edition...</p>
           </div>
         )}
 
@@ -954,28 +998,136 @@ export default function Reader({
             className={`w-full h-full border-0 ${styles.bg}`} 
             title={title || "PDF Reader"} 
           />
+        ) : currentViewMode === 'transliterated' ? (
+          /* 2. Roman Script Transliterated View (Same authentic words, purely converted to Roman Latin letters) */
+          <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-10 px-4 md:px-12 flex flex-col transition-colors duration-300 border-0`}>
+            <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
+              
+              {/* Informative Header Banner */}
+              <div className={`p-3.5 rounded-2xl ${styles.paperBg} border ${styles.border} flex items-center justify-between gap-3 shadow-sm`}>
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                    <Type className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className={`text-xs font-black ${styles.headingText}`}>Roman Script Transliteration</h4>
+                    <p className={`text-[11px] ${styles.mutedText}`}>100% authentic words and poetic phrasing preserved in phonetic Latin letters — with 0 machine translations.</p>
+                  </div>
+                </div>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => handleCopyText(transliteratedChapter.text)}
+                  className={`text-xs font-bold gap-1 shrink-0 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+                </Button>
+              </div>
+
+              {/* Transliterated Chapter Content */}
+              <div className="space-y-6">
+                <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                  <h2 className={`text-xl md:text-2xl font-black tracking-tight ${styles.headingText}`} style={{ fontFamily: effectiveFontFamily }}>
+                    {transliteratedChapter.chapter}
+                  </h2>
+                  <select
+                    value={fallbackPage}
+                    onChange={(e) => setFallbackPage(Number(e.target.value))}
+                    className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer max-w-[150px] md:max-w-[220px] truncate`}
+                  >
+                    {activeChapters.map((ch, idx) => (
+                      <option key={`opt-translit-${idx}`} value={idx + 1} className={`${styles.cardBg} ${styles.text}`}>
+                        {transliterateScript(ch.chapter) || `Chapter ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div 
+                  className="leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 text-justify"
+                  style={{ 
+                    fontSize: `${fontSize}px`, 
+                    fontFamily: effectiveFontFamily,
+                    lineHeight: effectiveLineHeight 
+                  }}
+                >
+                  {transliteratedChapter.text}
+                </div>
+              </div>
+
+              {/* Navigation Footer */}
+              <div className={`text-center text-xs ${styles.mutedText} font-semibold font-mono border-t ${styles.divider} pt-4 flex justify-between items-center`}>
+                <Button variant="secondary" size="sm" onClick={prevPage} disabled={fallbackPage === 1} className={`font-bold text-xs ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}>
+                  ← Previous Section
+                </Button>
+                <span>Section {fallbackPage} of {activeChapters.length} ({Math.round((fallbackPage / activeChapters.length) * 100)}%)</span>
+                <Button variant="secondary" size="sm" onClick={nextPage} disabled={fallbackPage === activeChapters.length} className={`font-bold text-xs ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}>
+                  Next Section →
+                </Button>
+              </div>
+
+            </div>
+          </div>
         ) : currentViewMode === 'bilingual' ? (
-          /* 2. Side-by-Side Bilingual Dual-Language Parallel Reading */
+          /* 3. Side-by-Side Dual View (Supports both Dual Script and Dual Translation) */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-8 px-4 md:px-10 flex flex-col space-y-6`}>
             <div className={`flex flex-col md:flex-row items-center justify-between gap-4 border-b ${styles.divider} pb-4 max-w-6xl mx-auto w-full`}>
+              
+              {/* Dual View Mode Switcher */}
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${styles.buttonBg} border ${styles.buttonBorder} ${styles.text} text-xs font-bold`}>
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span>AI Parallel Dual-Language View</span>
-                </span>
-                {isTranslating && (
+                <div className={`inline-flex p-1 rounded-xl ${styles.buttonBg} border ${styles.buttonBorder}`}>
+                  <button
+                    onClick={() => setBilingualModeType('transliteration')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      bilingualModeType === 'transliteration'
+                        ? 'bg-primary text-white shadow'
+                        : `${styles.mutedText} hover:${styles.text}`
+                    }`}
+                  >
+                    <Type className="w-3.5 h-3.5" />
+                    <span>Dual Script (Original + Roman Script)</span>
+                  </button>
+                  <button
+                    onClick={() => setBilingualModeType('translation')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      bilingualModeType === 'translation'
+                        ? 'bg-primary text-white shadow'
+                        : `${styles.mutedText} hover:${styles.text}`
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Dual Language (AI Translation)</span>
+                  </button>
+                </div>
+
+                {bilingualModeType === 'translation' && isTranslating && (
                   <span className="text-[11px] text-primary font-medium flex items-center gap-1.5 animate-pulse">
                     <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full block animate-spin" />
-                    Translating section...
+                    Translating...
                   </span>
                 )}
               </div>
 
               <div className="flex items-center gap-3">
+                {bilingualModeType === 'translation' && (
+                  <select
+                    value={targetLang}
+                    onChange={(e) => setTargetLang(e.target.value)}
+                    className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-2.5 py-1.5 focus:outline-none cursor-pointer`}
+                  >
+                    {TRANSLATE_LANGUAGES.map(l => (
+                      <option key={`bi-lang-${l.code}`} value={l.code} className={`${styles.cardBg} ${styles.text}`}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 <select
                   value={fallbackPage}
                   onChange={(e) => setFallbackPage(Number(e.target.value))}
-                  className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[200px] truncate`}
+                  className={`text-xs ${styles.buttonBg} border ${styles.buttonBorder} ${styles.buttonText} rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer max-w-[180px] truncate`}
                 >
                   {activeChapters.map((ch, idx) => (
                     <option key={`ch-bilingual-${idx}`} value={idx + 1} className={`${styles.cardBg} ${styles.text}`}>
@@ -987,7 +1139,7 @@ export default function Reader({
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  onClick={() => handleCopyText(currentTransData?.text || currentChapterObj.text)}
+                  onClick={() => handleCopyText(bilingualModeType === 'transliteration' ? transliteratedChapter.text : (currentTransData?.text || currentChapterObj.text))}
                   className={`text-xs font-bold gap-1 ${styles.buttonBg} ${styles.buttonText} ${styles.buttonBorder} ${styles.buttonHover}`}
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -998,84 +1150,105 @@ export default function Reader({
 
             {/* Bilingual Dual Column Grid */}
             <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
-              {/* Left: Original Text */}
+              {/* Left Column: Original Text */}
               <div className={`p-6 rounded-2xl ${styles.paperBg} border ${styles.border} space-y-6 shadow-sm`}>
                 <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
                   <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <span>📜 Original Text</span>
+                    <span>📜 Original Text & Script</span>
                   </span>
                   <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Section {fallbackPage}</span>
                 </div>
 
-                <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily }}>
+                <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
                   {currentChapterObj.chapter}
                 </h3>
 
                 <div 
-                  className={`space-y-5 leading-relaxed whitespace-pre-line ${isBookRtl ? 'text-right' : 'text-justify'}`}
-                  dir={isBookRtl ? 'rtl' : 'ltr'}
+                  className={`space-y-5 leading-relaxed whitespace-pre-line ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                  dir={effectiveIsRtl ? 'rtl' : 'ltr'}
                   style={{ 
                     fontSize: `${fontSize}px`, 
-                    fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
-                    lineHeight: isBookRtl ? 2.4 : 1.85 
+                    fontFamily: effectiveFontFamily,
+                    lineHeight: effectiveLineHeight 
                   }}
                 >
-                  {currentTransData?.paragraphs?.length ? (
-                    currentTransData.paragraphs.map((p, idx) => (
-                      <p key={`orig-p-${idx}`} className={`p-2 rounded-lg hover:${styles.buttonBg} transition-colors`}>
-                        {p.original}
-                      </p>
-                    ))
-                  ) : (
-                    currentChapterObj.text
-                  )}
+                  {currentChapterObj.text}
                 </div>
               </div>
 
-              {/* Right: Translated Text */}
+              {/* Right Column: Roman Script Transliteration OR AI Translation */}
               <div className={`p-6 rounded-2xl ${styles.cardBg} border ${styles.cardBorder} space-y-6 shadow-sm relative`}>
-                <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
-                  <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5" />
-                    <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
-                  </span>
-                  <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Live AI Translation</span>
-                </div>
-
-                <h3 
-                  className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
-                  dir={isTargetRtl ? 'rtl' : 'ltr'}
-                  style={{ 
-                    fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
-                  }}
-                >
-                  {currentTransData?.chapter || 'Translating chapter title...'}
-                </h3>
-
-                <div 
-                  className={`space-y-5 leading-relaxed whitespace-pre-line ${isTargetRtl ? 'text-right' : 'text-justify'}`}
-                  dir={isTargetRtl ? 'rtl' : 'ltr'}
-                  style={{ 
-                    fontSize: `${fontSize}px`, 
-                    fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
-                    lineHeight: isTargetRtl ? 2.4 : 1.85 
-                  }}
-                >
-                  {isTranslating && !currentTransData ? (
-                    <div className="py-12 flex flex-col items-center justify-center space-y-3">
-                      <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-                      <p className="text-xs text-primary animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                {bilingualModeType === 'transliteration' ? (
+                  <>
+                    <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                      <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                        <Type className="w-3.5 h-3.5" />
+                        <span>Roman Script Transliteration (No Translation)</span>
+                      </span>
+                      <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>Phonetic Latin</span>
                     </div>
-                  ) : currentTransData?.paragraphs?.length ? (
-                    currentTransData.paragraphs.map((p, idx) => (
-                      <p key={`trans-p-${idx}`} className={`p-2 rounded-lg ${styles.buttonBg}/60 hover:${styles.buttonBg} transition-colors border ${styles.buttonBorder}`}>
-                        {p.translated}
-                      </p>
-                    ))
-                  ) : (
-                    currentTransData?.text || "Translating text..."
-                  )}
-                </div>
+
+                    <h3 className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight`} style={{ fontFamily: effectiveFontFamily }}>
+                      {transliteratedChapter.chapter}
+                    </h3>
+
+                    <div 
+                      className="space-y-5 leading-relaxed whitespace-pre-line text-justify"
+                      style={{ 
+                        fontSize: `${fontSize}px`, 
+                        fontFamily: effectiveFontFamily,
+                        lineHeight: effectiveLineHeight 
+                      }}
+                    >
+                      {transliteratedChapter.text}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+                      <span className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>Translated: {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}</span>
+                      </span>
+                      <span className={`text-[10px] ${styles.mutedText} font-mono font-bold`}>AI Translation</span>
+                    </div>
+
+                    <h3 
+                      className={`text-lg md:text-xl font-extrabold ${styles.headingText} tracking-tight ${isTargetRtl ? 'text-right' : 'text-left'}`}
+                      dir={isTargetRtl ? 'rtl' : 'ltr'}
+                      style={{ 
+                        fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily 
+                      }}
+                    >
+                      {currentTransData?.chapter || 'Translating chapter title...'}
+                    </h3>
+
+                    <div 
+                      className={`space-y-5 leading-relaxed whitespace-pre-line ${isTargetRtl ? 'text-right' : 'text-justify'}`}
+                      dir={isTargetRtl ? 'rtl' : 'ltr'}
+                      style={{ 
+                        fontSize: `${fontSize}px`, 
+                        fontFamily: isTargetRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
+                        lineHeight: isTargetRtl ? 2.4 : 1.85 
+                      }}
+                    >
+                      {isTranslating && !currentTransData ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                          <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+                          <p className="text-xs text-primary animate-pulse font-medium">Translating into {TRANSLATE_LANGUAGES.find(l => l.code === targetLang)?.name}...</p>
+                        </div>
+                      ) : currentTransData?.paragraphs?.length ? (
+                        currentTransData.paragraphs.map((p, idx) => (
+                          <p key={`trans-p-${idx}`} className={`p-2 rounded-lg ${styles.buttonBg}/60 hover:${styles.buttonBg} transition-colors border ${styles.buttonBorder}`}>
+                            {p.translated}
+                          </p>
+                        ))
+                      ) : (
+                        currentTransData?.text || "Translating text..."
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1091,7 +1264,7 @@ export default function Reader({
             </div>
           </div>
         ) : currentViewMode === 'translated' ? (
-          /* 3. Full Translated Single Language Edition */
+          /* 4. Full Translated Single Language Edition */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-12 px-6 md:px-16 flex flex-col transition-colors duration-300 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
               <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
@@ -1153,10 +1326,10 @@ export default function Reader({
             </div>
           </div>
         ) : currentViewMode === 'epub' ? (
-          /* 4. Original EPUB View */
+          /* 5. Original EPUB View */
           <div ref={viewerRef} className={`w-full h-full relative p-4 ${styles.bg}`} />
         ) : (
-          /* 5. Default Reflowable Full Book View */
+          /* 6. Default Reflowable Full Book View with Custom Language Script Styling */
           <div className={`w-full min-h-full ${styles.bg} ${styles.text} py-10 px-4 md:px-12 flex flex-col transition-colors duration-300 border-0`}>
             <div className="max-w-3xl mx-auto flex-1 flex flex-col justify-between space-y-8 w-full">
               
@@ -1172,19 +1345,19 @@ export default function Reader({
 
                       <h2 
                         className={`text-2xl md:text-3xl font-black tracking-tight ${styles.headingText}`}
-                        dir={isBookRtl ? 'rtl' : 'ltr'}
-                        style={{ fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
+                        dir={effectiveIsRtl ? 'rtl' : 'ltr'}
+                        style={{ fontFamily: effectiveFontFamily }}
                       >
                         {ch.chapter}
                       </h2>
 
                       <div 
-                        className={`leading-relaxed whitespace-pre-line pt-2 space-y-4 ${isBookRtl ? 'text-right' : 'text-justify'}`}
-                        dir={isBookRtl ? 'rtl' : 'ltr'}
+                        className={`leading-relaxed whitespace-pre-line pt-2 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                        dir={effectiveIsRtl ? 'rtl' : 'ltr'}
                         style={{ 
                           fontSize: `${fontSize}px`, 
-                          fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
-                          lineHeight: isBookRtl ? 2.4 : 1.85 
+                          fontFamily: effectiveFontFamily,
+                          lineHeight: effectiveLineHeight 
                         }}
                       >
                         {ch.text}
@@ -1198,8 +1371,8 @@ export default function Reader({
                   <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
                     <h2 
                       className={`text-xl md:text-2xl font-black tracking-tight ${styles.headingText}`}
-                      dir={isBookRtl ? 'rtl' : 'ltr'}
-                      style={{ fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily }}
+                      dir={effectiveIsRtl ? 'rtl' : 'ltr'}
+                      style={{ fontFamily: effectiveFontFamily }}
                     >
                       {currentChapterObj.chapter}
                     </h2>
@@ -1217,12 +1390,12 @@ export default function Reader({
                   </div>
                   
                   <div 
-                    className={`leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 ${isBookRtl ? 'text-right' : 'text-justify'}`}
-                    dir={isBookRtl ? 'rtl' : 'ltr'}
+                    className={`leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                    dir={effectiveIsRtl ? 'rtl' : 'ltr'}
                     style={{ 
                       fontSize: `${fontSize}px`, 
-                      fontFamily: isBookRtl ? "'Noto Nastaliq Urdu', 'Amiri', serif" : fontFamily,
-                      lineHeight: isBookRtl ? 2.4 : 1.85 
+                      fontFamily: effectiveFontFamily,
+                      lineHeight: effectiveLineHeight 
                     }}
                   >
                     {currentChapterObj.text || "No content found in this section."}

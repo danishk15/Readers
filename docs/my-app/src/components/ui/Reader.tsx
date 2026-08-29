@@ -321,15 +321,14 @@ export default function Reader({
   const { resolvedTheme } = useTheme();
   const styles = resolvedTheme === 'dark' ? MIDNIGHT_INK_THEME : WARM_PARCHMENT_THEME;
 
-  // EPUB.js background loader & spine extractor
+  // Background EPUB Spine Extractor (extracts all authentic chapters for Reflowable/Bilingual/Translated modes)
   useEffect(() => {
-    if (!resolvedBookUrl || isPdf || currentViewMode !== 'epub') return;
-    if (!viewerRef.current) return;
+    if (!resolvedBookUrl || isPdf) return;
 
     let book: any = null;
     let isDestroyed = false;
 
-    const loadEpub = async () => {
+    const extractEpubChapters = async () => {
       try {
         const isExternal = resolvedBookUrl && 
           (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
@@ -340,9 +339,9 @@ export default function Reader({
           : resolvedBookUrl;
 
         const response = await fetch(resolvedUrl);
-        if (!response.ok) throw new Error('EPUB fetch failed');
+        if (!response.ok) return;
         const buffer = await response.arrayBuffer();
-        if (isDestroyed || !viewerRef.current) return;
+        if (isDestroyed) return;
 
         book = ePub(buffer);
 
@@ -350,8 +349,9 @@ export default function Reader({
           if (isDestroyed) return;
           try {
             const spine = await book.loaded.spine;
+            if (!spine || !spine.spineItems) return;
             const tempChapters: AuthenticBookChapter[] = [];
-            const maxItems = Math.min(spine.spineItems.length, 120);
+            const maxItems = Math.min(spine.spineItems.length, 150);
 
             for (let i = 0; i < maxItems; i++) {
               if (isDestroyed) return;
@@ -376,6 +376,45 @@ export default function Reader({
             }
           } catch {}
         });
+      } catch (err) {
+        console.warn('EPUB chapter extraction skipped:', err);
+      }
+    };
+
+    extractEpubChapters();
+
+    return () => {
+      isDestroyed = true;
+      if (book && currentViewMode !== 'epub') {
+        try { book.destroy(); } catch {}
+      }
+    };
+  }, [resolvedBookUrl, isPdf, currentViewMode]);
+
+  // EPUB.js Rendition Loader for Raw EPUB View
+  useEffect(() => {
+    if (!resolvedBookUrl || isPdf || currentViewMode !== 'epub') return;
+    if (!viewerRef.current) return;
+
+    let book: any = null;
+    let isDestroyed = false;
+
+    const loadEpubRendition = async () => {
+      try {
+        const isExternal = resolvedBookUrl && 
+          (resolvedBookUrl.startsWith('http://') || resolvedBookUrl.startsWith('https://')) && 
+          (typeof window !== 'undefined' && !resolvedBookUrl.startsWith(window.location.origin));
+          
+        const resolvedUrl = isExternal 
+          ? `/api/books/proxy?url=${encodeURIComponent(resolvedBookUrl)}` 
+          : resolvedBookUrl;
+
+        const response = await fetch(resolvedUrl);
+        if (!response.ok) throw new Error('EPUB fetch failed');
+        const buffer = await response.arrayBuffer();
+        if (isDestroyed || !viewerRef.current) return;
+
+        book = ePub(buffer);
 
         const rendition = book.renderTo(viewerRef.current, {
           width: '100%',
@@ -407,7 +446,7 @@ export default function Reader({
       }
     };
 
-    loadEpub();
+    loadEpubRendition();
 
     return () => {
       isDestroyed = true;

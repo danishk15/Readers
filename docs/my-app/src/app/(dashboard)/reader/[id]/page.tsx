@@ -157,6 +157,11 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
           title={book.title} 
           author={book.author} 
           description={book.description} 
+          source={book.source}
+          iaId={book.iaId}
+          previewLink={book.previewLink}
+          infoLink={book.infoLink}
+          readMode={book.readMode}
           customChapters={book.chapters}
         />
       </div>

@@ -90,7 +90,7 @@ export function getAuthenticBookChapters(
     }
   }
 
-  // 2. Language-Specific Literary Generators with Clean Description Ingestion
+  // 3. Language-Specific Literary Generators with Clean Description Ingestion
   const displayTitle = stripHtml(title || 'Literary Masterpiece Edition');
   const displayAuthor = stripHtml(author || 'Renowned Author');
   const desc = cleanDesc;
@@ -100,21 +100,17 @@ export function getAuthenticBookChapters(
   const isHindi = /[\u0900-\u097F]/.test(displayTitle) || /[\u0900-\u097F]/.test(desc) || 
                   cleanTitle.includes('ka ') || cleanTitle.includes(' ki ') || cleanTitle.includes(' ke ') || 
                   cleanTitle.includes('ek din') || cleanTitle.includes('kahani');
-  const isSpanish = displayTitle.toLowerCase().includes(' de ') || displayTitle.toLowerCase().includes('el ') || displayTitle.toLowerCase().includes('la ');
-  const isFrench = displayTitle.toLowerCase().includes(' le ') || displayTitle.toLowerCase().includes(' la ') || displayTitle.toLowerCase().includes(' les ');
-  const isGerman = displayTitle.toLowerCase().includes(' der ') || displayTitle.toLowerCase().includes(' die ') || displayTitle.toLowerCase().includes(' das ');
-  const isRussian = /[\u0400-\u04FF]/.test(displayTitle) || /[\u0400-\u04FF]/.test(desc);
 
-  // Urdu Generation
+  // Urdu Generation (Rich Comprehensive Multi-Chapter Edition)
   if (isUrdu) {
     return [
       {
-        chapter: `پیش لفظ: ${displayTitle} کا تعارف و پس منظر`,
+        chapter: `پیش لفظ: ${displayTitle} کا تعارف و فکری پس منظر`,
         text: `کتاب "${displayTitle}" مصنف "${displayAuthor}" کا ایک گراں قدر ادبی، اخلاقی اور فکری شاہکار ہے۔ یہ تصنیف قارئین کو روحانی بصیرت، سماجی حقیقت پسندی اور انسانی جذبوں کے ایک عمیق سفر پر لے جاتی ہے۔
 
-${desc ? `خلاصۂ کتاب و بنیادی خاکہ:\n${desc}\n\n` : ''}مصنف نے اپنے گہرے مشاہدات اور انسانی نفسیات کے رازوں کو اس انداز میں قلمبند کیا ہے کہ قاری ہر صفحے پر کہانی کے کرداروں کے ہمراہ خود کو چلتا ہوا محسوس کرتا ہے۔
+${desc ? `خلاصۂ تصنیف و بنیادی خاکہ:\n${desc}\n\n` : ''}مصنف نے اپنے گہرے مشاہدات اور انسانی نفسیات کے رازوں کو اس انداز میں قلمبند کیا ہے کہ قاری ہر صفحے پر کہانی کے کرداروں کے ہمراہ خود کو چلتا ہوا محسوس کرتا ہے۔
 
-یہ نسخہ کوئل ہاک (QuillHawk) لائبریری کے قارئین کے لیے مکمل ادبی مطالعے اور فکری استفادے کے لیے پیش کیا گیا ہے۔`
+یہ نسخہ کوئل ہاک (QuillHawk) لائبریری کے قارئین کے لیے مکمل ادبی مطالعے، فکری مباحث اور تشریح کے لیے پیش کیا گیا ہے۔`
       },
       {
         chapter: `باب اول: آغازِ داستان اور کردار نگاری`,
@@ -141,7 +137,7 @@ ${displayAuthor} نے اس اختتام کو محض ایک روایتی انجا
     ];
   }
 
-  // Hindi Generation
+  // Hindi Generation (Rich Comprehensive Multi-Chapter Edition)
   if (isHindi) {
     return [
       {

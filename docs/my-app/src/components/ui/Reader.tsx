@@ -7,7 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { 
   BookOpen, Globe, Languages, Volume2, VolumeX, Sparkles, Copy, Check, 
   ArrowRight, ArrowLeft, Search, List, AlignJustify, BookMarked, 
-  Settings2, Eye, Compass, ChevronDown, ChevronRight, X, Play, Pause,
+  Settings2, Eye, Compass, ChevronDown, ChevronRight, ChevronUp, X, Play, Pause,
   Share2, Maximize2, Minimize2, Type, Palette, ArrowLeftRight,
   SkipBack, SkipForward, Music, Radio, Sliders, Volume1, Bookmark,
   BookA, Trash2, HelpCircle, Download, FileText, CheckCheck, Lightbulb
@@ -192,6 +192,10 @@ export default function Reader({
   // Drawer and Modal States
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [inBookSearchQuery, setInBookSearchQuery] = useState('');
+  const [activeSearchMatchIdx, setActiveSearchMatchIdx] = useState(0);
+  const [isSearchDrawerExpanded, setIsSearchDrawerExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isLangStudioOpen, setIsLangStudioOpen] = useState(false);
   const [isVocabModalOpen, setIsVocabModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -501,6 +505,149 @@ export default function Reader({
       text: transliterateScript(currentChapterObj.text)
     };
   }, [currentChapterObj]);
+
+  // Full-Text In-Book Content Search Matches
+  interface SearchMatch {
+    id: string;
+    chapterIndex: number;
+    chapterTitle: string;
+    paragraphIndex: number;
+    matchPos: number;
+    snippetBefore: string;
+    matchedText: string;
+    snippetAfter: string;
+  }
+
+  const searchMatches: SearchMatch[] = useMemo(() => {
+    const q = inBookSearchQuery.trim();
+    if (!q || q.length < 2) return [];
+
+    const results: SearchMatch[] = [];
+    const lowerQ = q.toLowerCase();
+
+    activeChapters.forEach((ch, chIdx) => {
+      const paras = (ch.text || '').split(/\n\s*\n/).filter(p => p.trim());
+      paras.forEach((para, pIdx) => {
+        const lowerPara = para.toLowerCase();
+        let pos = 0;
+        let matchCount = 0;
+        while ((pos = lowerPara.indexOf(lowerQ, pos)) !== -1 && matchCount < 25) {
+          const start = Math.max(0, pos - 30);
+          const end = Math.min(para.length, pos + q.length + 30);
+
+          results.push({
+            id: `match-${chIdx}-${pIdx}-${pos}`,
+            chapterIndex: chIdx,
+            chapterTitle: ch.chapter || `Chapter ${chIdx + 1}`,
+            paragraphIndex: pIdx,
+            matchPos: pos,
+            snippetBefore: (start > 0 ? '...' : '') + para.substring(start, pos),
+            matchedText: para.substring(pos, pos + q.length),
+            snippetAfter: para.substring(pos + q.length, end) + (end < para.length ? '...' : '')
+          });
+
+          pos += q.length;
+          matchCount++;
+        }
+      });
+    });
+
+    return results;
+  }, [inBookSearchQuery, activeChapters]);
+
+  // Reset active match index when query changes
+  useEffect(() => {
+    setActiveSearchMatchIdx(0);
+  }, [inBookSearchQuery]);
+
+  const goToSearchMatch = useCallback((idx: number) => {
+    if (idx < 0 || idx >= searchMatches.length) return;
+    setActiveSearchMatchIdx(idx);
+    const match = searchMatches[idx];
+    if (match) {
+      setFallbackPage(match.chapterIndex + 1);
+      setTimeout(() => {
+        const el = document.getElementById(`reader-para-${match.chapterIndex}-${match.paragraphIndex}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 120);
+    }
+  }, [searchMatches]);
+
+  const goToNextSearchMatch = useCallback(() => {
+    if (searchMatches.length === 0) return;
+    const nextIdx = (activeSearchMatchIdx + 1) % searchMatches.length;
+    goToSearchMatch(nextIdx);
+  }, [activeSearchMatchIdx, searchMatches.length, goToSearchMatch]);
+
+  const goToPrevSearchMatch = useCallback(() => {
+    if (searchMatches.length === 0) return;
+    const prevIdx = (activeSearchMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+    goToSearchMatch(prevIdx);
+  }, [activeSearchMatchIdx, searchMatches.length, goToSearchMatch]);
+
+  // Global search shortcut (Ctrl+F / Cmd+F / Esc)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 80);
+      } else if (e.key === 'Escape') {
+        if (isSearchOpen) setIsSearchOpen(false);
+        if (isTocOpen) setIsTocOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSearchOpen, isTocOpen]);
+
+  // In-Text Match Highlighting Renderer
+  const renderHighlightedText = useCallback((text: string, chIdx: number, pIdx: number) => {
+    const q = inBookSearchQuery.trim();
+    if (!q || q.length < 2) return text;
+
+    const parts: React.ReactNode[] = [];
+    const lowerText = text.toLowerCase();
+    const lowerQ = q.toLowerCase();
+    let lastIdx = 0;
+    let matchPos = 0;
+    let occIdx = 0;
+
+    while ((matchPos = lowerText.indexOf(lowerQ, lastIdx)) !== -1) {
+      if (matchPos > lastIdx) {
+        parts.push(text.substring(lastIdx, matchPos));
+      }
+      const matchedSubstring = text.substring(matchPos, matchPos + q.length);
+      
+      const currentActiveMatch = searchMatches[activeSearchMatchIdx];
+      const isThisActive = currentActiveMatch && 
+        currentActiveMatch.chapterIndex === chIdx && 
+        currentActiveMatch.paragraphIndex === pIdx;
+
+      parts.push(
+        <mark 
+          key={`hl-${chIdx}-${pIdx}-${matchPos}-${occIdx}`} 
+          className={isThisActive 
+            ? "bg-amber-400 text-slate-950 px-1 py-0.5 rounded font-black shadow-lg ring-2 ring-amber-300 animate-pulse" 
+            : "bg-amber-400/35 text-amber-200 px-1 py-0.5 rounded font-semibold border border-amber-500/50"
+          }
+        >
+          {matchedSubstring}
+        </mark>
+      );
+
+      lastIdx = matchPos + q.length;
+      occIdx++;
+    }
+
+    if (lastIdx < text.length) {
+      parts.push(text.substring(lastIdx));
+    }
+
+    return parts;
+  }, [inBookSearchQuery, searchMatches, activeSearchMatchIdx]);
 
   // Handle Text Selection for Floating Word Translator Popover
   const handleTextSelection = useCallback(async () => {
@@ -992,6 +1139,152 @@ export default function Reader({
               )}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Table of Contents / Chapters Drawer */}
+      {isTocOpen && (
+        <div className={`absolute top-16 left-0 w-full sm:w-80 h-[calc(100%-4rem)] ${styles.cardBg} border-r ${styles.cardBorder} shadow-2xl z-30 flex flex-col p-5 space-y-4 animate-in slide-in-from-left duration-200 overflow-y-auto`}>
+          <div className={`flex items-center justify-between border-b ${styles.divider} pb-3`}>
+            <div className="flex items-center gap-2">
+              <List className="w-4 h-4 text-primary" />
+              <h3 className={`text-sm font-black uppercase tracking-wider ${styles.headingText}`}>Table of Contents</h3>
+            </div>
+            <button onClick={() => setIsTocOpen(false)} className={`p-1 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
+            {activeChapters.map((ch, idx) => (
+              <button
+                key={`toc-item-${idx}`}
+                onClick={() => {
+                  setFallbackPage(idx + 1);
+                  setIsTocOpen(false);
+                }}
+                className={`w-full text-left p-3 rounded-xl border text-xs transition flex items-center justify-between ${
+                  fallbackPage === idx + 1
+                    ? 'bg-primary text-white border-primary shadow font-bold'
+                    : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText} hover:${styles.text}`
+                }`}
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="text-[10px] uppercase font-mono block opacity-70">Section {idx + 1}</span>
+                  <p className="truncate font-semibold">{ch.chapter || `Chapter ${idx + 1}`}</p>
+                </div>
+                {fallbackPage === idx + 1 && <Check className="w-3.5 h-3.5 shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* In-Book Full-Text Search Floating Toolbar & Occurrence Drawer */}
+      {isSearchOpen && (
+        <div className="absolute top-18 right-4 md:right-8 z-30 flex flex-col items-end gap-2 max-w-sm md:max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
+          <div className={`w-full ${styles.cardBg}/95 backdrop-blur-xl border ${styles.cardBorder} p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-2`}>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Search className="w-4 h-4 text-primary shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={inBookSearchQuery}
+                onChange={(e) => setInBookSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) goToPrevSearchMatch();
+                    else goToNextSearchMatch();
+                  }
+                }}
+                placeholder="Search inside book (Enter / Shift+Enter)..."
+                className={`w-full bg-transparent text-xs font-semibold ${styles.text} placeholder:${styles.mutedText} focus:outline-none`}
+              />
+              {inBookSearchQuery && (
+                <button onClick={() => setInBookSearchQuery('')} className={`p-1 rounded text-slate-400 hover:${styles.text}`}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${searchMatches.length > 0 ? 'bg-primary/20 text-primary border border-primary/30' : inBookSearchQuery.trim().length >= 2 ? 'bg-rose-950/40 text-rose-400 border border-rose-800/40' : `${styles.buttonBg} ${styles.mutedText}`}`}>
+                {searchMatches.length > 0 ? `${activeSearchMatchIdx + 1}/${searchMatches.length}` : (inBookSearchQuery.trim().length >= 2 ? '0 matches' : 'Search')}
+              </span>
+
+              <button
+                onClick={goToPrevSearchMatch}
+                disabled={searchMatches.length === 0}
+                className={`p-1.5 rounded-lg border transition ${styles.buttonBg} ${styles.buttonBorder} ${searchMatches.length === 0 ? 'opacity-40 cursor-not-allowed' : `hover:${styles.text}`}`}
+                title="Previous match (Shift+Enter)"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={goToNextSearchMatch}
+                disabled={searchMatches.length === 0}
+                className={`p-1.5 rounded-lg border transition ${styles.buttonBg} ${styles.buttonBorder} ${searchMatches.length === 0 ? 'opacity-40 cursor-not-allowed' : `hover:${styles.text}`}`}
+                title="Next match (Enter)"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => setIsSearchDrawerExpanded(!isSearchDrawerExpanded)}
+                disabled={searchMatches.length === 0}
+                className={`p-1.5 rounded-lg border transition ${isSearchDrawerExpanded ? 'bg-primary text-white border-primary' : `${styles.buttonBg} ${styles.buttonBorder} ${styles.mutedText}`} ${searchMatches.length === 0 ? 'opacity-40 cursor-not-allowed' : `hover:${styles.text}`}`}
+                title="View all match occurrences list"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => setIsSearchOpen(false)}
+                className={`p-1.5 rounded-lg hover:${styles.buttonBg} ${styles.mutedText}`}
+                title="Close search (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Expanded Match Snippets Drawer */}
+          {isSearchDrawerExpanded && searchMatches.length > 0 && (
+            <div className={`w-full max-h-72 overflow-y-auto ${styles.cardBg}/95 backdrop-blur-xl border ${styles.cardBorder} p-3 rounded-2xl shadow-2xl space-y-2 animate-in slide-in-from-top-2 duration-150`}>
+              <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                  All Occurrences ({searchMatches.length})
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono">Click to jump</span>
+              </div>
+              <div className="space-y-1.5">
+                {searchMatches.map((m, mIdx) => (
+                  <button
+                    key={m.id}
+                    onClick={() => goToSearchMatch(mIdx)}
+                    className={`w-full text-left p-2.5 rounded-xl border text-xs transition flex flex-col space-y-1 ${
+                      activeSearchMatchIdx === mIdx
+                        ? 'bg-primary/20 border-primary/50 text-white'
+                        : `${styles.buttonBg}/60 ${styles.buttonBorder} hover:bg-surface-hover ${styles.text}`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-bold text-primary">
+                      <span>{m.chapterTitle}</span>
+                      <span className="font-mono">#{mIdx + 1}</span>
+                    </div>
+                    <p className="text-[11px] leading-snug line-clamp-2 text-slate-300">
+                      {m.snippetBefore}
+                      <span className="bg-amber-400 text-slate-950 font-black px-1 rounded mx-0.5">
+                        {m.matchedText}
+                      </span>
+                      {m.snippetAfter}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1805,7 +2098,7 @@ export default function Reader({
                       </h2>
 
                       <div 
-                        className={`leading-relaxed whitespace-pre-line pt-2 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                        className={`leading-relaxed pt-2 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
                         dir={effectiveIsRtl ? 'rtl' : 'ltr'}
                         style={{ 
                           fontSize: `${fontSize}px`, 
@@ -1813,7 +2106,15 @@ export default function Reader({
                           lineHeight: effectiveLineHeight 
                         }}
                       >
-                        {ch.text}
+                        {(ch.text || '').split(/\n\s*\n/).filter(p => p.trim()).map((para, pIdx) => (
+                          <p 
+                            key={`cont-p-${idx}-${pIdx}`} 
+                            id={`reader-para-${idx}-${pIdx}`}
+                            className="transition-colors duration-200"
+                          >
+                            {renderHighlightedText(para, idx, pIdx)}
+                          </p>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -1843,7 +2144,7 @@ export default function Reader({
                   </div>
                   
                   <div 
-                    className={`leading-relaxed whitespace-pre-line pt-2 transition-all duration-300 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
+                    className={`leading-relaxed pt-2 transition-all duration-300 space-y-4 ${effectiveIsRtl ? 'text-right' : 'text-justify'}`}
                     dir={effectiveIsRtl ? 'rtl' : 'ltr'}
                     style={{ 
                       fontSize: `${fontSize}px`, 
@@ -1851,7 +2152,19 @@ export default function Reader({
                       lineHeight: effectiveLineHeight 
                     }}
                   >
-                    {currentChapterObj.text || "No content found in this section."}
+                    {currentChapterObj.text ? (
+                      currentChapterObj.text.split(/\n\s*\n/).filter(p => p.trim()).map((para, pIdx) => (
+                        <p 
+                          key={`page-p-${fallbackPage - 1}-${pIdx}`} 
+                          id={`reader-para-${fallbackPage - 1}-${pIdx}`}
+                          className="transition-colors duration-200"
+                        >
+                          {renderHighlightedText(para, fallbackPage - 1, pIdx)}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-slate-500 italic">No content found in this section.</p>
+                    )}
                   </div>
 
                   <div className={`text-center text-xs ${styles.mutedText} font-semibold font-mono border-t ${styles.divider} pt-4 flex justify-between items-center`}>

@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { 
   Search, Globe, Award, Sparkles, FolderOpen, ArrowRight, Lock, 
   BookOpen, Star, Sparkle, LayoutGrid, Library, Download, CheckCircle2,
-  Languages, Type, Volume2, Bookmark, RefreshCw, Send, Check
+  Languages, Type, Volume2, Bookmark, RefreshCw, Send, Check, X, Filter
 } from 'lucide-react';
 import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllCachedBooks } from '@/utils/offlineStorage';
 import { stripHtml } from '@/utils/textSanitizer';
@@ -671,12 +671,137 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             </span>
             <input 
               type="text" 
-              placeholder={activeTab === 'languages' ? 'Search by title, author, or script...' : 'Search bookshelf...'}
+              placeholder={
+                activeTab === 'online' 
+                  ? 'Search millions of books, authors...' 
+                  : activeTab === 'languages' 
+                    ? 'Search by title, author, or script...' 
+                    : 'Search bookshelf...'
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
+              className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-9 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
             />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-200"
+                title="Clear search query"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Interactive Category, Language, and Quick-Search Tags Filter Bar */}
+      <div className="space-y-3 bg-slate-950/60 p-4 md:p-5 rounded-3xl border border-slate-800/80 shadow-xl backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
+            <button
+              onClick={() => setCategory('')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                category === ''
+                  ? 'bg-primary text-white shadow-md shadow-primary/25'
+                  : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              All Genres
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={`cat-pill-${cat}`}
+                onClick={() => setCategory(category === cat ? '' : cat)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  category === cat
+                    ? 'bg-primary text-white shadow-md shadow-primary/25'
+                    : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Language & Version Filters */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Language Selector */}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer hover:border-slate-700 transition shadow-inner"
+            >
+              {languages.map((l) => (
+                <option key={`opt-filter-lang-${l.code}`} value={l.code} className="bg-slate-900 text-slate-200">
+                  {l.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Version Type Selector */}
+            <select
+              value={versionType}
+              onChange={(e) => setVersionType(e.target.value as any)}
+              className="bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer hover:border-slate-700 transition shadow-inner"
+            >
+              <option value="all" className="bg-slate-900 text-slate-200">📚 All Editions</option>
+              <option value="original" className="bg-slate-900 text-slate-200">📜 Original Text</option>
+              <option value="translation" className="bg-slate-900 text-slate-200">🌐 Translations</option>
+            </select>
+
+            {(category || language || versionType !== 'all' || searchQuery) && (
+              <button
+                onClick={() => {
+                  setCategory('');
+                  setLanguage('');
+                  setVersionType('all');
+                  setSearchQuery('');
+                  setSelectedHubLang('');
+                }}
+                className="text-xs text-rose-400 hover:text-rose-300 font-bold px-3 py-2 rounded-xl border border-rose-500/30 bg-rose-950/20 transition flex items-center gap-1.5 shadow"
+                title="Reset all search and genre filters"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset Filters</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick-Search Popular Book and Author Tags */}
+        <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-400 pt-2 border-t border-slate-900">
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-400" />
+            <span>Popular:</span>
+          </span>
+          {[
+            { label: 'Mirza Ghalib', q: 'ghalib' },
+            { label: 'Allama Iqbal', q: 'iqbal' },
+            { label: 'Munshi Premchand', q: 'premchand' },
+            { label: 'Saadat Hasan Manto', q: 'manto' },
+            { label: 'Pride and Prejudice', q: 'pride and prejudice' },
+            { label: 'The Great Gatsby', q: 'great gatsby' },
+            { label: 'Mawlana Rumi', q: 'rumi' },
+            { label: 'Dostoevsky', q: 'dostoevsky' },
+            { label: '1001 Nights', q: 'arabian nights' },
+            { label: 'Don Quixote', q: 'don quixote' },
+            { label: 'Shakespeare', q: 'shakespeare' }
+          ].map((tag) => (
+            <button
+              key={`tag-${tag.label}`}
+              onClick={() => {
+                setSearchQuery(tag.q);
+                if (activeTab !== 'online' && activeTab !== 'languages') {
+                  setActiveTab('online');
+                }
+              }}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-900/90 hover:bg-primary hover:text-white border border-slate-800/80 text-slate-300 transition shadow-sm"
+            >
+              {tag.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -935,12 +1060,43 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             
             if (booksToRender.length === 0) {
               return (
-                <div className="py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
-                  <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
-                  <h3 className="font-bold text-slate-400">No books found in this section</h3>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                    Try adjusting your language filter or search keywords.
-                  </p>
+                <div className="py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/40 backdrop-blur-sm space-y-4 p-6">
+                  <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-200 text-base">
+                      {searchQuery.trim() ? `No books found matching "${searchQuery}"` : 'No books found in this section'}
+                    </h3>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      {activeTab === 'local' && searchQuery.trim() 
+                        ? 'This title is not in your personal bookshelf yet. Would you like to search millions of books in the Global Catalog?'
+                        : 'Try adjusting your genre, language, or keyword filters.'}
+                    </p>
+                  </div>
+                  {activeTab === 'local' && searchQuery.trim() ? (
+                    <Button
+                      onClick={() => setActiveTab('online')}
+                      className="px-6 py-2.5 text-xs font-black bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/25 gap-2 mx-auto inline-flex"
+                    >
+                      <Search className="w-4 h-4" />
+                      <span>Search Global Catalog for "{searchQuery}"</span>
+                    </Button>
+                  ) : (category || language || versionType !== 'all' || searchQuery) ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setCategory('');
+                        setLanguage('');
+                        setVersionType('all');
+                        setSearchQuery('');
+                        setSelectedHubLang('');
+                      }}
+                      className="px-5 py-2 text-xs font-bold gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Clear All Filters</span>
+                    </Button>
+                  ) : null}
                 </div>
               );
             }
@@ -1030,12 +1186,43 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
 
             if (booksToRender.length === 0) {
               return (
-                <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/20 backdrop-blur-sm space-y-3">
-                  <BookOpen className="w-10 h-10 text-slate-700 mx-auto" />
-                  <h3 className="font-bold text-slate-400">No books found</h3>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                    Try adjusting your language filter or search query.
-                  </p>
+                <div className="col-span-full py-16 text-center border border-dashed border-slate-850 rounded-3xl bg-slate-950/40 backdrop-blur-sm space-y-4 p-6">
+                  <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-200 text-base">
+                      {searchQuery.trim() ? `No books found matching "${searchQuery}"` : 'No books found in this section'}
+                    </h3>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      {activeTab === 'local' && searchQuery.trim() 
+                        ? 'This title is not in your personal bookshelf yet. Would you like to search millions of books in the Global Catalog?'
+                        : 'Try adjusting your genre, language, or keyword filters.'}
+                    </p>
+                  </div>
+                  {activeTab === 'local' && searchQuery.trim() ? (
+                    <Button
+                      onClick={() => setActiveTab('online')}
+                      className="px-6 py-2.5 text-xs font-black bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/25 gap-2 mx-auto inline-flex"
+                    >
+                      <Search className="w-4 h-4" />
+                      <span>Search Global Catalog for "{searchQuery}"</span>
+                    </Button>
+                  ) : (category || language || versionType !== 'all' || searchQuery) ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setCategory('');
+                        setLanguage('');
+                        setVersionType('all');
+                        setSearchQuery('');
+                        setSelectedHubLang('');
+                      }}
+                      className="px-5 py-2 text-xs font-bold gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Clear All Filters</span>
+                    </Button>
+                  ) : null}
                 </div>
               );
             }

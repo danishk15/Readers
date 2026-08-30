@@ -173,6 +173,18 @@ function isNonEnglishScript(str?: string): boolean {
 
 function detectFamousGutenbergId(title: string): string | null {
   const t = title.toLowerCase().trim();
+  // Shakespeare
+  if (t.includes('hamlet')) return '1524';
+  if (t.includes('romeo and juliet') || t.includes('romeo & juliet')) return '1513';
+  if (t.includes('macbeth')) return '1533';
+  if (t.includes('midsummer night') || t.includes('midsummer-night')) return '1514';
+  if (t.includes('othello')) return '1531';
+  if (t.includes('king lear')) return '1532';
+  if (t.includes('the tempest') || (t.includes('tempest') && t.includes('shakespeare'))) return '1540';
+  if (t.includes('julius caesar')) return '1522';
+  if (t.includes('shakespeare') && (t.includes('sonnet') || t.includes('poem'))) return '1041';
+
+  // Classics & Fiction
   if (t.includes('great gatsby') || t.includes('gatsby')) return '64317';
   if (t.includes('pride and prejudice') || t.includes('pride & prejudice')) return '1342';
   if (t.includes('frankenstein')) return '84';
@@ -183,16 +195,34 @@ function detectFamousGutenbergId(title: string): string | null {
   if (t.includes('hound of the baskervilles')) return '2852';
   if (t.includes('alice in wonderland') || t.includes('alice\'s adventures')) return '11';
   if (t.includes('war and peace')) return '2600';
+  if (t.includes('anna karenina')) return '1399';
+  if (t.includes('death of ivan ilyich') || t.includes('ivan ilyich')) return '2825';
   if (t.includes('crime and punishment')) return '2554';
+  if (t.includes('brothers karamazov')) return '28054';
+  if (t.includes('notes from underground')) return '600';
+  if (t.includes('the idiot') && (t.includes('dost') || !t.includes('guide'))) return '2638';
   if (t.includes('tale of two cities')) return '98';
   if (t.includes('great expectations')) return '1400';
-  if (t.includes('picture of dorian gray')) return '174';
+  if (t.includes('oliver twist')) return '730';
+  if (t.includes('david copperfield')) return '766';
+  if (t.includes('christmas carol')) return '46';
+  if (t.includes('count of monte cristo') || t.includes('monte cristo')) return '1184';
+  if (t.includes('three musketeers')) return '1257';
+  if (t.includes('picture of dorian gray') || t.includes('dorian gray')) return '174';
+  if (t.includes('importance of being earnest')) return '844';
   if (t.includes('around the world in 80 days') || t.includes('around the world in eighty days')) return '103';
+  if (t.includes('twenty thousand leagues') || t.includes('20,000 leagues')) return '164';
+  if (t.includes('journey to the center of the earth')) return '18857';
   if (t.includes('don quixote') || t.includes('don quijote')) return '996';
   if (t.includes('metamorphosis') && (t.includes('kafka') || !t.includes('ovid'))) return '5200';
+  if (t.includes('the trial') && t.includes('kafka')) return '7849';
   if (t.includes('art of war')) return '132';
-  if (t.includes('prince') && t.includes('machiavelli')) return '1232';
-  if (t.includes('republic') && t.includes('plato')) return '1497';
+  if (t.includes('the prince') && (t.includes('machiavelli') || !t.includes('frog'))) return '1232';
+  if (t.includes('republic') && (t.includes('plato') || !t.includes('banana'))) return '1497';
+  if (t.includes('symposium') && t.includes('plato')) return '1600';
+  if (t.includes('meditations') && (t.includes('aurelius') || t.includes('marcus'))) return '2680';
+  if (t.includes('thus spake zarathustra') || t.includes('thus spoke zarathustra')) return '1998';
+  if (t.includes('beyond good and evil')) return '4363';
   if (t.includes('secret of the self') || t.includes('asrar-e-khudi') || t.includes('asrar e khudi')) return '43881';
   if (t.includes('tale of the four durwesh') || t.includes('four dervishes')) return '16084';
   if (t.includes('faust')) return '14591';
@@ -200,24 +230,36 @@ function detectFamousGutenbergId(title: string): string | null {
   if (t.includes('jane eyre')) return '1260';
   if (t.includes('wuthering heights')) return '768';
   if (t.includes('time machine')) return '35';
+  if (t.includes('war of the worlds')) return '36';
   if (t.includes('invisible man') && !t.includes('ellison')) return '5230';
-  if (t.includes('odyssey') && t.includes('homer')) return '1727';
+  if (t.includes('odyssey') && (t.includes('homer') || !t.includes('2001'))) return '1727';
   if (t.includes('iliad') && t.includes('homer')) return '6130';
   if (t.includes('les miserables') || t.includes('les misérables')) return '135';
+  if (t.includes('hunchback of notre dame')) return '2610';
   if (t.includes('jungle book')) return '236';
   if (t.includes('treasure island')) return '120';
-  if (t.includes('anna karenina')) return '1399';
-  if (t.includes('emma') && t.includes('austen')) return '158';
+  if (t.includes('dr jekyll and mr hyde') || t.includes('jekyll')) return '43';
+  if (t.includes('kidnapped') && t.includes('stevenson')) return '421';
+  if (t.includes('emma') && (t.includes('austen') || !t.includes('watson'))) return '158';
   if (t.includes('sense and sensibility')) return '161';
+  if (t.includes('persuasion') && t.includes('austen')) return '105';
   if (t.includes('heart of darkness')) return '219';
   if (t.includes('yellow wallpaper')) return '1952';
   if (t.includes('dubliners')) return '2814';
   if (t.includes('ulysses') && t.includes('joyce')) return '4300';
-  if (t.includes('brothers karamazov')) return '28054';
+  if (t.includes('portrait of the artist')) return '4217';
   if (t.includes('siddhartha')) return '2500';
   if (t.includes('scarlet letter')) return '25344';
   if (t.includes('leaves of grass')) return '1322';
   if (t.includes('divine comedy') || t.includes('dante')) return '8800';
+  if (t.includes('robinson crusoe')) return '521';
+  if (t.includes('gulliver') || t.includes('gulliver\'s travels')) return '829';
+  if (t.includes('huckleberry finn') || t.includes('huck finn')) return '76';
+  if (t.includes('tom sawyer')) return '74';
+  if (t.includes('call of the wild')) return '215';
+  if (t.includes('white fang')) return '910';
+  if (t.includes('the raven') || (t.includes('poe') && t.includes('edgar'))) return '2147';
+  if (t.includes('origin of species') || (t.includes('darwin') && t.includes('species'))) return '1228';
   return null;
 }
 

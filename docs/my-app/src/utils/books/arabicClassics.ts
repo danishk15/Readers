@@ -1,11 +1,11 @@
 import { AuthenticBookEntry } from './urduClassics';
 
 export const ARABIC_CLASSICS: AuthenticBookEntry[] = [
-  // 1. ألف ليلة وليلة (Arabian Nights / One Thousand and One Nights)
+  // 1. ألف ليلة وليلة (Arabian Nights / One Thousand and One Nights - Classic-26 & 27)
   {
-    matchKeys: ['arabian nights', 'thousand and one nights', '1001 nights', 'alf layla', 'ألف ليلة وليلة', 'alf layla wa layla', 'classic-26', 'ia-thousandandoneni0000unse'],
+    matchKeys: ['arabian nights', 'thousand and one nights', '1001 nights', 'alf layla', 'ألف ليلة وليلة', 'alf layla wa layla', 'classic-26', 'classic-27', 'ia-thousandandoneni0000unse'],
     language: 'ar',
-    title: 'ألف ليلة وليلة (حكايات شهرزاد وشهريار)',
+    title: 'ألف ليلة وليلة (حكايات شهرزاد وشهريار - النسخة الكلاسيكية الكاملة)',
     author: 'التراث العربي الكلاسيكي (Classical Arabic Heritage)',
     chapters: [
       {
@@ -89,9 +89,9 @@ export const ARABIC_CLASSICS: AuthenticBookEntry[] = [
     ]
   },
 
-  // 2. النبي (The Prophet) - جبران خليل جبران
+  // 2. النبي (The Prophet) - جبران خليل جبران (Classic-28)
   {
-    matchKeys: ['the prophet', 'kahlil gibran', 'gibran', 'جبران خليل جبران', 'النبي', 'gibran kahlil gibran'],
+    matchKeys: ['the prophet', 'kahlil gibran', 'gibran', 'جبران خليل جبران', 'النبي', 'gibran kahlil gibran', 'classic-28'],
     language: 'ar',
     title: 'النبي (The Prophet - نصوص خالدة)',
     author: 'جبران خليل جبران (Kahlil Gibran)',

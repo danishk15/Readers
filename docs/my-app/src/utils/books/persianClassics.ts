@@ -1,9 +1,9 @@
 import { AuthenticBookEntry } from './urduClassics';
 
 export const PERSIAN_CLASSICS: AuthenticBookEntry[] = [
-  // 1. مثنوی معنوی (Masnavi-e-Manavi) - مولانا جلال الدین محمد رومی
+  // 1. مثنوی معنوی (Masnavi-e-Manavi) - مولانا جلال الدین محمد رومی (Classic-29)
   {
-    matchKeys: ['masnavi', 'rumi', 'jalaluddin rumi', 'مثنوی معنوی', 'مولانا رومی', 'mathnawi', 'rumi poetry'],
+    matchKeys: ['masnavi', 'rumi', 'jalaluddin rumi', 'مثنوی معنوی', 'مولانا رومی', 'mathnawi', 'rumi poetry', 'classic-29'],
     language: 'fa',
     title: 'مثنوی معنوی (دفتر اول: نی‌نامه و اسرار عشق الهی)',
     author: 'مولانا جلال‌الدین محمد بلخی رومی (Mawlana Rumi)',
@@ -75,9 +75,9 @@ export const PERSIAN_CLASSICS: AuthenticBookEntry[] = [
     ]
   },
 
-  // 2. دیوان حافظ شیرازی (Divan of Hafez)
+  // 2. دیوان حافظ شیرازی (Divan of Hafez - Classic-30)
   {
-    matchKeys: ['hafez', 'divan hafez', 'hafiz', 'دیوان حافظ', 'حافظ شیرازی', 'divan-e-hafez', 'ghazals of hafez'],
+    matchKeys: ['hafez', 'divan hafez', 'hafiz', 'دیوان حافظ', 'حافظ شیرازی', 'divan-e-hafez', 'ghazals of hafez', 'classic-30'],
     language: 'fa',
     title: 'دیوان خواجه شمس‌الدین حافظ شیرازی (غزلیات شورانگیز)',
     author: 'خواجه شمس‌الدین محمد حافظ شیرازی (Hafez Shirazi)',
@@ -148,9 +148,9 @@ export const PERSIAN_CLASSICS: AuthenticBookEntry[] = [
     ]
   },
 
-  // 3. بوستان و گلستان سعدی (Gulistan & Bustan of Saadi)
+  // 3. بوستان و گلستان سعدی (Gulistan of Saadi - Classic-31)
   {
-    matchKeys: ['saadi', 'gulistan', 'bustan', 'سعدی', 'گلستان سعدی', 'بوستان سعدی', 'saadi shirazi'],
+    matchKeys: ['saadi', 'gulistan', 'bustan', 'سعدی', 'گلستان سعدی', 'بوستان سعدی', 'saadi shirazi', 'classic-31'],
     language: 'fa',
     title: 'گلستان سعدی (درباب سیرت پادشاهان و اخلاق)',
     author: 'مصلح‌الدین شیخ سعدی شیرازی (Saadi Shirazi)',
@@ -177,6 +177,48 @@ export const PERSIAN_CLASSICS: AuthenticBookEntry[] = [
 
 ملک را بر وی رحمت آمد و از سر خون او درگذشت. وزیر دیگر که با او ضد بود گفت: ابنای جنس ما را نشاید در پیشگاه سلاطین جز به راستی سخن گفتن؛ این اسیر ملک را دشنام داد.
 ملک روی از این سخن درهم کشید و گفت: آن دروغ وی پسندیده‌تر آمد مرا از این راست که تو گفتی، که روی آن در خیر بود و بنیاد این در فساد!`
+      }
+    ]
+  },
+
+  // 4. رباعیات عمر خیام (Rubaiyat of Omar Khayyam - Persian & English)
+  {
+    matchKeys: ['rubaiyat', 'omar khayyam', 'khayyam', 'رباعیات عمر خیام', 'خیام', 'fitzgerald khayyam'],
+    language: 'fa',
+    title: 'رباعیات حکیم عمر خیام نیشابوری (Rubaiyat of Omar Khayyam)',
+    author: 'حکیم عمر خیام نیشابوری (Omar Khayyam)',
+    chapters: [
+      {
+        chapter: 'رباعیات ۱ تا ۵: غنیمت شمردن دم و گذر عمر',
+        text: `این قافلهٔ عمر عجب می‌گذرد
+دریاب دمی که با طرب می‌گذرد
+
+ساقی غم فردای حریفان چه خوری
+پیش آر پیاله را که شب می‌گذرد
+
+***
+
+خیام اگر ز باده مستی خوش باش
+با ماهرخی اگر نشستی خوش باش
+
+چون عاقبت کار جهان نیستی است
+انگار که نیستی، چو هستی خوش باش!`
+      },
+      {
+        chapter: 'رباعیات ۶ تا ۱۰: کوزه‌گری دهر و خشت خاک',
+        text: `در کارگه کوزه‌گری رفتم دوش
+دیدم دو هزار کوزه گویا و خموش
+
+ناگاه یکی کوزه برآورد خروش
+کو کوزه‌گر و کوزه‌خر و کوزه‌فروش؟
+
+***
+
+بر چهرهٔ گل نسیم نوروز خوش است
+در صحن چمن روی دل‌افروز خوش است
+
+از دی که گذشت هر چه گویی خوش نیست
+خوش باش و ز دی مگو که امروز خوش است!`
       }
     ]
   }

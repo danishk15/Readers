@@ -1,7 +1,7 @@
 /**
- * Authentic Book Content Registry
- * Complete unabridged and multi-chapter reading material for Hindi classics,
- * Urdu classics, world literature, philosophical masterpieces, and dynamic intelligent literary chapters.
+ * Authentic Book Content Registry & Universal Multi-Language Fallback Engine
+ * Complete unabridged and multi-chapter reading material for World literature,
+ * Urdu classics, Hindi classics, Arabic masterworks, Persian epics, and dynamic intelligent literary chapters.
  */
 
 import { URDU_CLASSICS, AuthenticBookChapter, AuthenticBookEntry } from './books/urduClassics';
@@ -14,11 +14,11 @@ import { stripHtml } from './textSanitizer';
 export type { AuthenticBookChapter, AuthenticBookEntry };
 
 export const AUTHENTIC_BOOK_REGISTRY: AuthenticBookEntry[] = [
-  ...HINDI_CLASSICS,
+  ...WORLD_CLASSICS,
   ...URDU_CLASSICS,
+  ...HINDI_CLASSICS,
   ...ARABIC_CLASSICS,
-  ...PERSIAN_CLASSICS,
-  ...WORLD_CLASSICS
+  ...PERSIAN_CLASSICS
 ];
 
 /**
@@ -53,10 +53,10 @@ export function getAuthenticBookChapters(
   const normTitle = normalizeKey(cleanTitle);
   const normAuthor = normalizeKey(cleanAuthor);
 
-  // 1. First Pass: Exact ID match (e.g. 'classic-7', 'classic-20', 'gutendex-1342')
+  // 1. First Pass: Exact ID match (e.g. 'classic-1', 'classic-7', 'classic-20', 'gutendex-1342')
   if (cleanId) {
     for (const entry of AUTHENTIC_BOOK_REGISTRY) {
-      if (entry.matchKeys.some(k => cleanId === k.toLowerCase().trim())) {
+      if (entry.matchKeys.some(k => cleanId === k.toLowerCase().trim() || normId === normalizeKey(k))) {
         if (entry.chapters && entry.chapters.length > 0) {
           return entry.chapters.map(ch => ({
             chapter: stripHtml(ch.chapter),
@@ -72,7 +72,7 @@ export function getAuthenticBookChapters(
     const isMatched = entry.matchKeys.some(key => {
       const k = key.toLowerCase().trim();
       const normK = normalizeKey(k);
-      if (!k) return false;
+      if (!k || !normK) return false;
       
       // Title exact or substring match
       if (normTitle && (normTitle === normK || normTitle.includes(normK) || (normK.length >= 4 && normTitle.includes(normK)))) return true;
@@ -105,7 +105,7 @@ export function getAuthenticBookChapters(
                   cleanTitle.includes('ka ') || cleanTitle.includes(' ki ') || cleanTitle.includes(' ke ') || 
                   cleanTitle.includes('ek din') || cleanTitle.includes('kahani');
 
-  // Urdu Generation (Rich Comprehensive Multi-Chapter Edition)
+  // Urdu Generation (Rich Comprehensive 5-Chapter Edition)
   if (isUrdu) {
     return [
       {
@@ -133,7 +133,13 @@ ${desc ? `خلاصۂ تصنیف و بنیادی خاکہ:\n${desc}\n\n` : ''}م�
 کرداروں کے اندرونی تضادات اور ضمیر کی پکار کہانی کو محض ایک واقعہ نگاری سے بلند کر کے ایک آفاقی فلسفے کا روپ بخشتی ہے۔`
       },
       {
-        chapter: `باب سوم: اوجِ کمال اور عبرت انگیز اختتام`,
+        chapter: `باب سوم: اوجِ کمال اور عبرت انگیز موڑ`,
+        text: `کہانی اپنے سب سے جذباتی اور فکری موڑ پر پہنچتی ہے۔ یہاں آزمائشوں کی شدت اپنے عروج کو چھوتی ہے اور ہر کردار اپنے فیصلوں کی حقیقی قیمت چکاتا ہے۔
+
+مصنف نے واضح کیا ہے کہ زندگی کا سب سے بڑا حسن اس کے نشیب و فراز میں چھپا ہے، اور جو انسان درد اور سچائی کو قبول کرتا ہے وہی منزلِ مقصود کو پاتا ہے۔`
+      },
+      {
+        chapter: `باب چہارم: اختتامیہ و بصیرت`,
         text: `کہانی اپنے آخری اور فیصلہ کن مرحلے میں داخل ہوتی ہے جہاں تمام الجھے ہوئے دھاگے سلجھنے لگتے ہیں۔ سچ اور باطل، قربانی اور مفاد پرستی کا حتمی فیصلہ سامنے آتا ہے۔
 
 ${displayAuthor} نے اس اختتام کو محض ایک روایتی انجام نہیں بنایا بلکہ قاری کے لیے فکر اور تفکر کے لاتعداد دریچے وا کر دیے ہیں۔ یہ تصنیف انسانی عظمت اور روحانی پاکیزگی کی ایک لازوال یادگار کے طور پر قائم رہتی ہے۔`
@@ -141,7 +147,7 @@ ${displayAuthor} نے اس اختتام کو محض ایک روایتی انجا
     ];
   }
 
-  // Hindi Generation (Rich Comprehensive Multi-Chapter Edition)
+  // Hindi Generation (Rich Comprehensive 5-Chapter Edition)
   if (isHindi) {
     return [
       {
@@ -165,7 +171,11 @@ ${desc ? `कथासार एवं मुख्य विवरण:\n${desc}
 त्याग, निष्ठा और सत्य की विजय इस अध्याय का मुख्य केंद्र बिंदु है। लेखक ने दिखाया है कि किस प्रकार विपरीत परिस्थितियों में भी मानवीय गरिमा और आत्मसम्मान को अक्षुण्ण रखा जा सकता है।`
       },
       {
-        chapter: `अध्याय 3: चरमोत्कर्ष एवं दार्शनिक निष्कर्ष`,
+        chapter: `अध्याय 3: संकट और संकल्प`,
+        text: `कथा में एक अप्रत्याशित मोड़ आता है जहाँ पुरानी मान्यताएं टूटती हैं और नए दृष्टिकोण का जन्म होता है। पात्र अपने जीवन के सबसे बड़े आत्म-मंथन से गुजरते हैं और यह स्पष्ट होता है कि कठिन समय में ही व्यक्ति के चरित्र की असली परीक्षा होती है।`
+      },
+      {
+        chapter: `अध्याय 4: चरमोत्कर्ष एवं दार्शनिक निष्कर्ष`,
         text: `कथा अपने अंतिम और निर्णायक पड़ाव पर पहुँचती है। सभी उलझनें सुलझती हैं और जीवन के गहरे सत्य उद्घाटित होते हैं।
 
 यह कृति केवल एक कहानी नहीं, बल्कि जीवन जीने की कला और आत्मनिरीक्षण की प्रेरणा देती है। ${displayAuthor} की यह अमर रचना साहित्य जगत में सदैव अपना विशिष्ट स्थान बनाए रखेगी।`
@@ -173,13 +183,13 @@ ${desc ? `कथासार एवं मुख्य विवरण:\n${desc}
     ];
   }
 
-  // World Literature / Default English Generation
+  // World Literature / Default English Generation (Rich Comprehensive 5-Chapter Edition)
   return [
     {
-      chapter: `Prologue & Introduction: ${displayTitle}`,
+      chapter: `Prologue & Critical Introduction: ${displayTitle}`,
       text: `"${displayTitle}" by ${displayAuthor} stands as an exceptional contribution to world literature, offering deep psychological insight, profound thematic resonance, and timeless storytelling.
 
-${desc ? `Work Synopsis & Archival Background:\n${desc}\n\n` : ''}This unabridged digital edition is preserved and presented within the QuillHawk Global Library for literary study, research, and reading pleasure.`
+${desc ? `Work Synopsis & Archival Background:\n${desc}\n\n` : ''}This unabridged digital edition is preserved and presented within the QuillHawk Global Library for literary study, research, and reading pleasure across modern reflowable and audio devices.`
     },
     {
       chapter: `Chapter I: The Gathering of Destinies`,
@@ -188,16 +198,22 @@ ${desc ? `Work Synopsis & Archival Background:\n${desc}\n\n` : ''}This unabridge
 The narrative masterfully balances vivid atmospheric prose with sharp character dialogue, establishing the underlying tensions and stakes that will govern the characters' choices throughout the work.`
     },
     {
-      chapter: `Chapter II: Trials and Transgressions`,
+      chapter: `Chapter II: Trials, Ambition and Conflict`,
       text: `As the plot advances, underlying conflicts surface with striking intensity. The protagonist is confronted with pivotal dilemmas where loyalty, moral integrity, and personal ambitions collide.
 
 The interplay of fate, human will, and societal expectations forms the central philosophical pillar of this section, illustrating the universal truth that every decision carries lasting consequences.`
     },
     {
-      chapter: `Chapter III: Climax and Resolution`,
+      chapter: `Chapter III: The Crucible of Truth`,
+      text: `In this intense midpoint, hidden motivations are brought into the open. The characters face unexpected reversals of fortune that test their resilience and redefine their relationships.
+
+Through rich descriptive textures and psychological acuity, ${displayAuthor} explores the complex vulnerabilities that define the human condition.`
+    },
+    {
+      chapter: `Chapter IV: Climax and Resolution`,
       text: `The narrative reaches its dramatic crescendo as the disparate threads of the story converge. In a powerful resolution, the ultimate truths are laid bare, leaving a lasting impression of artistic brilliance and emotional catharsis.
 
-${displayAuthor}'s masterpiece continues to resonate with generations of readers across cultures and eras.`
+${displayAuthor}'s masterpiece continues to resonate with generations of readers across cultures, embodying the enduring power of classic literature.`
     }
   ];
 }

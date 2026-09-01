@@ -157,7 +157,7 @@ export default function Reader({
     narrationRef.current = new AudioNarrationController();
   }
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [isPdf, setIsPdf] = useState(false);
   const [resolvedBookUrl, setResolvedBookUrl] = useState(bookUrl);
@@ -1654,7 +1654,7 @@ export default function Reader({
         onTouchEnd={handleTextSelection}
         className={`flex-1 w-full relative z-0 overflow-y-auto ${styles.bg}`}
       >
-        {loading && (
+        {loading && activeChapters.length === 0 && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center ${styles.bg} z-20 space-y-4`}>
             <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
             <p className={`text-xs ${styles.mutedText} animate-pulse font-medium`}>Opening authentic edition...</p>
@@ -1663,16 +1663,30 @@ export default function Reader({
 
         {/* 1. Google Book Preview Viewer */}
         {currentViewMode === 'google' && resolvedGoogleId ? (
-          <div className="w-full h-full min-h-[600px] p-2 md:p-4">
+          <div className="w-full h-full min-h-[600px] p-2 md:p-4 flex flex-col space-y-3">
+            <div className="flex items-center justify-between bg-surface/80 p-2.5 rounded-xl border border-card-border">
+              <span className="text-xs text-primary font-bold">Google Books Preview Embed</span>
+              <Button size="sm" variant="secondary" onClick={() => setCurrentViewMode('reader')} className="text-xs font-bold">
+                Read Reflowable Text
+              </Button>
+            </div>
             <GoogleBookViewer bookId={resolvedGoogleId} />
           </div>
         ) : currentViewMode === 'archive' && iaId ? (
-          <iframe 
-            src={`https://archive.org/embed/${iaId}?js=1`} 
-            className={`w-full h-full border-0 ${styles.bg} min-h-[600px]`} 
-            title={title || "Internet Archive Reader"} 
-            allowFullScreen
-          />
+          <div className="w-full h-full min-h-[600px] flex flex-col space-y-3">
+            <div className="flex items-center justify-between bg-surface/80 p-2.5 rounded-xl border border-card-border">
+              <span className="text-xs text-indigo-400 font-bold">Internet Archive Full Viewer</span>
+              <Button size="sm" variant="secondary" onClick={() => setCurrentViewMode('reader')} className="text-xs font-bold">
+                Read Reflowable Text
+              </Button>
+            </div>
+            <iframe 
+              src={`https://archive.org/embed/${iaId}?js=1`} 
+              className={`w-full h-full border-0 ${styles.bg} min-h-[600px] flex-1 rounded-2xl`} 
+              title={title || "Internet Archive Reader"} 
+              allowFullScreen
+            />
+          </div>
         ) : isPdf ? (
           <iframe 
             src={resolvedBookUrl} 
@@ -2110,7 +2124,7 @@ export default function Reader({
                           <p 
                             key={`cont-p-${idx}-${pIdx}`} 
                             id={`reader-para-${idx}-${pIdx}`}
-                            className="transition-colors duration-200"
+                            className="transition-colors duration-200 whitespace-pre-line"
                           >
                             {renderHighlightedText(para, idx, pIdx)}
                           </p>
@@ -2157,7 +2171,7 @@ export default function Reader({
                         <p 
                           key={`page-p-${fallbackPage - 1}-${pIdx}`} 
                           id={`reader-para-${fallbackPage - 1}-${pIdx}`}
-                          className="transition-colors duration-200"
+                          className="transition-colors duration-200 whitespace-pre-line"
                         >
                           {renderHighlightedText(para, fallbackPage - 1, pIdx)}
                         </p>

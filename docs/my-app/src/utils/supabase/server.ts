@@ -507,140 +507,226 @@ export async function createClient() {
     let eqValue: any = null;
     let orderCol: string | null = null;
     let orderAsc: boolean = true;
+    let limitCount: number | null = null;
+    let selectCols: string = '*';
+
+    const getCookieBooks = (name: string) => {
+      const val = cookieStore.get(name)?.value;
+      if (val) {
+        try { return JSON.parse(decodeURIComponent(val)); } catch {}
+      }
+      return [];
+    };
+
+    const executeSelect = async (): Promise<{ data: any; error: any }> => {
+      if (relation === 'books') {
+        const localPubBooks = getCookieBooks('local-published-books');
+        const addedBooks = getCookieBooks('added-to-library-books');
+        const localCombined = [...localPubBooks, ...addedBooks];
+
+        try {
+          let realQuery = originalFrom(relation).select(selectCols);
+          if (eqColumn && eqValue !== null) realQuery = realQuery.eq(eqColumn, eqValue);
+          const res = await realQuery;
+          if (!res.error && res.data && res.data.length > 0) {
+            return res;
+          }
+        } catch {}
+
+        if (eqColumn === 'id' && eqValue) {
+          const book = [...localCombined, ...CLASSIC_BOOKS].find(b => b.id === eqValue || b.title?.toLowerCase() === String(eqValue).toLowerCase());
+          return { data: book ? [book] : (String(eqValue).startsWith('classic-') ? CLASSIC_BOOKS : []), error: null };
+        }
+        return { data: [...localCombined, ...CLASSIC_BOOKS], error: null };
+      }
+
+      if (relation === 'users') {
+        const localUser = getLocalCookieUser();
+        if (localUser && (eqValue === localUser.id || !eqValue)) {
+          return {
+            data: [{
+              id: localUser.id,
+              username: localUser.user_metadata?.username || localUser.user_metadata?.full_name || 'Reader',
+              avatar_url: localUser.user_metadata?.avatar_url || '📚',
+              bio: localUser.user_metadata?.bio || 'Avid reader on QuillHawk.',
+              region: localUser.user_metadata?.region || 'South Asia',
+              premium_status: true,
+              email: localUser.email
+            }],
+            error: null
+          };
+        }
+
+        try {
+          let realQuery = originalFrom(relation).select(selectCols);
+          if (eqColumn && eqValue !== null) realQuery = realQuery.eq(eqColumn, eqValue);
+          const res = await realQuery;
+          if (!res.error && res.data) return res;
+        } catch {}
+
+        return {
+          data: [{
+            id: eqValue || 'demo-reader',
+            username: 'Reader',
+            avatar_url: '📚',
+            bio: 'Avid book explorer.',
+            region: 'South Asia',
+            premium_status: true,
+            email: 'reader@quillhawk.app'
+          }],
+          error: null
+        };
+      }
+
+      if (relation === 'reading_logs') {
+        try {
+          let realQuery = originalFrom(relation).select(selectCols);
+          if (eqColumn && eqValue !== null) realQuery = realQuery.eq(eqColumn, eqValue);
+          const res = await realQuery;
+          if (!res.error && res.data) return res;
+        } catch {}
+        return { data: [{ time_spent_seconds: 2400, pages_read: 60 }], error: null };
+      }
+
+      if (relation === 'communities') {
+        try {
+          let realQuery = originalFrom(relation).select(selectCols);
+          if (eqColumn && eqValue !== null) realQuery = realQuery.eq(eqColumn, eqValue);
+          const res = await realQuery;
+          if (!res.error && res.data && res.data.length > 0) return res;
+        } catch {}
+        return { data: DEFAULT_COMMUNITIES, error: null };
+      }
+
+      try {
+        let realQuery = originalFrom(relation).select(selectCols);
+        if (eqColumn && eqValue !== null) realQuery = realQuery.eq(eqColumn, eqValue);
+        if (orderCol) realQuery = realQuery.order(orderCol, { ascending: orderAsc });
+        const res = await realQuery;
+        if (!res.error && res.data) return res;
+      } catch {}
+
+      return { data: [], error: null };
+    };
+
+    const makeThenable = (actionFn: () => Promise<any>) => {
+      const obj: any = {
+        then: (resolve: any, reject: any) => actionFn().then(resolve, reject),
+        select: (cols?: string) => {
+          selectCols = cols || '*';
+          return makeThenable(actionFn);
+        },
+        single: async () => {
+          const res = await actionFn();
+          const item = Array.isArray(res?.data) ? res.data[0] : res?.data;
+          return { data: item || null, error: res?.error || null };
+        },
+        maybeSingle: async () => {
+          const res = await actionFn();
+          const item = Array.isArray(res?.data) ? res.data[0] : res?.data;
+          return { data: item || null, error: null };
+        },
+        eq: (col: string, val: any) => {
+          eqColumn = col;
+          eqValue = val;
+          return obj;
+        },
+        neq: (col: string, val: any) => obj,
+        in: (col: string, vals: any[]) => obj,
+        is: (col: string, val: any) => obj,
+        order: (col: string, options?: { ascending?: boolean }) => {
+          orderCol = col;
+          orderAsc = options?.ascending ?? true;
+          return obj;
+        },
+        limit: (count: number) => {
+          limitCount = count;
+          return obj;
+        }
+      };
+      return obj;
+    };
 
     const chain: any = {
-      select: () => chain,
+      select: (cols?: string) => {
+        selectCols = cols || '*';
+        return makeThenable(executeSelect);
+      },
+      insert: (values: any) => {
+        const executeInsert = async () => {
+          try {
+            const res = await originalFrom(relation).insert(values).select(selectCols);
+            if (!res.error && res.data) return res;
+          } catch {}
+          const items = Array.isArray(values) ? values : [values];
+          return { data: items, error: null };
+        };
+        return makeThenable(executeInsert);
+      },
+      upsert: (values: any) => {
+        const executeUpsert = async () => {
+          try {
+            const res = await originalFrom(relation).upsert(values).select(selectCols);
+            if (!res.error && res.data) return res;
+          } catch {}
+          const items = Array.isArray(values) ? values : [values];
+          return { data: items, error: null };
+        };
+        return makeThenable(executeUpsert);
+      },
+      update: (values: any) => {
+        const executeUpdate = async () => {
+          try {
+            let q = originalFrom(relation).update(values);
+            if (eqColumn && eqValue !== null) q = q.eq(eqColumn, eqValue);
+            const res = await q.select(selectCols);
+            if (!res.error && res.data) return res;
+          } catch {}
+          const items = Array.isArray(values) ? values : [values];
+          return { data: items, error: null };
+        };
+        return makeThenable(executeUpdate);
+      },
+      delete: () => {
+        const executeDelete = async () => {
+          try {
+            let q = originalFrom(relation).delete();
+            if (eqColumn && eqValue !== null) q = q.eq(eqColumn, eqValue);
+            const res = await q;
+            if (!res.error) return res;
+          } catch {}
+          return { error: null };
+        };
+        return makeThenable(executeDelete);
+      },
       eq: (column: string, value: any) => {
         eqColumn = column;
         eqValue = value;
         return chain;
       },
+      neq: (column: string, value: any) => chain,
+      in: (column: string, values: any[]) => chain,
+      is: (column: string, value: any) => chain,
       order: (col: string, options?: { ascending?: boolean }) => {
         orderCol = col;
         orderAsc = options?.ascending ?? true;
         return chain;
       },
-      insert: async (values: any) => {
-        try {
-          return await originalFrom(relation).insert(values);
-        } catch {
-          return { data: values, error: null };
-        }
+      limit: (count: number) => {
+        limitCount = count;
+        return chain;
       },
       single: async () => {
-        const getCookieBooks = (name: string) => {
-          const val = cookieStore.get(name)?.value;
-          if (val) {
-            try { return JSON.parse(decodeURIComponent(val)); } catch {}
-          }
-          return [];
-        };
-
-        if (relation === 'books') {
-          if (eqColumn === 'id' && eqValue) {
-            if (eqValue.startsWith('classic-')) {
-              const book = CLASSIC_BOOKS.find(b => b.id === eqValue);
-              if (book) return { data: book, error: null };
-            }
-            const localPubBooks = getCookieBooks('local-published-books');
-            let b = localPubBooks.find((x: any) => x.id === eqValue);
-            if (b) return { data: b, error: null };
-            
-            const addedBooks = getCookieBooks('added-to-library-books');
-            b = addedBooks.find((x: any) => x.id === eqValue);
-            if (b) return { data: b, error: null };
-          }
-        }
-
-        if (relation === 'users') {
-          const localUser = getLocalCookieUser();
-          if (localUser && (eqValue === localUser.id || !eqValue)) {
-            return {
-              data: {
-                id: localUser.id,
-                username: localUser.user_metadata?.username || localUser.user_metadata?.full_name || 'Reader',
-                avatar_url: localUser.user_metadata?.avatar_url || '📚',
-                bio: localUser.user_metadata?.bio || 'Avid reader on QuillHawk.',
-                premium_status: true,
-                email: localUser.email
-              },
-              error: null
-            };
-          }
-        }
-
-        try {
-          const res = await originalFrom(relation).select('*').eq(eqColumn!, eqValue).single();
-          if (!res.error && res.data) return res;
-        } catch {}
-
-        if (relation === 'books') {
-          const book = CLASSIC_BOOKS.find(b => b.id === eqValue) || CLASSIC_BOOKS[0];
-          return { data: book, error: null };
-        }
-
-        if (relation === 'users') {
-          return {
-            data: {
-              id: eqValue || 'demo-reader',
-              username: 'Reader',
-              avatar_url: '📚',
-              bio: 'Avid book explorer.',
-              premium_status: true
-            },
-            error: null
-          };
-        }
-
-        return { data: null, error: null };
+        const res = await executeSelect();
+        const item = Array.isArray(res?.data) ? res.data[0] : res?.data;
+        return { data: item || null, error: null };
       },
-      then: async (resolve: any, reject: any) => {
-        const getCookieBooks = (name: string) => {
-          const val = cookieStore.get(name)?.value;
-          if (val) {
-            try { return JSON.parse(decodeURIComponent(val)); } catch {}
-          }
-          return [];
-        };
-
-        try {
-          if (relation === 'books') {
-            const localPubBooks = getCookieBooks('local-published-books');
-            const addedBooks = getCookieBooks('added-to-library-books');
-            const localCombined = [...localPubBooks, ...addedBooks];
-
-            try {
-              let realQuery = originalFrom(relation).select('*');
-              if (eqColumn && eqValue) realQuery = realQuery.eq(eqColumn, eqValue);
-              const res = await realQuery;
-              if (!res.error && res.data && res.data.length > 0) {
-                return resolve(res);
-              }
-            } catch {}
-
-            if (eqColumn === 'id' && eqValue) {
-              const book = [...localCombined, ...CLASSIC_BOOKS].find(b => b.id === eqValue);
-              return resolve({ data: book ? [book] : CLASSIC_BOOKS, error: null });
-            }
-            return resolve({ data: [...localCombined, ...CLASSIC_BOOKS], error: null });
-          }
-
-          if (relation === 'reading_logs') {
-            return resolve({ data: [{ time_spent_seconds: 2400, pages_read: 60 }], error: null });
-          }
-
-          if (relation === 'communities') {
-            return resolve({ data: DEFAULT_COMMUNITIES, error: null });
-          }
-
-          const res = await originalFrom(relation).select('*');
-          return resolve(res);
-        } catch {
-          if (relation === 'books') return resolve({ data: CLASSIC_BOOKS, error: null });
-          if (relation === 'communities') return resolve({ data: DEFAULT_COMMUNITIES, error: null });
-          return resolve({ data: [], error: null });
-        }
-      }
+      maybeSingle: async () => {
+        const res = await executeSelect();
+        const item = Array.isArray(res?.data) ? res.data[0] : res?.data;
+        return { data: item || null, error: null };
+      },
+      then: (resolve: any, reject: any) => executeSelect().then(resolve, reject)
     };
 
     return chain;

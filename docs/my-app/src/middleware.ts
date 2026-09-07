@@ -6,66 +6,76 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  // Check local session cookie first for instant verification
-  const localSessionCookie = request.cookies.get('quillhawk_auth_session')?.value || request.cookies.get('readsphere_auth_session')?.value
-  let isAuthenticated = false
+  let user = null
+  let supabase = null
 
-  if (localSessionCookie) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(localSessionCookie))
-      if (parsed?.user?.id) {
-        isAuthenticated = true
-      }
-    } catch {}
-  }
-
-  // If not authenticated via local cookie, check Supabase SSR client
-  if (!isAuthenticated) {
-    try {
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll()
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-              supabaseResponse = NextResponse.next({
-                request,
-              })
-              cookiesToSet.forEach(({ name, value, options }) =>
-                supabaseResponse.cookies.set(name, value, options)
-              )
-            },
+  try {
+    supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
           },
-        }
-      )
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        isAuthenticated = true
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({
+              request,
+            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
       }
-    } catch {}
+    )
+
+    // Cryptographically verify session with Supabase auth server
+    const { data: { user: verifiedUser } } = await supabase.auth.getUser()
+    user = verifiedUser
+  } catch (err) {
+    console.error('Middleware auth verification error:', err)
   }
 
   const { pathname } = request.nextUrl
 
-  // Protected routes
+  // Define all protected user routes
   const isProtectedRoute =
-    pathname.startsWith('/dashboard') ||
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/') ||
     pathname.startsWith('/communities') ||
     pathname.startsWith('/competition') ||
     pathname.startsWith('/premium') ||
     pathname.startsWith('/profile') ||
-    pathname.startsWith('/publish')
+    pathname.startsWith('/publish') ||
+    pathname.startsWith('/friends') ||
+    pathname.startsWith('/messages') ||
+    pathname.startsWith('/reader') ||
+    pathname.startsWith('/book') ||
+    pathname.startsWith('/admin')
 
-  if (isProtectedRoute && !isAuthenticated) {
+  // Check authentication for protected routes
+  if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('message', 'Please sign in to access your library.')
+    url.searchParams.set('message', 'Please sign in to continue.')
+    // Safely save relative next redirect
+    if (pathname !== '/dashboard') {
+      url.searchParams.set('next', pathname)
+    }
     return NextResponse.redirect(url)
+  }
+
+  // Admin route security guard
+  if (pathname.startsWith('/admin') && user) {
+    const userRole = (user.app_metadata as any)?.role || (user.user_metadata as any)?.role || 'user'
+    if (userRole !== 'admin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      url.searchParams.set('error', 'unauthorized_admin')
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

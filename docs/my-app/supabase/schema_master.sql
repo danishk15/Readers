@@ -135,7 +135,13 @@ DROP POLICY IF EXISTS "Authenticated users can insert books" ON public.books;
 CREATE POLICY "Authenticated users can insert books" ON public.books FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Authenticated users can update books" ON public.books;
-CREATE POLICY "Authenticated users can update books" ON public.books FOR UPDATE WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Admins can update books" ON public.books;
+CREATE POLICY "Admins can update books" ON public.books FOR UPDATE WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
 
 -- Communities policies
 DROP POLICY IF EXISTS "Communities are viewable by everyone." ON public.communities;
@@ -149,14 +155,21 @@ DROP POLICY IF EXISTS "Channels are viewable by everyone" ON public.channels;
 CREATE POLICY "Channels are viewable by everyone" ON public.channels FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can create channels" ON public.channels;
-CREATE POLICY "Authenticated users can create channels" ON public.channels FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Community owners can create channels" ON public.channels;
+CREATE POLICY "Community owners can create channels" ON public.channels FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.communities
+    WHERE id = community_id AND owner_id = auth.uid()
+  )
+);
 
 -- Messages policies
 DROP POLICY IF EXISTS "Messages are viewable by everyone in community." ON public.messages;
 CREATE POLICY "Messages are viewable by everyone in community." ON public.messages FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can insert messages." ON public.messages;
-CREATE POLICY "Authenticated users can insert messages." ON public.messages FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Users can only insert messages as themselves." ON public.messages;
+CREATE POLICY "Users can only insert messages as themselves." ON public.messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Community Members policies
 DROP POLICY IF EXISTS "Community members are viewable by everyone." ON public.community_members;
@@ -193,15 +206,37 @@ DROP POLICY IF EXISTS "Comments are viewable by everyone." ON public.comments;
 CREATE POLICY "Comments are viewable by everyone." ON public.comments FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can post comments." ON public.comments;
-CREATE POLICY "Authenticated users can post comments." ON public.comments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Users can only post comments as themselves." ON public.comments;
+CREATE POLICY "Users can only post comments as themselves." ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can delete own comments." ON public.comments;
 CREATE POLICY "Users can delete own comments." ON public.comments FOR DELETE USING (auth.uid() = user_id);
 
 -- ==============================================================================
--- AUTOMATIC USER CREATION TRIGGER
+-- AUTOMATIC USER CREATION & SECURITY TRIGGERS
 -- ==============================================================================
 
+-- 1. Prevent regular users from self-elevating role or premium_status
+CREATE OR REPLACE FUNCTION public.prevent_user_privilege_escalation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (auth.uid() = OLD.id) THEN
+    IF (OLD.role <> 'admin') THEN
+      NEW.role := OLD.role;
+      NEW.premium_status := OLD.premium_status;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_prevent_user_privilege_escalation ON public.users;
+CREATE TRIGGER trg_prevent_user_privilege_escalation
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_user_privilege_escalation();
+
+-- 2. Automatic profile initialization
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -219,7 +254,7 @@ BEGIN
     avatar_url = COALESCE(public.users.avatar_url, EXCLUDED.avatar_url);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

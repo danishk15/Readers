@@ -1,9 +1,45 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Rate limiting
+  const clientIp = getClientIp(request);
+  const limiter = rateLimit(`seed-books:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 5 });
+  if (!limiter.success) {
+    return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
     const supabase = await createClient();
+
+    // Verify Admin Authorization
+    const adminSecret = process.env.ADMIN_SEED_SECRET || process.env.ADMIN_SECRET_KEY;
+    const authHeader = request.headers.get('authorization') || '';
+    const secretHeader = request.headers.get('x-admin-secret') || '';
+    const providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim() || secretHeader.trim();
+
+    let isAuthorized = false;
+
+    if (adminSecret && providedSecret === adminSecret) {
+      isAuthorized = true;
+    } else {
+      // Check authenticated session user role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const role = (user.app_metadata as any)?.role || (user.user_metadata as any)?.role;
+        if (role === 'admin') {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Admin authorization required to seed database.' },
+        { status: 403 }
+      );
+    }
 
     // Check if books are already seeded to prevent duplication
     const { data: existingBooks, error: fetchError } = await supabase

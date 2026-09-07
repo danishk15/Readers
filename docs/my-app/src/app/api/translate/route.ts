@@ -1,15 +1,32 @@
 import { NextResponse } from 'next/server';
 import { lookupLiteraryWord, transliterateScript } from '@/utils/transliteration';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 // In-memory server translation cache to prevent repetitive requests
 const translationCache = new Map<string, string>();
 
+const MAX_TRANSLATION_CHARS = 5000;
+
 export async function POST(request: Request) {
+  // Rate limiting to prevent upstream abuse
+  const clientIp = getClientIp(request);
+  const limiter = rateLimit(`translate:${clientIp}`, { windowMs: 60 * 1000, maxRequests: 30 });
+  if (!limiter.success) {
+    return NextResponse.json({ success: false, error: 'Too many translation requests. Please slow down.' }, { status: 429 });
+  }
+
   try {
     const { text, sourceLang = 'auto', targetLang = 'en' } = await request.json();
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'Text parameter is required' }, { status: 400 });
+    }
+
+    if (text.length > MAX_TRANSLATION_CHARS) {
+      return NextResponse.json(
+        { error: `Text too long. Maximum allowed length is ${MAX_TRANSLATION_CHARS} characters.` },
+        { status: 413 }
+      );
     }
 
     const trimmedText = text.trim();

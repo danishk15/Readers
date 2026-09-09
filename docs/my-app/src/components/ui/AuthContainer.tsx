@@ -40,6 +40,8 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const redirectMessage = searchParams.get('message');
+  const rawNext = searchParams.get('next');
+  const nextUrl = (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')) ? rawNext : '/dashboard';
 
   // Load saved accounts and login history
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
       });
 
       if (!error) {
-        window.location.href = '/dashboard';
+        window.location.href = nextUrl;
       } else {
         setLoginEmail(account.email);
         setLoginError(error.message);
@@ -97,7 +99,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
       if (error) {
         setLoginError(error.message);
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = nextUrl;
       }
     } catch (err: any) {
       setLoginError(err?.message || "An unexpected error occurred during login.");
@@ -147,7 +149,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
       if (error) {
         setSignUpError(error.message);
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = nextUrl;
       }
     } catch (err: any) {
       setSignUpError(err?.message || "An unexpected error occurred during registration.");
@@ -164,7 +166,7 @@ export default function AuthContainer({ defaultMode }: AuthContainerProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}${nextUrl}`,
         },
       });
       if (error) {

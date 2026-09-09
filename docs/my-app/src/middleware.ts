@@ -6,36 +6,55 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  let user = null
-  let supabase = null
+  let user: any = null
 
-  try {
-    supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-            supabaseResponse = NextResponse.next({
-              request,
-            })
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            )
-          },
-        },
+  // 1. Check local session cookie first for instant/fallback session validation
+  const localSessionCookie =
+    request.cookies.get('quillhawk_auth_session')?.value ||
+    request.cookies.get('readsphere_auth_session')?.value
+
+  if (localSessionCookie) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(localSessionCookie))
+      if (parsed?.user?.id) {
+        user = parsed.user
       }
-    )
+    } catch {
+      // Invalid cookie JSON format
+    }
+  }
 
-    // Cryptographically verify session with Supabase auth server
-    const { data: { user: verifiedUser } } = await supabase.auth.getUser()
-    user = verifiedUser
-  } catch (err) {
-    console.error('Middleware auth verification error:', err)
+  // 2. If no user from cookie, verify with Supabase SSR server client
+  if (!user) {
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll()
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+              supabaseResponse = NextResponse.next({
+                request,
+              })
+              cookiesToSet.forEach(({ name, value, options }) =>
+                supabaseResponse.cookies.set(name, value, options)
+              )
+            },
+          },
+        }
+      )
+
+      const { data: { user: verifiedUser } } = await supabase.auth.getUser()
+      if (verifiedUser) {
+        user = verifiedUser
+      }
+    } catch (err) {
+      console.error('Middleware auth verification error:', err)
+    }
   }
 
   const { pathname } = request.nextUrl
@@ -67,6 +86,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // If user is already authenticated and visits /login or /signup, redirect to dashboard or next
+  if ((pathname === '/login' || pathname === '/signup') && user) {
+    const nextParam = request.nextUrl.searchParams.get('next')
+    const destination =
+      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+        ? nextParam
+        : '/dashboard'
+    const url = request.nextUrl.clone()
+    url.pathname = destination
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
   // Admin route security guard
   if (pathname.startsWith('/admin') && user) {
     const userRole = (user.app_metadata as any)?.role || (user.user_metadata as any)?.role || 'user'
@@ -86,3 +118,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+

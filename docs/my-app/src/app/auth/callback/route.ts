@@ -42,6 +42,13 @@ export async function GET(request: Request) {
     console.error('Supabase OAuth code exchange error:', error);
   }
 
+  // Check if session exists (e.g. cookie or fallback auth)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    return NextResponse.redirect(new URL(safeNext, request.url));
+  }
+
   // Return the user to an error page with instructions
   return NextResponse.redirect(new URL('/login?message=Could not login with provider', request.url));
 }

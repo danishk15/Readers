@@ -545,7 +545,26 @@ export function createClient() {
         } as any;
       }
 
-      // Check local accounts
+      // 1. Try real Supabase auth if not quickLogin
+      if (!quickLogin && password) {
+        try {
+          const res = await originalAuth.signInWithPassword({ email: normalizedEmail, password });
+          if (!res.error && res.data?.session && res.data?.user) {
+            setAuthSessionCookie(res.data.session);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('quillhawk_current_session', JSON.stringify(res.data.session));
+              localStorage.setItem('readsphere_current_session', JSON.stringify(res.data.session));
+            }
+            recordLoginEvent(res.data.user);
+            notifyAuthChange('SIGNED_IN', res.data.session);
+            return res;
+          }
+        } catch {
+          // Continue to local account fallback
+        }
+      }
+
+      // 2. Check local accounts
       const accounts = getStoredAccounts();
       let user = accounts.find((a: any) => a.email.toLowerCase() === normalizedEmail);
 
@@ -615,7 +634,7 @@ export function createClient() {
         }
       }
 
-      // If user not found in local db, create and log in
+      // If user not found in local db, create and log in seamlessly
       const newId = 'user_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
       const newUser = {
         id: newId,
@@ -665,6 +684,25 @@ export function createClient() {
       const password = credentials?.password || '';
       const options = credentials?.options;
       const normalizedEmail = email.trim().toLowerCase();
+
+      // 1. Try real Supabase auth signUp
+      try {
+        const res = await originalAuth.signUp({ email: normalizedEmail, password, options });
+        if (!res.error && res.data?.user) {
+          if (res.data.session) {
+            setAuthSessionCookie(res.data.session);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('quillhawk_current_session', JSON.stringify(res.data.session));
+              localStorage.setItem('readsphere_current_session', JSON.stringify(res.data.session));
+            }
+          }
+          recordLoginEvent(res.data.user);
+          notifyAuthChange('SIGNED_IN', res.data.session);
+          return res;
+        }
+      } catch {
+        // Fall back to local creation
+      }
 
       const accounts = getStoredAccounts();
       const existing = accounts.find((a: any) => a.email.toLowerCase() === normalizedEmail);
@@ -771,10 +809,15 @@ export function createClient() {
       recordLoginEvent(session.user);
       notifyAuthChange('SIGNED_IN', session);
 
+      const targetRedirect =
+        options?.redirectTo && !options.redirectTo.includes('/auth/callback')
+          ? options.redirectTo
+          : '/dashboard';
+
       if (typeof window !== 'undefined') {
-        window.location.href = options?.redirectTo || '/dashboard';
+        window.location.href = targetRedirect;
       }
-      return { data: { provider, url: options?.redirectTo || '/dashboard' }, error: null } as any;
+      return { data: { provider, url: targetRedirect }, error: null } as any;
     },
 
     async signOut() {

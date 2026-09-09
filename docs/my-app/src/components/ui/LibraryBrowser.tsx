@@ -15,12 +15,19 @@ import { saveBookOffline, getCachedBook, isBookCached, deleteCachedBook, getAllC
 import { stripHtml } from '@/utils/textSanitizer';
 import { transliterateScript, lookupLiteraryWord } from '@/utils/transliteration';
 
+export function getResolvedBookMeta(book: any) {
+  const title = stripHtml(book?.volumeInfo?.title || book?.title || 'Unknown Title');
+  const author = stripHtml(book?.volumeInfo?.authors?.[0] || book?.author || 'Unknown Author');
+  const cover = (book?.volumeInfo?.imageLinks?.thumbnail || book?.cover_url || '').replace('http:', 'https:');
+  const description = stripHtml(book?.volumeInfo?.description || book?.description || 'A curated literary work available in the QuillHawk catalog.');
+  const id = String(book?.id || title);
+  const isPremium = book?.is_premium !== undefined ? !!book.is_premium : !!book?.isPremium;
+  return { title, author, cover, description, id, isPremium };
+}
+
 function getOnlineBookReadParams(book: any) {
-  const title = stripHtml(book.volumeInfo?.title || book.title || 'Unknown Title');
-  const author = stripHtml(book.volumeInfo?.authors?.[0] || book.author || 'Unknown Author');
-  const description = stripHtml(book.volumeInfo?.description || book.description || 'A curated literary work available in the QuillHawk catalog.');
-  const id = book.id || book.title;
-  const iaId = book.accessInfo?.ia || (String(book.id || '').startsWith('ia-') ? String(book.id).replace('ia-', '') : undefined);
+  const { title, author, description, id } = getResolvedBookMeta(book);
+  const iaId = book.accessInfo?.ia || (String(id).startsWith('ia-') ? String(id).replace('ia-', '') : undefined);
   const previewLink = book.volumeInfo?.previewLink || book.previewLink;
   const infoLink = book.volumeInfo?.infoLink || book.infoLink;
   const readMode = book.readMode || (book.file_url ? 'epub' : (iaId ? 'archive' : (book.source === 'Google Books' ? 'google' : 'interactive')));
@@ -28,8 +35,8 @@ function getOnlineBookReadParams(book: any) {
   let fileUrl = book.file_url || '';
   if (!fileUrl && book.accessInfo?.epub?.downloadLink) {
     fileUrl = book.accessInfo.epub.downloadLink;
-  } else if (!fileUrl && String(book.id || '').startsWith('gutendex-')) {
-    const gutenId = String(book.id).replace('gutendex-', '');
+  } else if (!fileUrl && String(id).startsWith('gutendex-')) {
+    const gutenId = String(id).replace('gutendex-', '');
     fileUrl = `https://www.gutenberg.org/ebooks/${gutenId}.epub.noimages`;
   } else if (!fileUrl && iaId) {
     fileUrl = `https://archive.org/download/${iaId}/${iaId}.epub`;
@@ -261,13 +268,38 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     }
   };
 
+  const handleAddToBookshelf = (e: React.MouseEvent, book: any) => {
+    e.stopPropagation();
+    const { title, author, cover, description, id, isPremium } = getResolvedBookMeta(book);
+    const newBook = {
+      id: `saved-${id}`,
+      title,
+      author,
+      cover_url: cover,
+      file_url: book.file_url || '',
+      description,
+      is_premium: isPremium,
+      language: book.language || book.volumeInfo?.language || 'en'
+    };
+    
+    try {
+      const existing: any[] = JSON.parse(localStorage.getItem('added-to-library-books') || '[]');
+      if (!existing.some(b => b.title.toLowerCase() === title.toLowerCase() && b.author.toLowerCase() === author.toLowerCase())) {
+        const updated = [newBook, ...existing];
+        localStorage.setItem('added-to-library-books', JSON.stringify(updated));
+        setLocalAddedBooks(updated);
+        alert(`"${title}" added to My Bookshelf!`);
+      } else {
+        alert(`"${title}" is already in your Bookshelf.`);
+      }
+    } catch (e) {
+      console.warn('Failed to save to local storage bookshelf:', e);
+    }
+  };
+
   const handleStartReading = async (book: any) => {
-    const isLocal = activeTab === 'local' || activeTab === 'languages' || book.file_url !== undefined;
-    const title = stripHtml(isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title');
-    const author = stripHtml(isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author');
-    const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
-    const id = book.id || book.title;
-    const description = stripHtml(isLocal ? book.description : book.volumeInfo?.description || 'No description available.');
+    const { title, author, cover, description, id } = getResolvedBookMeta(book);
+    const isExplicitLocal = (activeTab === 'local' || activeTab === 'languages') && !book.isOpenLibrary && !book.volumeInfo;
 
     const cached = await getCachedBook(id);
     if (cached) {
@@ -285,7 +317,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
       return;
     }
 
-    if (isLocal) {
+    if (isExplicitLocal && book.file_url) {
       setActiveReadingBook({
         url: book.file_url,
         title,
@@ -303,7 +335,13 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
           .then(() => setDownloadedBookIds(prev => [...prev, id]))
           .catch(err => console.warn('Background caching failed:', err));
       }
-      setActiveReadingBook({ ...params, customChapters: book.chapters });
+      setActiveReadingBook({
+        ...params,
+        title,
+        author,
+        description,
+        customChapters: book.chapters
+      });
     }
   };
 
@@ -673,13 +711,21 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               type="text" 
               placeholder={
                 activeTab === 'online' 
-                  ? 'Search millions of books, authors...' 
+                  ? 'Search millions of books, authors, titles...' 
                   : activeTab === 'languages' 
                     ? 'Search by title, author, or script...' 
                     : 'Search bookshelf...'
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  if (activeTab === 'local' || activeTab === 'languages') {
+                    setActiveTab('online');
+                  }
+                  searchOnlineLibrary(searchQuery.trim());
+                }
+              }}
               className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-10 pr-9 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-primary/80 transition-all font-medium"
             />
             {searchQuery && (
@@ -1106,12 +1152,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               <div key={`shelf-${shelfIndex}`} className="relative pt-6 pb-2 px-4 md:px-8 bg-slate-950/15 rounded-3xl border border-slate-900/30 shadow-inner">
                 <div className="flex flex-wrap items-end justify-start gap-x-8 md:gap-x-12 gap-y-6 pb-2 px-2 z-10 relative">
                   {shelfBooks.map((book, bookIndex) => {
-                    const id = book.id || book.title;
-                    const isLocal = activeTab !== 'online';
-                    const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
-                    const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
-                    const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
-                    const isPremium = isLocal ? book.is_premium : !!book.isPremium;
+                    const { title, author, cover, isPremium, id } = getResolvedBookMeta(book);
                     const langBadge = getBookLanguageBadge(book);
 
                     return (
@@ -1179,7 +1220,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               return (
                 <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-3">
                   <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
-                  <p className="text-xs text-slate-500 tracking-wide font-medium animate-pulse">Aggregating public servers... Gutenberg, Google, & Open Library</p>
+                  <p className="text-xs text-slate-500 tracking-wide font-medium animate-pulse">Searching global archives... Gutenberg, Internet Archive & Open Library</p>
                 </div>
               );
             }
@@ -1200,7 +1241,10 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                   </div>
                   {activeTab === 'local' && searchQuery.trim() ? (
                     <Button
-                      onClick={() => setActiveTab('online')}
+                      onClick={() => {
+                        setActiveTab('online');
+                        searchOnlineLibrary(searchQuery.trim());
+                      }}
                       className="px-6 py-2.5 text-xs font-black bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/25 gap-2 mx-auto inline-flex"
                     >
                       <Search className="w-4 h-4" />
@@ -1228,12 +1272,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             }
 
             return booksToRender.map((book, index) => {
-              const isLocal = activeTab !== 'online';
-              const title = isLocal ? book.title : book.volumeInfo?.title || 'Unknown Title';
-              const author = isLocal ? book.author : book.volumeInfo?.authors?.[0] || 'Unknown Author';
-              const cover = isLocal ? book.cover_url : (book.volumeInfo?.imageLinks?.thumbnail?.replace('http:', 'https:') || '');
-              const isPremium = isLocal ? book.is_premium : !!book.isPremium;
-              const id = book.id || title;
+              const { title, author, cover, isPremium, id } = getResolvedBookMeta(book);
               const langBadge = getBookLanguageBadge(book);
 
               return (
@@ -1263,6 +1302,17 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
                         <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-warning to-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded shadow z-10 tracking-widest uppercase">
                           VIP
                         </div>
+                      )}
+
+                      {/* Bookmark / Add to Bookshelf Button */}
+                      {activeTab === 'online' && (
+                        <button
+                          onClick={(e) => handleAddToBookshelf(e, book)}
+                          title="Save to My Bookshelf"
+                          className="absolute top-2.5 right-2.5 bg-slate-950/80 hover:bg-primary text-slate-300 hover:text-white p-1.5 rounded-xl border border-slate-800 transition z-20 shadow"
+                        >
+                          <Bookmark className="w-3.5 h-3.5" />
+                        </button>
                       )}
 
                       {downloadedBookIds.includes(String(id)) && (

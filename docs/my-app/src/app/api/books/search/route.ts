@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripHtml } from '@/utils/textSanitizer';
+import { AUTHENTIC_BOOK_REGISTRY } from '@/utils/authenticBookContent';
+import { CLASSIC_BOOKS } from '@/utils/supabase/client';
 
 export interface UnifiedOnlineBook {
   id: string;
@@ -117,10 +119,95 @@ const SEARCH_ALIASES: Record<string, string[]> = {
   'qissa hatim tai': ['qissa hatim tai', 'قصہ حاتم طائی', 'Hatim Tai'],
   'les miserables': ['les miserables', 'victor hugo', 'les misérables'],
   'don quixote': ['don quixote', 'don quijote', 'cervantes', 'miguel de cervantes'],
-  'war and peace': ['war and peace', 'leo tolstoy', 'войna и мир'],
+  'war and peace': ['war and peace', 'leo tolstoy', 'война и мир'],
   'faust': ['faust', 'goethe', 'johann wolfgang von goethe'],
   'thousand and one nights': ['thousand and one nights', 'arabian nights', 'ألف ليلة وليلة', 'alf layla wa layla']
 };
+
+/**
+ * Searches local authentic database and classic books registry
+ */
+function matchLocalAndClassicBooks(query: string, aliases: string[], targetLang?: any): UnifiedOnlineBook[] {
+  const cleanQ = query.toLowerCase().trim();
+  const terms = Array.from(new Set([cleanQ, ...aliases.map(a => a.toLowerCase().trim())])).filter(Boolean);
+  const results: UnifiedOnlineBook[] = [];
+  const seenIds = new Set<string>();
+
+  // 1. Search CLASSIC_BOOKS
+  for (const book of CLASSIC_BOOKS) {
+    const title = (book.title || '').toLowerCase();
+    const author = (book.author || '').toLowerCase();
+    const id = (book.id || '').toLowerCase();
+
+    const isMatch = terms.some(t => {
+      if (!t) return false;
+      return title.includes(t) || author.includes(t) || id.includes(t) || t.includes(title);
+    });
+
+    if (isMatch && !seenIds.has(book.id)) {
+      seenIds.add(book.id);
+      results.push({
+        id: book.id,
+        source: 'Global Catalog',
+        isPremium: false,
+        readMode: book.file_url ? 'epub' : 'interactive',
+        file_url: book.file_url || '',
+        is_original: (book as any).is_original ?? true,
+        is_translation: (book as any).is_translation ?? false,
+        original_language: (book as any).original_language || (book.language === 'ur' ? 'Urdu' : 'English'),
+        translated_to: (book as any).translated_to,
+        volumeInfo: {
+          title: stripHtml(book.title),
+          authors: [stripHtml(book.author)],
+          description: `Authentic literary edition of "${book.title}" by ${book.author}. Full unabridged chapters available.`,
+          imageLinks: book.cover_url ? { thumbnail: book.cover_url } : null,
+          language: book.language || 'en'
+        }
+      });
+    }
+  }
+
+  // 2. Search AUTHENTIC_BOOK_REGISTRY
+  for (const entry of AUTHENTIC_BOOK_REGISTRY) {
+    const title = (entry.title || '').toLowerCase();
+    const author = (entry.author || '').toLowerCase();
+
+    const isMatch = terms.some(t => {
+      if (!t) return false;
+      return (
+        title.includes(t) ||
+        author.includes(t) ||
+        entry.matchKeys.some(k => k.toLowerCase().includes(t) || t.includes(k.toLowerCase()))
+      );
+    });
+
+    const registryKey = entry.matchKeys[0] || entry.title.toLowerCase().replace(/\s+/g, '-');
+    const existingClassic = CLASSIC_BOOKS.find(cb => cb.title.toLowerCase() === title);
+    const registryId = existingClassic ? existingClassic.id : `auth-${registryKey}`;
+
+    if (isMatch && !seenIds.has(registryId) && !seenIds.has(registryKey)) {
+      seenIds.add(registryId);
+      results.push({
+        id: registryId,
+        source: 'Global Catalog',
+        isPremium: false,
+        readMode: 'interactive',
+        file_url: existingClassic?.file_url || '',
+        is_original: true,
+        original_language: entry.language === 'ur' ? 'Urdu' : (entry.language === 'hi' ? 'Hindi' : (entry.language === 'ar' ? 'Arabic' : (entry.language === 'fa' ? 'Persian' : 'English'))),
+        volumeInfo: {
+          title: stripHtml(entry.title),
+          authors: [stripHtml(entry.author)],
+          description: `Authentic reading edition of "${entry.title}" by ${entry.author}. Complete multi-chapter reading text available.`,
+          imageLinks: existingClassic?.cover_url ? { thumbnail: existingClassic.cover_url } : null,
+          language: entry.language || 'en'
+        }
+      });
+    }
+  }
+
+  return results;
+}
 
 export async function GET(request: Request) {
   try {
@@ -146,7 +233,10 @@ export async function GET(request: Request) {
       }
     }
 
-    // Run parallel multi-archive requests
+    // 1. Instant local/authentic database matching
+    const localMatches = matchLocalAndClassicBooks(searchQuery, expandedKeywords, targetLang);
+
+    // 2. Run parallel multi-archive requests
     const [iaResults, olResults, gutenbergResults, googleResults] = await Promise.allSettled([
       fetchInternetArchive(searchQuery, expandedKeywords, targetLang?.iso1 || targetLang?.iso2),
       fetchOpenLibrary(searchQuery, category, targetLang?.iso2 || targetLang?.iso1),
@@ -154,7 +244,7 @@ export async function GET(request: Request) {
       fetchGoogleBooks(searchQuery, category, targetLang?.iso1)
     ]);
 
-    const combined: UnifiedOnlineBook[] = [];
+    const combined: UnifiedOnlineBook[] = [...localMatches];
 
     if (iaResults.status === 'fulfilled' && Array.isArray(iaResults.value)) {
       combined.push(...iaResults.value);
@@ -206,8 +296,10 @@ export async function GET(request: Request) {
 
     // Sort to prioritize books with direct EPUB/Archive read links or rich high-res covers
     deduplicated.sort((a, b) => {
-      const aScore = (a.file_url ? 4 : 0) + (a.accessInfo?.ia ? 3 : 0) + (a.volumeInfo?.imageLinks?.thumbnail ? 2 : 0) + (a.is_original ? 1 : 0);
-      const bScore = (b.file_url ? 4 : 0) + (b.accessInfo?.ia ? 3 : 0) + (b.volumeInfo?.imageLinks?.thumbnail ? 2 : 0) + (b.is_original ? 1 : 0);
+      const aLocal = a.source === 'Global Catalog' ? 5 : 0;
+      const bLocal = b.source === 'Global Catalog' ? 5 : 0;
+      const aScore = aLocal + (a.file_url ? 4 : 0) + (a.accessInfo?.ia ? 3 : 0) + (a.volumeInfo?.imageLinks?.thumbnail ? 2 : 0) + (a.is_original ? 1 : 0);
+      const bScore = bLocal + (b.file_url ? 4 : 0) + (b.accessInfo?.ia ? 3 : 0) + (b.volumeInfo?.imageLinks?.thumbnail ? 2 : 0) + (b.is_original ? 1 : 0);
       return bScore - aScore;
     });
 
@@ -264,28 +356,31 @@ function detectTranslationStatus(book: UnifiedOnlineBook, targetLang: any) {
   }
 }
 
-// 1. Internet Archive Multi-Language & Urdu Texts Fetcher
+// 1. Internet Archive Multi-Language & Texts Fetcher
 async function fetchInternetArchive(query: string, aliases: string[], lang?: string): Promise<UnifiedOnlineBook[]> {
   try {
-    // Unicode-safe sanitization: preserve all language letters, numbers, spaces
     const cleanQ = query.replace(/subject:/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
     if (!cleanQ) return [];
 
-    // Build rich multi-keyword query
-    const terms = Array.from(new Set([cleanQ, ...aliases.slice(0, 4)])).map(t => encodeURIComponent(t.trim())).filter(Boolean);
-    const subQueries = terms.map(t => `(title:(${t}) OR creator:(${t}) OR description:(${t}))`).join(' OR ');
+    const terms = Array.from(new Set([cleanQ, ...aliases.slice(0, 3)])).filter(Boolean);
+    const subQueries = terms.map(t => `(title:("${t}") OR creator:("${t}") OR description:("${t}"))`).join(' OR ');
 
-    let iaQuery = `(${subQueries}) AND mediatype:(texts)`;
+    let iaQuery = `(${subQueries || cleanQ}) AND mediatype:(texts)`;
     if (lang) {
       iaQuery += ` AND (language:(${lang}) OR language:(${lang === 'ur' ? 'urd' : lang}))`;
     }
 
-    const url = `https://archive.org/advancedsearch.php?q=${iaQuery}&fl[]=identifier,title,creator,description,year,language,downloads,publicdate&sort[]=downloads+desc&rows=35&page=1&output=json`;
+    const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(iaQuery)}&fl[]=identifier,title,creator,description,year,language,downloads,publicdate&sort[]=downloads+desc&rows=35&page=1&output=json`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4500);
 
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 QuillHawk/2.0'
+      }
+    });
     clearTimeout(timeout);
 
     if (!res.ok) return [];
@@ -329,8 +424,10 @@ async function fetchInternetArchive(query: string, aliases: string[], lang?: str
 // 2. Open Library Worldwide Catalog Fetcher
 async function fetchOpenLibrary(query: string, category: string, lang?: string): Promise<UnifiedOnlineBook[]> {
   try {
-    let q = query.replace(/subject:/g, '').trim();
-    let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=30`;
+    const cleanQ = query.replace(/subject:/g, '').trim();
+    if (!cleanQ) return [];
+
+    let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(cleanQ)}&limit=30`;
     if (lang) {
       url += `&language=${lang}`;
     }
@@ -338,7 +435,12 @@ async function fetchOpenLibrary(query: string, category: string, lang?: string):
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4500);
 
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'QuillHawk/2.0 (mailto:contact@quillhawk.app)'
+      }
+    });
     clearTimeout(timeout);
 
     if (!res.ok) return [];
@@ -386,6 +488,8 @@ async function fetchOpenLibrary(query: string, category: string, lang?: string):
 async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnlineBook[]> {
   try {
     const cleanQ = query.replace(/subject:/g, '').trim();
+    if (!cleanQ) return [];
+
     let url = `https://gutendex.com/books/?search=${encodeURIComponent(cleanQ)}`;
     if (lang) {
       url += `&languages=${lang}`;
@@ -394,7 +498,12 @@ async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnli
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4500);
 
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 QuillHawk/2.0'
+      }
+    });
     clearTimeout(timeout);
 
     if (!res.ok) return [];
@@ -449,7 +558,7 @@ async function fetchGoogleBooks(query: string, category: string, lang?: string):
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'QuillHawkBooks/2.0' } });
+    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuillHawkBooks/2.0' } });
     clearTimeout(timeout);
 
     if (!res.ok) return [];
@@ -504,3 +613,4 @@ async function fetchGoogleBooks(query: string, category: string, lang?: string):
     return [];
   }
 }
+

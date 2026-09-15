@@ -726,8 +726,8 @@ export const DEFAULT_DISCORD_SERVERS: DiscordServer[] = [
     genre: 'Urdu Literature',
     bannerColor: 'from-emerald-950 via-teal-950 to-slate-950',
     createdAt: '2024-11-12T00:00:00.000Z',
-    isJoined: true,
-    unreadTotal: 1,
+    isJoined: false,
+    unreadTotal: 0,
     categories: [
       {
         id: 'cat-urdu-poetry',

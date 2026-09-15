@@ -21,7 +21,7 @@ export default function PublishPage() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
-  const [language, setLanguage] = useState('ur');
+  const [language, setLanguage] = useState('en');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>('');
   const [bookFile, setBookFile] = useState<File | null>(null);
@@ -31,7 +31,7 @@ export default function PublishPage() {
 
   // Multi-Chapter State
   const [chapters, setChapters] = useState<Chapter[]>([
-    { id: '1', chapter: 'باب اول: آغازِ داستان (Chapter 1: The Beginning)', text: '' }
+    { id: '1', chapter: 'Chapter 1: The Beginning', text: '' }
   ]);
 
   // List of existing published books
@@ -355,15 +355,15 @@ export default function PublishPage() {
             {/* Book Metadata Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input 
-                label="Book Title (کتاب کا نام / عنوان)" 
-                placeholder="e.g. داستانِ دل / My Amazing Journey"
+                label="Book Title" 
+                placeholder="e.g. The Great Gatsby / Pride and Prejudice / My Amazing Journey"
                 value={title} 
                 onChange={e => setTitle(e.target.value)} 
                 required 
               />
               <Input 
-                label="Author Name (مصنف کا نام)" 
-                placeholder="e.g. عمیرہ احمد / Jane Austen"
+                label="Author Name" 
+                placeholder="e.g. F. Scott Fitzgerald / Jane Austen"
                 value={author} 
                 onChange={e => setAuthor(e.target.value)} 
                 required 
@@ -372,7 +372,7 @@ export default function PublishPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Book Language (زبان)</label>
+                <label className="text-sm font-medium text-slate-300">Book Language</label>
                 <select 
                   value={language}
                   onChange={e => setLanguage(e.target.value)}
@@ -387,7 +387,7 @@ export default function PublishPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Description / Summary (خلاصہ)</label>
+                <label className="text-sm font-medium text-slate-300">Description / Summary</label>
                 <input 
                   type="text"
                   placeholder="e.g. A thrilling novel exploring courage, devotion, and destiny..."
@@ -408,7 +408,7 @@ export default function PublishPage() {
                 </div>
               )}
               <div className="flex-1 space-y-1.5 text-center md:text-left">
-                <label className="text-sm font-bold text-slate-200">Cover Image (اختیاری سرورق)</label>
+                <label className="text-sm font-bold text-slate-200">Cover Image (Optional)</label>
                 <p className="text-xs text-slate-500">Upload a JPG, PNG, or WebP cover image for your book.</p>
                 <input 
                   type="file" 
@@ -505,7 +505,7 @@ export default function PublishPage() {
                     className="font-bold text-xs gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add New Chapter / باب شامل کریں</span>
+                    <span>Add New Chapter</span>
                   </Button>
                 </div>
               </div>

@@ -56,7 +56,7 @@ export default async function DashboardLayout({
           
           <Link href="/dashboard?tab=languages" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-foreground hover:bg-surface-hover text-sm font-semibold transition-all">
             <Languages className="w-4 h-4 shrink-0 text-indigo-500" />
-            <span>World Languages (زبانیں)</span>
+            <span>World Languages</span>
           </Link>
 
           <Link href="/dashboard?tab=online" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-foreground hover:bg-surface-hover text-sm font-semibold transition-all">

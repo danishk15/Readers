@@ -169,15 +169,20 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [isBgLoading, setIsBgLoading] = useState(false);
   
   // Interactive Translation Studio Sandbox States
-  const [sandboxText, setSandboxText] = useState('ہزاروں خواہشیں ایسی کہ ہر خواہش پہ دم نکلے');
+  const [sandboxText, setSandboxText] = useState('It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.');
   const [sandboxSourceLang, setSandboxSourceLang] = useState('auto');
-  const [sandboxTargetLang, setSandboxTargetLang] = useState('en');
+  const [sandboxTargetLang, setSandboxTargetLang] = useState('fr');
   const [sandboxResult, setSandboxResult] = useState<{ translatedText?: string; romanization?: string; dictionary?: any } | null>({
-    translatedText: 'Thousands of desires, each desire worth dying for...',
-    romanization: 'Hazaron khwahishein aisi ke har khwahish pe dam nikle'
+    translatedText: 'C’est une vérité universellement reconnue qu’un homme célibataire pourvu d’une belle fortune doit avoir besoin d’une épouse.',
+    romanization: 'Pride and Prejudice — Jane Austen'
   });
   const [isSandboxTranslating, setIsSandboxTranslating] = useState(false);
   const [selectedHubLang, setSelectedHubLang] = useState<string>('');
+
+  // Global Catalog Pagination States
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [hasMoreOnline, setHasMoreOnline] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [layoutMode, setLayoutMode] = useState<'grid' | 'shelf' | 'dome'>(() => {
     if (typeof window !== 'undefined') {
@@ -206,6 +211,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
+      setCatalogPage(1);
     }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
@@ -383,61 +389,76 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
   const [versionType, setVersionType] = useState<'all' | 'original' | 'translation'>('all');
 
   const languages = [
-    { code: '', label: '🌐 All Languages (تمام زبانیں)', iso6391: '', iso6392: '' },
-    { code: 'urd', label: '🇵🇰 Urdu (اردو)', iso6391: 'ur', iso6392: 'urd' },
-    { code: 'ara', label: '🇸🇦 Arabic (العربية)', iso6391: 'ar', iso6392: 'ara' },
-    { code: 'hin', label: '🇮🇳 Hindi (हिन्दी)', iso6391: 'hi', iso6392: 'hin' },
-    { code: 'per', label: '🇮🇷 Persian (فارسی)', iso6391: 'fa', iso6392: 'per' },
+    { code: '', label: '🌐 All Languages', iso6391: '', iso6392: '' },
+    { code: 'eng', label: '🇬🇧 English', iso6391: 'en', iso6392: 'eng' },
     { code: 'spa', label: '🇪🇸 Spanish (Español)', iso6391: 'es', iso6392: 'spa' },
     { code: 'fre', label: '🇫🇷 French (Français)', iso6391: 'fr', iso6392: 'fre' },
     { code: 'ger', label: '🇩🇪 German (Deutsch)', iso6391: 'de', iso6392: 'ger' },
+    { code: 'ita', label: '🇮🇹 Italian (Italiano)', iso6391: 'it', iso6392: 'ita' },
     { code: 'rus', label: '🇷🇺 Russian (Русский)', iso6391: 'ru', iso6392: 'rus' },
-    { code: 'eng', label: '🇬🇧 English', iso6391: 'en', iso6392: 'eng' },
     { code: 'chi', label: '🇨🇳 Chinese (中文)', iso6391: 'zh', iso6392: 'chi' },
     { code: 'jpn', label: '🇯🇵 Japanese (日本語)', iso6391: 'ja', iso6392: 'jpn' },
+    { code: 'lat', label: '🏛️ Latin (Latina)', iso6391: 'la', iso6392: 'lat' },
+    { code: 'hin', label: '🇮🇳 Hindi (हिन्दी)', iso6391: 'hi', iso6392: 'hin' },
+    { code: 'urd', label: '🇵🇰 Urdu (اردو)', iso6391: 'ur', iso6392: 'urd' },
+    { code: 'ara', label: '🇸🇦 Arabic (العربية)', iso6391: 'ar', iso6392: 'ara' },
+    { code: 'per', label: '🇮🇷 Persian (فارسی)', iso6391: 'fa', iso6392: 'per' },
     { code: 'tur', label: '🇹🇷 Turkish (Türkçe)', iso6391: 'tr', iso6392: 'tur' },
     { code: 'ben', label: '🇧🇩 Bengali (বাংলা)', iso6391: 'bn', iso6392: 'ben' },
-    { code: 'pan', label: '🇵🇰 Punjabi (پنجابی)', iso6391: 'pa', iso6392: 'pan' },
-    { code: 'ita', label: '🇮🇹 Italian (Italiano)', iso6391: 'it', iso6392: 'ita' },
-    { code: 'por', label: '🇧🇷 Portuguese (Português)', iso6391: 'pt', iso6392: 'por' },
-    { code: 'lat', label: '🏛️ Latin (Latina)', iso6391: 'la', iso6392: 'lat' }
+    { code: 'pan', label: '🇵🇰 Punjabi', iso6391: 'pa', iso6392: 'pan' },
+    { code: 'por', label: '🇧🇷 Portuguese (Português)', iso6391: 'pt', iso6392: 'por' }
   ];
 
-  const searchOnlineLibrary = useCallback(async (forcedQuery?: string) => {
+  const searchOnlineLibrary = useCallback(async (forcedQuery?: string, resetPage = true) => {
     const queryVal = typeof forcedQuery === 'string' ? forcedQuery : debouncedSearchQuery;
-    const cacheKey = `query:${queryVal || ''}|cat:${category}|lang:${language}|ver:${versionType}`;
+    if (resetPage) {
+      setCatalogPage(1);
+    }
+    const targetPage = resetPage ? 1 : catalogPage;
+    const cacheKey = `query:${queryVal || ''}|cat:${category}|lang:${language}|ver:${versionType}|p:${targetPage}`;
 
-    if (searchCache.current[cacheKey]) {
+    if (resetPage && searchCache.current[cacheKey]) {
       setOnlineBooks(searchCache.current[cacheKey]);
       setIsLoadingOnline(false);
       setIsBgLoading(false);
       return;
     }
 
-    setIsLoadingOnline(true);
-    setIsBgLoading(true);
-    setOnlineBooks([]);
+    if (resetPage) {
+      setIsLoadingOnline(true);
+      setIsBgLoading(true);
+      setOnlineBooks([]);
+    } else {
+      setIsLoadingMore(true);
+    }
     
     try {
-      const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}&version=${encodeURIComponent(versionType || 'all')}`;
+      const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}&version=${encodeURIComponent(versionType || 'all')}&page=${targetPage}&limit=40`;
       const apiRes = await fetch(apiUrl);
       if (apiRes.ok) {
         const apiData = await apiRes.json();
-        if (apiData.success && Array.isArray(apiData.books) && apiData.books.length > 0) {
+        if (apiData.success && Array.isArray(apiData.books)) {
           const sanitizedBooks = apiData.books.map((b: any) => ({
             ...b,
             isPremium: false,
             price: undefined
           }));
 
-          setOnlineBooks(sanitizedBooks);
-          searchCache.current[cacheKey] = sanitizedBooks;
-          try {
-            sessionStorage.setItem('quillhawk-search-cache', JSON.stringify(searchCache.current));
-          } catch (e) {}
-          setIsLoadingOnline(false);
-          setIsBgLoading(false);
-          return;
+          setHasMoreOnline(apiData.hasMore ?? (sanitizedBooks.length >= 20));
+
+          if (resetPage) {
+            setOnlineBooks(sanitizedBooks);
+            searchCache.current[cacheKey] = sanitizedBooks;
+            try {
+              sessionStorage.setItem('quillhawk-search-cache', JSON.stringify(searchCache.current));
+            } catch (e) {}
+          } else {
+            setOnlineBooks(prev => {
+              const ids = new Set(prev.map(p => p.id));
+              const additions = sanitizedBooks.filter((b: any) => !ids.has(b.id));
+              return [...prev, ...additions];
+            });
+          }
         }
       }
     } catch (backendErr) {
@@ -445,8 +466,41 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
     } finally {
       setIsLoadingOnline(false);
       setIsBgLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [debouncedSearchQuery, category, language, versionType]);
+  }, [debouncedSearchQuery, category, language, versionType, catalogPage]);
+
+  const loadMoreOnlineBooks = async () => {
+    if (isLoadingMore || !hasMoreOnline) return;
+    const nextPage = catalogPage + 1;
+    setCatalogPage(nextPage);
+    setIsLoadingMore(true);
+    try {
+      const queryVal = debouncedSearchQuery;
+      const apiUrl = `/api/books/search?q=${encodeURIComponent(queryVal || '')}&category=${encodeURIComponent(category || '')}&lang=${encodeURIComponent(language || '')}&version=${encodeURIComponent(versionType || 'all')}&page=${nextPage}&limit=40`;
+      const apiRes = await fetch(apiUrl);
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        if (apiData.success && Array.isArray(apiData.books)) {
+          const sanitizedBooks = apiData.books.map((b: any) => ({
+            ...b,
+            isPremium: false,
+            price: undefined
+          }));
+          setHasMoreOnline(apiData.hasMore ?? (sanitizedBooks.length >= 20));
+          setOnlineBooks(prev => {
+            const ids = new Set(prev.map(p => p.id));
+            const additions = sanitizedBooks.filter((b: any) => !ids.has(b.id));
+            return [...prev, ...additions];
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load more books:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'online') {
@@ -617,7 +671,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             Discover Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400">Masterpiece.</span>
           </h1>
           <p className="text-slate-400 text-sm md:text-base leading-relaxed">
-            Read authentic Urdu, Hindi, Arabic, Persian, French, German, Spanish, and World classics with instant AI translation, Roman transliteration, and audio narration.
+            Explore timeless world masterpieces, English classics, and international literary treasures with instant AI translation, transliteration, and audio narration.
           </p>
         </div>
 
@@ -659,7 +713,7 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             onClick={() => { setActiveTab('languages'); setSearchQuery(''); }}
           >
             <Globe className="w-4 h-4 text-indigo-400" />
-            <span>World Languages (زبانیں)</span>
+            <span>World Languages</span>
           </button>
 
           <button 
@@ -823,17 +877,18 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
             <span>Popular:</span>
           </span>
           {[
-            { label: 'Mirza Ghalib', q: 'ghalib' },
-            { label: 'Allama Iqbal', q: 'iqbal' },
-            { label: 'Munshi Premchand', q: 'premchand' },
-            { label: 'Saadat Hasan Manto', q: 'manto' },
             { label: 'Pride and Prejudice', q: 'pride and prejudice' },
             { label: 'The Great Gatsby', q: 'great gatsby' },
-            { label: 'Mawlana Rumi', q: 'rumi' },
+            { label: 'Sherlock Holmes', q: 'sherlock holmes' },
+            { label: 'Frankenstein', q: 'frankenstein' },
+            { label: 'Dracula', q: 'dracula' },
+            { label: 'Shakespeare', q: 'shakespeare' },
+            { label: 'Jane Austen', q: 'jane austen' },
             { label: 'Dostoevsky', q: 'dostoevsky' },
+            { label: 'Leo Tolstoy', q: 'leo tolstoy' },
+            { label: 'Charles Dickens', q: 'charles dickens' },
             { label: '1001 Nights', q: 'arabian nights' },
-            { label: 'Don Quixote', q: 'don quixote' },
-            { label: 'Shakespeare', q: 'shakespeare' }
+            { label: 'Victor Hugo', q: 'victor hugo' }
           ].map((tag) => (
             <button
               key={`tag-${tag.label}`}
@@ -1344,6 +1399,64 @@ export default function LibraryBrowser({ initialBooks, userId }: LibraryBrowserP
               );
             });
           })()}
+        </div>
+      )}
+
+      {/* Global Catalog Archive Pagination Controls */}
+      {activeTab === 'online' && onlineBooks.length > 0 && (
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 pt-6 border-t border-slate-800/80">
+          {hasMoreOnline ? (
+            <Button
+              onClick={loadMoreOnlineBooks}
+              disabled={isLoadingMore}
+              className="px-8 py-3.5 bg-gradient-to-r from-primary via-indigo-600 to-primary hover:from-primary/90 hover:to-indigo-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-primary/25 flex items-center gap-3 transition-all transform hover:scale-105 active:scale-95"
+            >
+              {isLoadingMore ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  <span>Fetching More Books from Archives...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>Load More Books (Page {catalogPage + 1})</span>
+                </>
+              )}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/80 px-4 py-2 rounded-full border border-slate-800 shadow">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>You have reached the end of search results across global archives.</span>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-500">
+            Loaded {onlineBooks.length} titles from Project Gutenberg, Open Library & Internet Archive
+          </p>
+        </div>
+      )}
+
+      {/* My Bookshelf Status & Global Discovery Bar */}
+      {activeTab === 'local' && (
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-800/80 text-xs text-slate-400">
+          <div className="flex items-center gap-2">
+            <Library className="w-4 h-4 text-primary" />
+            <span>Showing <strong className="text-white font-mono">{filteredLocalBooks.length}</strong> of <strong className="text-white font-mono">{allLocalBooks.length}</strong> books on your bookshelf</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setActiveTab('online');
+                searchOnlineLibrary('');
+              }}
+              className="text-xs font-bold gap-1.5 border-slate-800 hover:bg-slate-900 text-indigo-300 hover:text-white"
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Explore Millions More in Global Catalog</span>
+            </Button>
+          </div>
         </div>
       )}
     </div>

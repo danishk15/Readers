@@ -216,9 +216,18 @@ export async function GET(request: Request) {
     const category = searchParams.get('category')?.trim() || '';
     const language = searchParams.get('lang')?.trim() || '';
     const versionType = searchParams.get('version')?.trim() || 'all'; // 'all' | 'original' | 'translation'
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(10, parseInt(searchParams.get('limit') || '40', 10)));
 
-    // Default search if completely empty
-    const searchQuery = query || (category ? `subject:${category}` : (language === 'urd' ? 'اردو ادب دیوان غالب' : 'bestsellers classic literature'));
+    // Clean, universal default search queries based on page/category/language
+    const defaultGeneralQueries = [
+      'classics literature masterpieces',
+      'adventure mystery poetry philosophy classics',
+      'world literature greatest books'
+    ];
+    const chosenDefault = defaultGeneralQueries[(page - 1) % defaultGeneralQueries.length];
+
+    const searchQuery = query || (category ? category : (language && LANG_MAP[language] ? `${LANG_MAP[language].name} literature` : chosenDefault));
 
     // Language identification
     const targetLang = language && LANG_MAP[language] ? LANG_MAP[language] : null;
@@ -233,15 +242,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // 1. Instant local/authentic database matching
-    const localMatches = matchLocalAndClassicBooks(searchQuery, expandedKeywords, targetLang);
+    // 1. Instant local/authentic database matching (on page 1)
+    const localMatches = page === 1 ? matchLocalAndClassicBooks(searchQuery, expandedKeywords, targetLang) : [];
 
-    // 2. Run parallel multi-archive requests
+    // 2. Run parallel multi-archive requests with pagination
     const [iaResults, olResults, gutenbergResults, googleResults] = await Promise.allSettled([
-      fetchInternetArchive(searchQuery, expandedKeywords, targetLang?.iso1 || targetLang?.iso2),
-      fetchOpenLibrary(searchQuery, category, targetLang?.iso2 || targetLang?.iso1),
-      fetchGutenberg(searchQuery, targetLang?.iso1),
-      fetchGoogleBooks(searchQuery, category, targetLang?.iso1)
+      fetchInternetArchive(searchQuery, expandedKeywords, targetLang?.iso1 || targetLang?.iso2, page, limit),
+      fetchOpenLibrary(searchQuery, category, targetLang?.iso2 || targetLang?.iso1, page, limit),
+      fetchGutenberg(searchQuery, category, targetLang?.iso1, page),
+      fetchGoogleBooks(searchQuery, category, targetLang?.iso1, page)
     ]);
 
     const combined: UnifiedOnlineBook[] = [...localMatches];
@@ -307,8 +316,10 @@ export async function GET(request: Request) {
       success: true,
       query: searchQuery,
       language: targetLang ? targetLang.name : 'All Languages',
+      page,
       count: deduplicated.length,
-      books: deduplicated.slice(0, 80)
+      hasMore: deduplicated.length >= limit || page < 10,
+      books: deduplicated.slice(0, limit)
     }, {
       headers: {
         'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
@@ -337,17 +348,13 @@ function detectTranslationStatus(book: UnifiedOnlineBook, targetLang: any) {
     title.includes('trans.') || 
     desc.includes('translated from') || 
     desc.includes('english translation') ||
-    desc.includes('urdu translation') ||
-    title.includes('with urdu translation') ||
-    title.includes('with english translation');
+    desc.includes('with english translation');
 
   if (isTranslatedText) {
     book.is_translation = true;
     book.is_original = false;
     if (lang.startsWith('en')) {
       book.translated_to = 'English';
-    } else if (lang.startsWith('ur')) {
-      book.translated_to = 'Urdu';
     }
   } else {
     book.is_original = true;
@@ -357,11 +364,9 @@ function detectTranslationStatus(book: UnifiedOnlineBook, targetLang: any) {
 }
 
 // 1. Internet Archive Multi-Language & Texts Fetcher
-async function fetchInternetArchive(query: string, aliases: string[], lang?: string): Promise<UnifiedOnlineBook[]> {
+async function fetchInternetArchive(query: string, aliases: string[], lang?: string, page: number = 1, limit: number = 30): Promise<UnifiedOnlineBook[]> {
   try {
-    const cleanQ = query.replace(/subject:/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
-    if (!cleanQ) return [];
-
+    const cleanQ = query.replace(/subject:/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim() || 'classics literature';
     const terms = Array.from(new Set([cleanQ, ...aliases.slice(0, 3)])).filter(Boolean);
     const subQueries = terms.map(t => `(title:("${t}") OR creator:("${t}") OR description:("${t}"))`).join(' OR ');
 
@@ -370,7 +375,7 @@ async function fetchInternetArchive(query: string, aliases: string[], lang?: str
       iaQuery += ` AND (language:(${lang}) OR language:(${lang === 'ur' ? 'urd' : lang}))`;
     }
 
-    const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(iaQuery)}&fl[]=identifier,title,creator,description,year,language,downloads,publicdate&sort[]=downloads+desc&rows=35&page=1&output=json`;
+    const url = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(iaQuery)}&fl[]=identifier,title,creator,description,year,language,downloads,publicdate&sort[]=downloads+desc&rows=${limit}&page=${page}&output=json`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4500);
@@ -422,12 +427,10 @@ async function fetchInternetArchive(query: string, aliases: string[], lang?: str
 }
 
 // 2. Open Library Worldwide Catalog Fetcher
-async function fetchOpenLibrary(query: string, category: string, lang?: string): Promise<UnifiedOnlineBook[]> {
+async function fetchOpenLibrary(query: string, category: string, lang?: string, page: number = 1, limit: number = 30): Promise<UnifiedOnlineBook[]> {
   try {
-    const cleanQ = query.replace(/subject:/g, '').trim();
-    if (!cleanQ) return [];
-
-    let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(cleanQ)}&limit=30`;
+    const cleanQ = query.replace(/subject:/g, '').trim() || (category ? category : 'classic literature');
+    let url = `https://openlibrary.org/search.json?q=${encodeURIComponent(cleanQ)}&limit=${limit}&page=${page}`;
     if (lang) {
       url += `&language=${lang}`;
     }
@@ -447,11 +450,11 @@ async function fetchOpenLibrary(query: string, category: string, lang?: string):
     const data = await res.json();
     if (!data.docs || !Array.isArray(data.docs)) return [];
 
-    return data.docs.slice(0, 30).map((doc: any, idx: number): UnifiedOnlineBook => {
+    return data.docs.map((doc: any, idx: number): UnifiedOnlineBook => {
       const coverId = doc.cover_i;
       const cover = coverId ? `https://covers.openlibrary.org/b/id/${coverId}-L.jpg` : null;
       const iaId = Array.isArray(doc.ia) && doc.ia.length > 0 ? doc.ia[0] : null;
-      const workKey = doc.key ? doc.key.replace('/works/', '') : `ol-${idx}`;
+      const workKey = doc.key ? doc.key.replace('/works/', '') : `ol-${page}-${idx}`;
       const docLang = doc.language?.[0] || lang || 'eng';
 
       return {
@@ -485,12 +488,17 @@ async function fetchOpenLibrary(query: string, category: string, lang?: string):
 }
 
 // 3. Project Gutenberg / Gutendex Public Domain Fetcher
-async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnlineBook[]> {
+async function fetchGutenberg(query: string, category: string, lang?: string, page: number = 1): Promise<UnifiedOnlineBook[]> {
   try {
     const cleanQ = query.replace(/subject:/g, '').trim();
-    if (!cleanQ) return [];
+    let url = `https://gutendex.com/books/?page=${page}`;
+    
+    if (cleanQ && cleanQ !== 'classics literature masterpieces') {
+      url += `&search=${encodeURIComponent(cleanQ)}`;
+    } else if (category) {
+      url += `&topic=${encodeURIComponent(category.toLowerCase())}`;
+    }
 
-    let url = `https://gutendex.com/books/?search=${encodeURIComponent(cleanQ)}`;
     if (lang) {
       url += `&languages=${lang}`;
     }
@@ -510,7 +518,7 @@ async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnli
     const data = await res.json();
     const results = data.results || [];
 
-    return results.slice(0, 25).map((b: any): UnifiedOnlineBook => {
+    return results.map((b: any): UnifiedOnlineBook => {
       const epubUrl = b.formats?.['application/epub+zip'] || `https://www.gutenberg.org/ebooks/${b.id}.epub.noimages`;
       const cover = b.formats?.['image/jpeg'] || null;
 
@@ -543,14 +551,15 @@ async function fetchGutenberg(query: string, lang?: string): Promise<UnifiedOnli
 }
 
 // 4. Google Books API Fetcher with Fallback Resilience
-async function fetchGoogleBooks(query: string, category: string, lang?: string): Promise<UnifiedOnlineBook[]> {
+async function fetchGoogleBooks(query: string, category: string, lang?: string, page: number = 1): Promise<UnifiedOnlineBook[]> {
   try {
-    let q = query;
+    let q = query || 'classics literature';
     if (category && !q.includes('subject:')) {
       q = `${q} subject:${category}`;
     }
 
-    let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=25&printType=books`;
+    const startIndex = (page - 1) * 20;
+    let url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&startIndex=${startIndex}&maxResults=20&printType=books`;
     if (lang) {
       url += `&langRestrict=${lang}`;
     }
